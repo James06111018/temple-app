@@ -1,0 +1,14 @@
+module tw.org.il.dongsheng.templeapp {
+    requires javafx.controls;
+    requires javafx.fxml;
+    requires javafx.swing;
+
+//    requires org.controlsfx.controls;
+    requires org.kordamp.ikonli.core;
+    requires org.kordamp.ikonli.javafx;
+    requires org.kordamp.ikonli.fontawesome5;
+//    requires org.kordamp.bootstrapfx.core;
+
+    opens tw.org.il.dongsheng.templeapp to javafx.fxml;
+    exports tw.org.il.dongsheng.templeapp;
+}
