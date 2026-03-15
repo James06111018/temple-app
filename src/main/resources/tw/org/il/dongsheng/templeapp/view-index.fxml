@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.image.Image?>
+<VBox prefHeight="800.0" prefWidth="1200.0" xmlns:fx="http://javafx.com/fxml/1" fx:controller="tw.org.il.dongsheng.templeapp.IndexController">
+
+    <MenuBar>
+        <menus>
+            <Menu text="檔案(F)">
+                <MenuItem text="結束" onAction="#handleExit"/>
+            </Menu>
+            <Menu text="設定(S)">
+                <MenuItem text="系統設定"/>
+                <MenuItem text="印表機設定"/>
+            </Menu>
+            <Menu text="工具(T)"/>
+            <Menu text="關於(A)"/>
+        </menus>
+    </MenuBar>
+
+    <TabPane fx:id="mainTabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="NEVER">
+        <tabs>
+            <Tab fx:id="tabLight" id="light">
+                <graphic>
+                    <HBox alignment="CENTER" spacing="5">
+                        <ImageView fitHeight="16.0" fitWidth="16.0">
+                            <image>
+                                <Image url="@icon_light.png" />
+                            </image>
+                        </ImageView>
+                        <Label text="%tab.light" />
+                    </HBox>
+                </graphic>
+            </Tab>
+            <Tab fx:id="tabStaff" id="staff">
+                <graphic>
+                    <HBox alignment="CENTER" spacing="5">
+                        <ImageView fitHeight="16.0" fitWidth="16.0">
+                            <image>
+                                <Image url="@icon_light.png" />
+                            </image>
+                        </ImageView>
+                        <Label text="%tab.staff" />
+                    </HBox>
+                </graphic>
+            </Tab>
+            <Tab fx:id="tabTemple" id="temple">
+                <graphic>
+                    <HBox alignment="CENTER" spacing="5">
+                        <ImageView fitHeight="16.0" fitWidth="16.0">
+                            <image>
+                                <Image url="@icon_light.png" />
+                            </image>
+                        </ImageView>
+                        <Label text="%tab.temple" />
+                    </HBox>
+                </graphic>
+            </Tab>
+            <Tab fx:id="tabGhost" id="ghost">
+                <graphic>
+                    <HBox alignment="CENTER" spacing="5">
+                        <ImageView fitHeight="16.0" fitWidth="16.0">
+                            <image>
+                                <Image url="@icon_light.png" />
+                            </image>
+                        </ImageView>
+                        <Label text="%tab.ghost" />
+                    </HBox>
+                </graphic>
+            </Tab>
+            <Tab fx:id="tabMerit" id="merit">
+                <graphic>
+                    <HBox alignment="CENTER" spacing="5">
+                        <ImageView fitHeight="16.0" fitWidth="16.0">
+                            <image>
+                                <Image url="@icon_light.png" />
+                            </image>
+                        </ImageView>
+                        <Label text="%tab.merit" />
+                    </HBox>
+                </graphic>
+            </Tab>
+        </tabs>
+    </TabPane>
+
+    <AnchorPane fx:id="contentArea" VBox.vgrow="ALWAYS">
+    </AnchorPane>
+</VBox>

@@ -1,0 +1,18 @@
+.btn-action {
+    -fx-background-color: #ffdead; /* 橘黃色按鈕 */
+    -fx-border-color: #8b4513;
+}
+
+.btn-highlight {
+    -fx-background-color: #f4a460;
+    -fx-font-weight: bold;
+}
+
+.titled-pane > .title {
+    -fx-background-color: #b0c4de; /* 藍灰色標題列 */
+}
+
+/* 讓唯讀欄位呈現黃色背景，如照片所示 */
+.text-field:disabled, .text-field[editable="false"] {
+    -fx-control-inner-background: #ffffcc;
+}

@@ -2,8 +2,11 @@ module tw.org.il.dongsheng.templeapp {
     requires javafx.controls;
     requires javafx.fxml;
     requires javafx.swing;
+    requires java.base;
 
-//    requires org.controlsfx.controls;
+    requires org.controlsfx.controls;
+    requires com.dlsc.formsfx;
+
     requires org.kordamp.ikonli.core;
     requires org.kordamp.ikonli.javafx;
     requires org.kordamp.ikonli.fontawesome5;
