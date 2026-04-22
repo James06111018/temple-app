@@ -1,6 +1,7 @@
 module tw.org.il.dongsheng.templeapp {
     requires javafx.controls;
     requires javafx.fxml;
+    requires java.sql;
     requires javafx.swing;
     requires java.base;
 
@@ -14,4 +15,6 @@ module tw.org.il.dongsheng.templeapp {
 
     opens tw.org.il.dongsheng.templeapp to javafx.fxml;
     exports tw.org.il.dongsheng.templeapp;
+    exports tw.org.il.dongsheng.templeapp.model;
+    opens tw.org.il.dongsheng.templeapp.model to javafx.fxml;
 }

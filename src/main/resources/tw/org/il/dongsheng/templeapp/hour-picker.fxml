@@ -1,0 +1,17 @@
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TableColumn?>
+<VBox spacing="10" prefWidth="250" prefHeight="360"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="tw.org.il.dongsheng.templeapp.HourPickerController" stylesheets="@style.css">
+
+    <TableView fx:id="tableView" prefHeight="360">
+
+        <columns>
+            <TableColumn text="時辰" fx:id="colName" prefWidth="100"/>
+            <TableColumn text="時間" fx:id="colTime" prefWidth="100"/>
+        </columns>
+
+    </TableView>
+
+</VBox>

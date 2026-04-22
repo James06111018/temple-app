@@ -1,0 +1,42 @@
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.layout.HBox?>
+<VBox spacing="10" alignment="CENTER" prefWidth="250" prefHeight="320"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="tw.org.il.dongsheng.templeapp.NumberKeypadController" stylesheets="@style.css">
+
+    <!-- 顯示輸入 -->
+    <TextField fx:id="displayField" prefWidth="170" maxWidth="170" prefHeight="40" />
+
+    <!-- 數字區 -->
+    <GridPane hgap="10" vgap="10" alignment="CENTER">
+
+        <Button text="1" prefWidth="50" onAction="#onNumber"/>
+        <Button text="2" prefWidth="50" onAction="#onNumber" GridPane.columnIndex="1"/>
+        <Button text="3" prefWidth="50" onAction="#onNumber" GridPane.columnIndex="2"/>
+
+        <Button text="4" prefWidth="50" onAction="#onNumber" GridPane.rowIndex="1"/>
+        <Button text="5" prefWidth="50" onAction="#onNumber" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+        <Button text="6" prefWidth="50" onAction="#onNumber" GridPane.columnIndex="2" GridPane.rowIndex="1"/>
+
+        <Button text="7" prefWidth="50" onAction="#onNumber" GridPane.rowIndex="2"/>
+        <Button text="8" prefWidth="50" onAction="#onNumber" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+        <Button text="9" prefWidth="50" onAction="#onNumber" GridPane.columnIndex="2" GridPane.rowIndex="2"/>
+
+        <Button text="0" prefWidth="50" onAction="#onNumber" GridPane.rowIndex="3"/>
+        <Button text="00" prefWidth="50" onAction="#onNumber" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+        <Button text="000" prefWidth="50" onAction="#onNumber" GridPane.columnIndex="2" GridPane.rowIndex="3"/>
+
+        <Button text="-" prefWidth="50" onAction="#onNumber" GridPane.rowIndex="4"/>
+    </GridPane>
+
+    <!-- 操作按鈕 -->
+    <HBox spacing="10" alignment="CENTER">
+        <Button text="確定" prefWidth="50" onAction="#onConfirm" style="-fx-background-color:#90CAF9"/>
+        <Button text="清除" prefWidth="50" onAction="#onClear" style="-fx-background-color:#90CAF9"/>
+        <Button text="C" prefWidth="50" onAction="#onBackspace" style="-fx-background-color:#EF9A9A"/>
+    </HBox>
+
+</VBox>

@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS light_members (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    phone TEXT,
+    city TEXT,
+    dist TEXT,
+    address TEXT,
+    zip_code TEXT,
+    birth_date TEXT,
+    lunar_birth_date TEXT,
+    age INTEGER,
+    zodiac TEXT,
+    zodiac_year TEXT,
+    birth_time TEXT,
+    note TEXT,
+    contact_person TEXT,
+    id_number TEXT,
+    sort_order INTEGER,
+    ding INTEGER,
+    kou INTEGER,
+    is_mail TEXT,
+    gender TEXT
+);

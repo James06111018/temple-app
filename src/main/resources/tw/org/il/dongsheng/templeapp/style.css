@@ -16,3 +16,77 @@
 .text-field:disabled, .text-field[editable="false"] {
     -fx-control-inner-background: #ffffcc;
 }
+
+/* 設定所有儲存格內容靠左 */
+.table-view .table-cell {
+    -fx-alignment: CENTER-LEFT;
+    -fx-padding: 0 0 0 5; /* 上 右 下 左，左邊留 5px 比較美觀 */
+}
+
+/* 如果你想連標頭 (Header) 也一起靠左 */
+.table-view .column-header .label {
+    -fx-alignment: CENTER-LEFT;
+}
+
+.text-field.error {
+    -fx-border-color: red;
+    -fx-border-width: 2;
+}
+
+.combo-box.error {
+    -fx-border-color: red;
+}
+
+.btn-green {
+    -fx-background-color: #99C692;
+    -fx-text-fill: black;
+}
+
+.btn-orange {
+    -fx-background-color: #F4A261;
+    -fx-text-fill: black;
+}
+
+.btn-blue {
+    -fx-background-color: #4DD0E1;
+    -fx-text-fill: black;
+}
+
+.btn-purple {
+    -fx-background-color: #9792C5;
+    -fx-text-fill: black;
+}
+
+.btn-pink {
+    -fx-background-color: #FFE4E1;
+    -fx-text-fill: black;
+}
+
+.btn-yellow {
+    -fx-background-color: #FFFFCC;
+    -fx-text-fill: black;
+}
+
+.button {
+    -fx-background-radius: 3;
+    -fx-border-color: #aaa;
+}
+
+.text-field {
+    -fx-border-color: #999;
+}
+
+.table-view {
+    -fx-border-color: #999;
+}
+
+.table-row-cell:even {
+    -fx-background-color: #EDE7F6;
+    -fx-background-insets: 0;
+}
+
+.titled-pane > .title {
+    -fx-background-color: #c5450c; /* 橘色背景 */
+    -fx-background-insets: 0, 1, 2;
+    -fx-background-radius: 5 5 0 0; /* 圓角設定 */
+}

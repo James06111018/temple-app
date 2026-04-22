@@ -4,139 +4,228 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane stylesheets="@style.css" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/21">
+<?import javafx.collections.FXCollections?>
+<?import java.lang.String?>
+<BorderPane fx:controller="tw.org.il.dongsheng.templeapp.LightController" stylesheets="@style.css"
+            xmlns:fx="http://javafx.com/fxml" xmlns="http://javafx.com/javafx">
 
     <top>
         <VBox>
             <ToolBar style="-fx-background-color: #f0f0f0;">
-                <Button styleClass="btn-action" text="新增電腦編號" />
-                <Button styleClass="btn-action" text="存檔" />
-                <Button styleClass="btn-action" text="刪除" />
-                <Button styleClass="btn-action" text="查詢" />
-                <Button styleClass="btn-action" text="欄位淨空" />
-                <Button styleClass="btn-action" text="總金額" />
+                <Button styleClass="btn-action" text="新增電腦編號" onAction="#onGenerateId" />
+                <Button fx:id="saveButton" styleClass="btn-purple" text="存檔" onAction="#onSave" />
+                <Button fx:id="delButton" styleClass="btn-purple" text="刪除" />
+                <Button fx:id="searchButton" styleClass="btn-purple" text="查詢" onAction="#onSearch"/>
+                <Button fx:id="clearButton" styleClass="btn-purple" text="欄位淨空" onAction="#onClearField"/>
+                <Button fx:id="totalAmountButton" styleClass="btn-purple" text="總金額" />
                 <Separator orientation="VERTICAL" />
-                <Button text="上筆" />
-                <Button text="下筆" />
-                <Button styleClass="btn-highlight" text="全戶點燈" />
-                <Button text="管理" />
+                <Button fx:id="prevButton" styleClass="btn-yellow" text="上筆" />
+                <Button fx:id="nextButton" styleClass="btn-yellow" text="下筆" />
+                <Button fx:id="allLightButton" styleClass="btn-highlight" text="全戶點燈" />
+                <Button fx:id="manageButton" styleClass="btn-pink" text="管理"/>
             </ToolBar>
         </VBox>
     </top>
 
     <center>
-        <HBox spacing="5">
+        <HBox spacing="5" alignment="TOP_LEFT">
             <padding><Insets bottom="5" left="5" right="5" top="5" /></padding>
 
             <VBox spacing="5" HBox.hgrow="ALWAYS">
-                <TitledPane animated="false" collapsible="false" text="信眾基本資料">
-                    <GridPane hgap="8" vgap="5">
-                        <columnConstraints>
-                            <ColumnConstraints halignment="RIGHT" minWidth="70" />
-                            <ColumnConstraints minWidth="120" />
-                            <ColumnConstraints halignment="RIGHT" minWidth="60" />
-                            <ColumnConstraints minWidth="120" />
-                            <ColumnConstraints halignment="RIGHT" minWidth="40" />
-                            <ColumnConstraints minWidth="80" />
-                        </columnConstraints>
+                <GridPane fx:id="memberInputGrid" hgap="8" vgap="6">
+                    <columnConstraints>
+                        <ColumnConstraints halignment="RIGHT" minWidth="70" />
+                        <ColumnConstraints minWidth="120" />
+                        <ColumnConstraints halignment="RIGHT" minWidth="60" />
+                        <ColumnConstraints minWidth="120" />
+                        <ColumnConstraints halignment="RIGHT" minWidth="40" />
+                        <ColumnConstraints minWidth="80" />
+                    </columnConstraints>
 
-                        <Label text="電腦編號" GridPane.columnIndex="0" GridPane.rowIndex="0" />
-                        <TextField fx:id="pcIdField" editable="false" style="-fx-background-color: #ffffcc;" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+                    <Label text="電腦編號" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+                    <TextField fx:id="idField" editable="false" style="-fx-background-color: #ffffcc;" GridPane.columnIndex="1" GridPane.rowIndex="0" />
 
-                        <Label text="姓名" GridPane.columnIndex="2" GridPane.rowIndex="0" />
-                        <HBox spacing="2" GridPane.columnIndex="3" GridPane.rowIndex="0">
-                            <TextField fx:id="nameField" HBox.hgrow="ALWAYS" />
-                            <Button text="F4" style="-fx-font-size: 10;" />
-                        </HBox>
+                    <Label text="姓名" GridPane.columnIndex="2" GridPane.rowIndex="0" />
+                    <HBox spacing="2" GridPane.columnIndex="3" GridPane.rowIndex="0">
+                        <TextField fx:id="nameField" HBox.hgrow="ALWAYS" />
+                        <Button fx:id="btnContact" text="連" style="-fx-font-size: 10;" styleClass="btn-green"/>
+                        <Button fx:id="btnWord" text="字" style="-fx-font-size: 10;" styleClass="btn-orange"/>
+                    </HBox>
 
-                        <Label text="性別" GridPane.columnIndex="4" GridPane.rowIndex="0" />
-                        <ComboBox fx:id="genderBox" prefWidth="80" GridPane.columnIndex="5" GridPane.rowIndex="0" />
+                    <Label text="性別" GridPane.columnIndex="4" GridPane.rowIndex="0" />
+                    <HBox spacing="2" GridPane.columnIndex="5" GridPane.rowIndex="0">
+                        <ComboBox fx:id="genderBox" prefWidth="60">
+                            <items>
+                                <FXCollections fx:factory="observableArrayList">
+                                    <String fx:value="男" />
+                                    <String fx:value="女" />
+                                </FXCollections>
+                            </items>
+                        </ComboBox>
+                        <Button text="名冊" style="-fx-font-size: 10;" styleClass="btn-blue"/>
+                        <Button text="明細" style="-fx-font-size: 10;" styleClass="btn-blue"/>
+                        <Button text="欠繳" style="-fx-font-size: 10;" styleClass="btn-blue"/>
+                    </HBox>
 
-                        <Label text="電話" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+                    <Label text="電話" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+                    <HBox spacing="2" GridPane.columnIndex="1" GridPane.rowIndex="1">
                         <TextField fx:id="phoneField" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                        <Button text="…" style="-fx-font-size: 10;" styleClass="btn-green" onAction="#onOpenKeypad" />
+                    </HBox>
 
-                        <Label text="縣市別" GridPane.columnIndex="2" GridPane.rowIndex="1" />
-                        <ComboBox fx:id="cityBox" prefWidth="120" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                    <Label text="縣市別" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                    <HBox spacing="2" GridPane.columnIndex="3" GridPane.rowIndex="1">
+                        <ComboBox fx:id="cityBox" prefWidth="100" />
+                        <ComboBox fx:id="distBox" prefWidth="140" />
+                    </HBox>
 
-                        <Label text="郵遞區號" GridPane.columnIndex="0" GridPane.rowIndex="2" />
-                        <TextField fx:id="zipCodeField" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                    <Label text="郵遞區號" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+                    <HBox spacing="5" alignment="CENTER_LEFT" GridPane.columnIndex="1" GridPane.columnSpan="5" GridPane.rowIndex="2">
+                        <TextField fx:id="zipCodeField" prefWidth="50" minWidth="50" />
 
-                        <Label text="地址" GridPane.columnIndex="2" GridPane.rowIndex="2" />
-                        <TextField fx:id="addressField" GridPane.columnIndex="3" GridPane.columnSpan="3" GridPane.rowIndex="2" />
+                        <Label text="地址" />
+                        <TextField fx:id="addressField" HBox.hgrow="ALWAYS" prefWidth="200" />
+                        <Button text="路" style="-fx-font-size: 10;" styleClass="btn-green" />
+                        <Button text="改" style="-fx-font-size: 10;" styleClass="btn-orange"/>
+                        <Button text="單" style="-fx-font-size: 10;" styleClass="btn-purple"/>
 
-                        <Label text="國曆生日" GridPane.columnIndex="0" GridPane.rowIndex="3" />
-                        <TextField fx:id="birthSunField" promptText="YYY.MM.DD" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+                        <Label text="是否郵寄" />
+                        <ComboBox fx:id="mailBox" prefWidth="60">
+                            <items>
+                                <FXCollections fx:factory="observableArrayList">
+                                    <String fx:value="N" />
+                                    <String fx:value="Y" />
+                                </FXCollections>
+                            </items>
+                        </ComboBox>
+                    </HBox>
 
-                        <Label text="農曆生日" GridPane.columnIndex="2" GridPane.rowIndex="3" />
-                        <TextField fx:id="birthMoonField" GridPane.columnIndex="3" GridPane.rowIndex="3" />
+                    <Label text="國曆生日" GridPane.columnIndex="0" GridPane.rowIndex="3" />
+                    <HBox spacing="5" alignment="CENTER_LEFT" GridPane.columnIndex="1" GridPane.columnSpan="6" GridPane.rowIndex="3">
+                        <TextField fx:id="birthSunField" prefWidth="100"/>
+                        <Label text="農曆生日"/>
+                        <TextField fx:id="birthMoonField" prefWidth="100"/>
+                        <Label text="年齡"/>
+                        <TextField fx:id="ageField" prefWidth="40"/>
+                        <Label text="生肖"/>
+                        <TextField fx:id="zodiacField" prefWidth="40"/>
+                        <Label text="歲次"/>
+                        <TextField fx:id="yearCycleField" prefWidth="60"/>
+                        <Label text="時辰"/>
+                        <TextField fx:id="hourField" prefWidth="40"/>
+                        <Button text="…" styleClass="btn-green" onAction="#onOpenHourPicker"/>
+                    </HBox>
 
-                        <HBox alignment="CENTER_LEFT" spacing="5" GridPane.columnIndex="0" GridPane.columnSpan="6" GridPane.rowIndex="4">
-                            <Label text="年齡" /> <TextField fx:id="ageField" prefWidth="40" />
-                            <Label text="生肖" /> <TextField fx:id="zodiacField" prefWidth="40" />
-                            <Label text="歲次" /> <TextField fx:id="yearCycleField" prefWidth="60" />
-                            <Label text="時辰" /> <ComboBox fx:id="hourBox" prefWidth="70" />
-                            <CheckBox text="是否郵寄" selected="true" />
+                    <Label text="備註" GridPane.columnIndex="0" GridPane.rowIndex="4" />
+                    <TextField fx:id="memberNoteField" GridPane.columnIndex="1" GridPane.columnSpan="5" GridPane.rowIndex="4" />
+
+                    <Label text="聯絡人" GridPane.columnIndex="0" GridPane.rowIndex="5" />
+                    <HBox spacing="5" alignment="CENTER_LEFT" GridPane.columnIndex="1" GridPane.columnSpan="6" GridPane.rowIndex="5">
+                        <TextField fx:id="contactField" prefWidth="120" />
+                        <Label text="身分證號" />
+                        <HBox spacing="2">
+                            <TextField fx:id="idNumberField" prefWidth="120" />
+                            <Button text="…" style="-fx-font-size: 10;" styleClass="btn-green" />
                         </HBox>
+                        <Label text="排序" /> <TextField fx:id="sortField" prefWidth="60" />
+                        <Label text="電腦資料" />
+                        <TextField fx:id="aField" prefWidth="40" />
+                        <Label text="丁" />
+                        <TextField fx:id="bField" prefWidth="40" />
+                        <Label text="口" />
+                        <Button text="←" style="-fx-font-size: 10;" styleClass="btn-pink" />
+                    </HBox>
 
-                        <Label text="備註" GridPane.columnIndex="0" GridPane.rowIndex="5" />
-                        <TextField fx:id="memberNoteField" GridPane.columnIndex="1" GridPane.columnSpan="5" GridPane.rowIndex="5" />
-                    </GridPane>
-                </TitledPane>
-
-<!--                <TableView fx:id="memberTable" VBox.vgrow="ALWAYS">-->
-<!--                    <columns>-->
-<!--                        <TableColumn text="電腦編號" prefWidth="80" />-->
-<!--                        <TableColumn text="姓名" prefWidth="80" />-->
-<!--                        <TableColumn text="郵寄" prefWidth="40" />-->
-<!--                        <TableColumn text="國曆生日" prefWidth="100" />-->
-<!--                        <TableColumn text="農曆生日" prefWidth="100" />-->
-<!--                        <TableColumn text="年齡" prefWidth="40" />-->
-<!--                        <TableColumn text="生肖" prefWidth="50" />-->
-<!--                        <TableColumn text="歲次" prefWidth="60" />-->
-<!--                        <TableColumn text="時辰" prefWidth="60" />-->
-<!--                        <TableColumn text="性別" prefWidth="50" />-->
-<!--                    </columns>-->
-<!--                </TableView>-->
-            </VBox>
-
-            <VBox prefWidth="300" spacing="5" style="-fx-background-color: #ffe4e1; -fx-border-color: #cd5c5c;">
-                <padding><Insets/></padding>
-                <Label style="-fx-font-weight: bold; -fx-font-size: 16;" text="捐款作業 / 點燈項目" />
-
-                <GridPane hgap="5" vgap="8">
-                    <Label text="款項類別" GridPane.rowIndex="0" GridPane.columnIndex="0" />
-                    <ComboBox prefWidth="180" GridPane.rowIndex="0" GridPane.columnIndex="1" />
-
-                    <Label text="收據編號" GridPane.rowIndex="1" GridPane.columnIndex="0" />
-                    <TextField GridPane.rowIndex="1" GridPane.columnIndex="1" />
-
-                    <Label text="捐款日期" GridPane.rowIndex="2" GridPane.columnIndex="0" />
-                    <DatePicker prefWidth="180" GridPane.rowIndex="2" GridPane.columnIndex="1" />
-
-                    <Label text="金額" GridPane.rowIndex="3" GridPane.columnIndex="0" />
-                    <TextField style="-fx-text-fill: red; -fx-font-weight: bold;" GridPane.rowIndex="3" GridPane.columnIndex="1" />
-
-                    <Label text="摘要" GridPane.rowIndex="4" GridPane.columnIndex="0" />
-                    <TextField GridPane.rowIndex="4" GridPane.columnIndex="1" />
                 </GridPane>
 
-                <TextArea fx:id="donateNote" prefHeight="100" promptText="捐款備註/其他註記" />
+                <TableView fx:id="memberTable" prefWidth="600" maxWidth="700" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="colId" text="電腦編號"  prefWidth="80" styleClass="btn-yellow" />
+                        <TableColumn fx:id="colName" text="姓名" prefWidth="80" styleClass="btn-yellow"/>
+                        <TableColumn fx:id="colMail" text="郵寄" prefWidth="40" styleClass="btn-yellow"/>
+                        <TableColumn fx:id="colSolar" text="國曆生日" prefWidth="100" styleClass="btn-yellow"/>
+                        <TableColumn fx:id="colLunar" text="農曆生日" prefWidth="100" styleClass="btn-yellow"/>
+                        <TableColumn fx:id="colAge" text="年齡" prefWidth="40" styleClass="btn-yellow"/>
+                        <TableColumn fx:id="colZodiac" text="生肖" prefWidth="50" styleClass="btn-yellow"/>
+                        <TableColumn fx:id="colEra" text="歲次" prefWidth="60" styleClass="btn-yellow"/>
+                        <TableColumn fx:id="colHour" text="時辰" prefWidth="60" styleClass="btn-yellow"/>
+                        <TableColumn fx:id="colGender" text="性別" prefWidth="50" styleClass="btn-yellow"/>
+                    </columns>
+                    <columnResizePolicy>
+                        <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY" />
+                    </columnResizePolicy>
+                </TableView>
+<!--                <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-background-color: #eee; -fx-padding: 5; -fx-border-color: #ccc; -fx-border-width: 1 0 0 0;">-->
+<!--                    <Button text="|&lt;" /> <Button text="&lt;" />   <TextField fx:id="currentPageField" prefWidth="40" text="1" alignment="CENTER" />-->
+<!--                    <Label fx:id="totalRecordsLabel" text="總筆數：5" />-->
+<!--                    <Button text="&gt;" />   <Button text="&gt;|" />-->
+<!--                </HBox>-->
 
-                <VBox spacing="5" style="-fx-padding: 10 0 0 0;">
-                    <Button maxWidth="Infinity" text="新增項目" />
-                    <Button maxWidth="Infinity" text="修改項目" />
-                    <Button maxWidth="Infinity" text="刪除項目" />
-                    <Button maxWidth="Infinity" text="補據" />
-                </VBox>
+            </VBox>
+
+            <VBox prefWidth="320" spacing="5" alignment="TOP_CENTER">
+                <padding><Insets/></padding>
+                <TitledPane alignment="CENTER" animated="false" collapsible="false" text="捐款作業" style="-fx-text-fill: white">
+                    <GridPane hgap="4" vgap="10">
+                        <Label text="款項類別" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+                        <ComboBox fx:id="donateTypeField" prefWidth="180" GridPane.rowIndex="0" GridPane.columnIndex="1" />
+
+                        <Label text="收據編號" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+                        <TextField fx:id="receiptNoField" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+
+                        <Label text="捐款日期" GridPane.rowIndex="2" GridPane.columnIndex="0" />
+                        <DatePicker fx:id="donateDateField" prefWidth="180" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+
+                        <Label text="補登號碼" GridPane.rowIndex="3" GridPane.columnIndex="0" />
+                        <TextField fx:id="extraNoField" GridPane.rowIndex="3" GridPane.columnIndex="1" />
+
+                        <Label text="金額" GridPane.rowIndex="4" GridPane.columnIndex="0" />
+                        <HBox GridPane.rowIndex="4" GridPane.columnIndex="1">
+                            <TextField fx:id="amountField" prefWidth="190" style="-fx-text-fill: red; -fx-font-weight: bold;" />
+                            <Button text="數字" styleClass="btn-green" style="-fx-font-size: 10;"/>
+                        </HBox>
+
+                        <Label text="摘要" GridPane.rowIndex="5" GridPane.columnIndex="0" />
+                        <HBox GridPane.rowIndex="5" GridPane.columnIndex="1">
+                            <TextField fx:id="summaryField" prefWidth="190" style="-fx-text-fill: red; -fx-font-weight: bold;" />
+                            <Button text="詞彙" styleClass="btn-green" style="-fx-font-size: 10;"/>
+                        </HBox>
+
+                        <Label text="捐款備註" GridPane.rowIndex="6" GridPane.columnIndex="0" />
+                        <HBox GridPane.rowIndex="6" GridPane.columnIndex="1">
+                            <TextField fx:id="donateNoteField" prefWidth="190" style="-fx-text-fill: red; -fx-font-weight: bold;" />
+                            <Button text="家屬" styleClass="btn-green" style="-fx-font-size: 10;"/>
+                        </HBox>
+
+                        <Label text="其他註記" GridPane.rowIndex="7" GridPane.columnIndex="0" />
+                        <TextField fx:id="otherNoteField" GridPane.rowIndex="7" GridPane.columnIndex="1" />
+
+                        <Label text="太歲燈號" GridPane.rowIndex="8" GridPane.columnIndex="0" />
+                        <TextField fx:id="donorNoField" GridPane.rowIndex="8" GridPane.columnIndex="1" />
+
+                        <Label text="光明燈號" GridPane.rowIndex="9" GridPane.columnIndex="0" />
+                        <TextField fx:id="lightNoField" GridPane.rowIndex="9" GridPane.columnIndex="1" />
+
+                        <Label text="應繳金額" GridPane.rowIndex="10" GridPane.columnIndex="0" />
+                        <TextField fx:id="shouldPayField" GridPane.rowIndex="10" GridPane.columnIndex="1" />
+
+                        <HBox spacing="5" style="-fx-padding: 10 0 0 0;" GridPane.rowIndex="11" GridPane.columnIndex="0" GridPane.columnSpan="4">
+                            <Button prefWidth="60" maxWidth="Infinity" text="新增" styleClass="btn-purple" onAction="#onDonationAdd"/>
+                            <Button prefWidth="60" maxWidth="Infinity" text="修改" styleClass="btn-purple"/>
+                            <Button prefWidth="60" maxWidth="Infinity" text="刪除" styleClass="btn-purple"/>
+                            <Button prefWidth="60" maxWidth="Infinity" text="補據" styleClass="btn-purple"/>
+                        </HBox>
+                    </GridPane>
+                </TitledPane>
             </VBox>
         </HBox>
     </center>
 
     <bottom>
         <HBox spacing="10" style="-fx-background-color: #e0e0e0; -fx-padding: 5;">
-            <Label text="就緒" />
-            <Separator orientation="VERTICAL" />
-            <Label fx:id="printerStatusLabel" text="預設印表機: Brother DCP-L2540DW series" />
+<!--            <Label text="就緒" />-->
+<!--            <Separator orientation="VERTICAL" />-->
+<!--            <Label fx:id="printerStatusLabel" text="預設印表機: Brother DCP-L2540DW series" />-->
         </HBox>
     </bottom>
 </BorderPane>
