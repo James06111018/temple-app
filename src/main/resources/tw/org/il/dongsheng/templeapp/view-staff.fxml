@@ -153,7 +153,7 @@
 
     <!-- 🔷 底部操作區 -->
     <bottom>
-        <HBox spacing="10" style="-fx-padding:10; -fx-background-color:#FFF59D;">
+        <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-padding:10;">
 
             <Label text="代號"/>
             <TextField prefWidth="60"/>

@@ -49,6 +49,9 @@ public class IndexController {
         String fxmlFile = pageMap.get(id);
         if (fxmlFile != null) {
             String langKey = "tab." + id;
+            if (id.equals("merit")) {
+                langKey += ".page";
+            }
             String title = resources.getString(langKey);
             switchContent(id, fxmlFile, title);
             System.out.println("切換到分頁: " + title);
