@@ -2,9 +2,133 @@
 
 <?import javafx.scene.layout.*?>
 
-<AnchorPane xmlns="http://javafx.com/javafx"
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.collections.FXCollections?>
+<?import java.lang.String?>
+<BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tw.org.il.dongsheng.templeapp.TempleController"
-            prefHeight="400.0" prefWidth="600.0">
+            stylesheets="@style.css">
 
-</AnchorPane>
+    <!-- 🔷 上方 -->
+    <top>
+        <VBox spacing="5" style="-fx-padding:10;">
+
+            <!-- 功能列 -->
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Button text="存檔" prefWidth="60" styleClass="btn-purple"/>
+                <Button text="刪除" prefWidth="60" styleClass="btn-purple"/>
+                <Button text="往來紀錄" prefWidth="80" styleClass="btn-purple"/>
+                <Button text="分類管理" prefWidth="80" styleClass="btn-purple"/>
+                <Button text="報表列印" prefWidth="80" styleClass="btn-orange"/>
+                <Region prefWidth="40"/>
+                <Label text="查詢電腦編號/名稱"/>
+                <TextField fx:id="searchField" prefWidth="180"/>
+                <Button text="查詢" styleClass="btn-green"/>
+            </HBox>
+
+            <!-- 查詢條件 -->
+            <GridPane hgap="10" vgap="5">
+                <Label text="分類" GridPane.halignment="RIGHT" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <HBox spacing="5" alignment="CENTER_LEFT" GridPane.rowIndex="0" GridPane.columnIndex="1">
+                    <ComboBox prefWidth="250"/>
+
+                    <Button text="重新編號" prefWidth="100" styleClass="btn-pink"/>
+                    <Button text="插入壹筆" prefWidth="100" styleClass="btn-orange"/>
+                    <Button text="全部重新連結" prefWidth="120" styleClass="btn-yellow"/>
+                </HBox>
+
+                <Label text="編號" GridPane.halignment="RIGHT" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                <HBox spacing="5" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="1">
+                    <TextField fx:id="codeField" prefWidth="50"/>
+
+                    <Label text="名稱" />
+                    <TextField fx:id="nameField" prefWidth="250"/>
+                    <Button text="…" styleClass="btn-green" />
+
+                    <Label text="負責人 / 聯絡人" />
+                    <TextField fx:id="ownerField" prefWidth="250"/>
+                </HBox>
+
+                <Label text="郵遞區號" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                <HBox spacing="5" alignment="CENTER_LEFT" GridPane.rowIndex="2" GridPane.columnIndex="1">
+                    <TextField fx:id="zipField" prefWidth="40"/>
+                    <HBox spacing="2" >
+                        <ComboBox fx:id="cityBox" prefWidth="100" />
+                        <ComboBox fx:id="distBox" prefWidth="140" />
+                    </HBox>
+
+                    <Label text="地址" />
+                    <TextField fx:id="addressField" prefWidth="300"/>
+
+                    <Label text="是否郵寄"/>
+                    <ComboBox fx:id="mailBox" prefWidth="60" >
+                        <items>
+                            <FXCollections fx:factory="observableArrayList">
+                                <String fx:value="N" />
+                                <String fx:value="Y" />
+                            </FXCollections>
+                        </items>
+                    </ComboBox>
+                </HBox>
+
+                <Label text="電話" GridPane.halignment="RIGHT" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                <HBox spacing="5" alignment="CENTER_LEFT" GridPane.rowIndex="3" GridPane.columnIndex="1">
+                    <TextField fx:id="phoneField" prefWidth="250"/>
+
+                    <Label text="備註" />
+                    <TextField fx:id="remarkField" prefWidth="450"/>
+                </HBox>
+
+                <Label text="奉祀神尊" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                <HBox spacing="5" alignment="CENTER_LEFT" GridPane.rowIndex="4" GridPane.columnIndex="1">
+                    <TextField prefWidth="250"/>
+                    <Label text="電腦編號" />
+                    <TextField fx:id="memberIdField" prefWidth="80"/>
+
+                    <Button text="重新連結" styleClass="btn-yellow"/>
+                </HBox>
+            </GridPane>
+        </VBox>
+    </top>
+
+    <!-- 🔷 中間 Table -->
+    <center>
+        <TableView fx:id="tableView" styleClass="my-table">
+
+            <columns>
+                <TableColumn text="編號" prefWidth="80"/>
+                <TableColumn text="名稱" prefWidth="150"/>
+                <TableColumn text="地址" prefWidth="350"/>
+                <TableColumn text="電話" prefWidth="150"/>
+                <TableColumn text="負責人" prefWidth="120"/>
+            </columns>
+
+        </TableView>
+    </center>
+
+    <!-- 🔷 底部 -->
+    <bottom>
+        <HBox spacing="10"
+              style="-fx-padding:10; -fx-background-color:#FFF59D;">
+
+            <Label text="代號"/>
+            <TextField prefWidth="60"/>
+
+            <Label text="編號"/>
+            <TextField prefWidth="80"/>
+
+            <Label text="-"/>
+            <TextField prefWidth="80"/>
+
+            <Button text="新增" prefWidth="80" styleClass="btn-purple"/>
+            <Button text="刪除" prefWidth="80" styleClass="btn-purple"/>
+
+        </HBox>
+    </bottom>
+</BorderPane>
