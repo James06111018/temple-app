@@ -25,7 +25,7 @@ public class IndexController {
             "light", "view-light.fxml",
             "staff", "view-staff.fxml",
             "temple", "view-temple.fxml",
-            "ghost", "view-ghost.fxml",
+            "ghost", "view-light.fxml",
             "merit", "view-merit.fxml"
     );
 
@@ -50,16 +50,22 @@ public class IndexController {
         if (fxmlFile != null) {
             String langKey = "tab." + id;
             String title = resources.getString(langKey);
-            switchContent(fxmlFile, title);
+            switchContent(id, fxmlFile, title);
             System.out.println("切換到分頁: " + title);
         }
     }
 
-    private void switchContent(String fxmlFile, String title) {
+    private void switchContent(String id, String fxmlFile, String title) {
         try {
             // 1. 載入功能頁面的內容 (例如 BorderPane)
             FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlFile));
             Node functionNode = loader.load();
+
+            if (id.equals("light") || id.equals("ghost")) {
+                LightController controller = loader.getController();
+                controller.setType(id);
+                controller.initData();
+            }
 
             // 2. 建立標題列容器 (HBox)
             HBox titleBar = new HBox(10); // 間距為 10
@@ -108,7 +114,8 @@ public class IndexController {
             closeButton.setOnAction(event -> {
                 contentArea.getChildren().clear();
 
-                mainTabPane.getSelectionModel().clearSelection();
+                mainTabPane.getSelectionModel().select(null);
+                mainTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
                 System.out.println("功能頁已關閉");
             });
 
@@ -127,6 +134,7 @@ public class IndexController {
             AnchorPane.setLeftAnchor(windowWrapper, 0.0);
             AnchorPane.setRightAnchor(windowWrapper, 0.0);
             contentArea.getChildren().add(windowWrapper);
+
         } catch (IOException e) {
             e.printStackTrace();
             System.err.println("無法載入頁面: " + fxmlFile);
