@@ -204,7 +204,7 @@ public class LightController {
 
                             // todo 查到資料後，再去查一次家屬資料(依地址or電話?)
                             try {
-                                List<LightMember> all = lightService.findAllHouse(member.getPhone());
+                                List<LightMember> all = lightService.findAllHouse(member.getAddress());
                                 // 把資料塞進表格
                                 memberTable.setItems(Util.toObservableList(all));
 

@@ -23,8 +23,8 @@ public class LightMemberService {
         return repo.findByName(name);
     }
 
-    public List<LightMember> findAllHouse(String phone) throws SQLException {
-        return repo.findByPhone(phone);
+    public List<LightMember> findAllHouse(String address) throws SQLException {
+        return repo.findByAddress(address);
     }
 
     public boolean exists(int id) throws SQLException {

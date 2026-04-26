@@ -140,13 +140,13 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
     }
 
     @Override
-    public List<LightMember> findByPhone(String phone) throws SQLException {
-        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE phone = ? ORDER BY id DESC";
+    public List<LightMember> findByAddress(String address) throws SQLException {
+        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE address = ? ORDER BY id DESC";
         List<LightMember> members = new ArrayList<>();
 
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, phone);
+            statement.setString(1, address);
 
             try(ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {

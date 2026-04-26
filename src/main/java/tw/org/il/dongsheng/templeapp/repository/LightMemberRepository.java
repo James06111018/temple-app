@@ -20,7 +20,7 @@ public interface LightMemberRepository {
 
     Optional<LightMember> findByName(String name) throws SQLException;
 
-    List<LightMember> findByPhone(String phone) throws SQLException;
+    List<LightMember> findByAddress(String phone) throws SQLException;
     List<LightMember> findAll() throws SQLException;
 
     int getNextId() throws SQLException;
