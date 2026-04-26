@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.Button?>
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.DonationCategoryController">
+
+    <!-- 上方標題 -->
+<!--    <top>-->
+<!--        <HBox spacing="10" style="-fx-padding:10; -fx-background-color:#2c3e50;">-->
+<!--            <Label text="款項類別維護"-->
+<!--                   style="-fx-text-fill:white; -fx-font-size:18px; -fx-font-weight:bold;"/>-->
+<!--        </HBox>-->
+<!--    </top>-->
+
+    <!-- 中間主體 -->
+    <center>
+        <SplitPane dividerPositions="0.35">
+
+            <!-- 左側：類別清單 -->
+            <VBox spacing="8" style="-fx-padding:10;">
+
+                <Label text="類別清單" style="-fx-font-weight:bold;"/>
+
+                <TextField fx:id="txtSearch" promptText="搜尋類別..." />
+
+                <TableView fx:id="tblCategory" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="colCode" text="代碼" prefWidth="80"/>
+                        <TableColumn fx:id="colName" text="名稱" prefWidth="120"/>
+                        <TableColumn fx:id="colEnabled" text="啟用" prefWidth="60"/>
+                    </columns>
+                </TableView>
+
+            </VBox>
+
+            <!-- 右側：表單 -->
+            <VBox spacing="10" style="-fx-padding:15;">
+
+                <Label text="類別詳細資料" style="-fx-font-weight:bold; -fx-font-size:14px;"/>
+
+                <GridPane hgap="10" vgap="10">
+
+                    <columnConstraints>
+                        <ColumnConstraints halignment="RIGHT" prefWidth="100"/>
+                        <ColumnConstraints hgrow="ALWAYS"/>
+                    </columnConstraints>
+
+                    <!-- 類別代碼 -->
+                    <Label text="類別代碼：" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <TextField fx:id="txtCode" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+                    <!-- 類別名稱 -->
+                    <Label text="類別名稱：" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <TextField fx:id="txtName" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+                    <!-- 類型 -->
+                    <Label text="類型：" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                    <ComboBox fx:id="cmbType" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+                    <!-- 預設金額 -->
+                    <Label text="預設金額：" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                    <TextField fx:id="txtAmount" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+
+                    <!-- 是否啟用 -->
+                    <Label text="是否啟用：" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                    <CheckBox fx:id="chkEnabled" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+
+                    <!-- 排序 -->
+                    <Label text="排序：" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                    <TextField fx:id="txtSort" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+
+                    <!-- 備註 -->
+                    <Label text="備註：" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+                    <TextArea fx:id="txtRemark"
+                              prefRowCount="3"
+                              GridPane.rowIndex="6"
+                              GridPane.columnIndex="1"/>
+
+                </GridPane>
+
+                <!-- 按鈕區 -->
+                <HBox spacing="10" alignment="CENTER_RIGHT" style="-fx-padding:10 0 0 0;">
+                    <Button text="新增" fx:id="btnAdd"/>
+                    <Button text="修改" fx:id="btnEdit"/>
+                    <Button text="儲存" fx:id="btnSave"/>
+                    <Button text="停用" fx:id="btnDisabled"/>
+                    <Button text="取消" fx:id="btnCancel"/>
+                </HBox>
+
+            </VBox>
+
+        </SplitPane>
+    </center>
+</BorderPane>

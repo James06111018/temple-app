@@ -15,7 +15,10 @@
                 <MenuItem text="系統設定"/>
                 <MenuItem text="印表機設定"/>
             </Menu>
-            <Menu text="工具(T)"/>
+            <Menu text="工具(T)">
+                <MenuItem text="捐款類別" onAction="#handelDonationCategory" />
+            </Menu>
+            <Menu text="視窗(W)"/>
             <Menu text="關於(A)"/>
         </menus>
     </MenuBar>

@@ -15,6 +15,10 @@ public final class Util {
         return result;
     }
 
+    public static boolean isEmpty(String s) {
+        return s == null || s.trim().isEmpty() || s.trim().isBlank();
+    }
+
     public static <T> ObservableList<T> toObservableList(Optional<T> optional) {
         return optional.map(FXCollections::observableArrayList)
                 .orElseGet(FXCollections::observableArrayList);
