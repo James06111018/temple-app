@@ -19,7 +19,9 @@
                 <MenuItem text="捐款類別" onAction="#handelDonationCategory" />
             </Menu>
             <Menu text="視窗(W)"/>
-            <Menu text="關於(A)"/>
+            <Menu text="關於(A)">
+                <MenuItem fx:id="menuItemAbout"/>
+            </Menu>
         </menus>
     </MenuBar>
 

@@ -1,16 +1,12 @@
 package tw.org.il.dongsheng.templeapp;
 
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
@@ -25,6 +21,7 @@ public class IndexController {
     @FXML private ResourceBundle resources;
     @FXML private TabPane mainTabPane;
     @FXML private AnchorPane contentArea;
+    @FXML MenuItem menuItemAbout;
 
     private final Map<String, String> pageMap = Map.of(
             "light", "view-light.fxml",
@@ -47,6 +44,8 @@ public class IndexController {
             mainTabPane.getSelectionModel().select(firstTab);
             loadPageByTab(firstTab);
         }
+
+        menuItemAbout.setText("版本 (v" + AppConfig.getVersion() + ")");
     }
 
     private void loadPageByTab(Tab tab) {
@@ -169,4 +168,5 @@ public class IndexController {
 
         stage.showAndWait();
     }
+
 }
