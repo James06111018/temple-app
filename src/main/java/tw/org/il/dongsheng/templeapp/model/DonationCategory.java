@@ -4,6 +4,7 @@ import javafx.beans.property.*;
 
 public class DonationCategory {
 
+    private final IntegerProperty id = new SimpleIntegerProperty();
     private final StringProperty code = new SimpleStringProperty();
     private final StringProperty name = new SimpleStringProperty();
     private final StringProperty type = new SimpleStringProperty();
@@ -23,10 +24,24 @@ public class DonationCategory {
         this.remark.set(remark);
     }
 
+    public DonationCategory(Integer id, String code, String name, String type,
+                            int amount, boolean enabled, int sort, String remark) {
+        this.id.set(id);
+        this.code.set(code);
+        this.name.set(name);
+        this.type.set(type);
+        this.amount.set(amount);
+        this.enabled.set(enabled);
+        this.sort.set(sort);
+        this.remark.set(remark);
+    }
+
     public StringProperty codeProperty() { return code; }
     public StringProperty nameProperty() { return name; }
     public BooleanProperty enabledProperty() { return enabled; }
 
+    public int getId() { return id.get(); }
+    public void setId(int val) { id.set(val); }
     public String getCode() { return code.get(); }
     public void setCode(String val) { code.set(val); }
 
@@ -48,4 +63,8 @@ public class DonationCategory {
     public String getRemark() { return remark.get(); }
     public void setRemark(String val) { remark.set(val); }
 
+    @Override
+    public String toString() {
+        return name.get();
+    }
 }

@@ -13,7 +13,9 @@ module tw.org.il.dongsheng.templeapp {
     requires org.kordamp.ikonli.fontawesome5;
 //    requires org.kordamp.bootstrapfx.core;
 
+    opens tw.org.il.dongsheng.templeapp.util to javafx.fxml;
     opens tw.org.il.dongsheng.templeapp to javafx.fxml;
+
     exports tw.org.il.dongsheng.templeapp;
     exports tw.org.il.dongsheng.templeapp.model;
     opens tw.org.il.dongsheng.templeapp.model to javafx.fxml;

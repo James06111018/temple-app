@@ -23,8 +23,12 @@ public class LightMemberService {
         return repo.findByName(name);
     }
 
-    public List<LightMember> findAllHouse(String address) throws SQLException {
-        return repo.findByAddress(address);
+    public List<LightMember> findAllHouse(String keyword, int limit, int offset) throws SQLException {
+        return repo.findByAddress(keyword, limit, offset);
+    }
+
+    public int getMemberCount(String keyword) throws SQLException {
+        return repo.getMemberCount(keyword);
     }
 
     public boolean exists(int id) throws SQLException {

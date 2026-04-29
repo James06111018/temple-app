@@ -11,6 +11,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class SQLiteDonationRepository implements DonationRepository {
     private static final String TABLE_NAME = "donations";
@@ -23,6 +24,7 @@ public class SQLiteDonationRepository implements DonationRepository {
 
     @Override
     public void createTable() throws SQLException {
+//        String dropSql = "DROP TABLE IF EXISTS " + TABLE_NAME;
         String sql = "CREATE TABLE IF NOT EXISTS " + TABLE_NAME + " (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                 "member_id INTEGER NOT NULL," +
@@ -37,11 +39,13 @@ public class SQLiteDonationRepository implements DonationRepository {
                 "light_no TEXT," +
                 "should_pay INTEGER," +
                 "donate_type TEXT," +
-                "FOREIGN KEY(member_id) REFERENCES members(id) ON DELETE CASCADE" +
+                "creator TEXT," +
+                "FOREIGN KEY(member_id) REFERENCES light_members(id) ON DELETE CASCADE" +
                 ")";
 
         try (Connection connection = databaseManager.getConnection();
              Statement statement = connection.createStatement()) {
+//            statement.execute(dropSql);
             statement.execute("PRAGMA foreign_keys = ON");
             statement.execute(sql);
         }
@@ -50,8 +54,8 @@ public class SQLiteDonationRepository implements DonationRepository {
     @Override
     public Donation save(Donation donation) throws SQLException {
         String sql = "INSERT INTO " + TABLE_NAME + " (" +
-                "member_id, receipt_no, donate_date, extra_no, amount, summary, donate_note, other_note, donor_no, light_no, should_pay, donate_type" +
-                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                "member_id, receipt_no, donate_date, extra_no, amount, summary, donate_note, other_note, donor_no, light_no, should_pay, donate_type, creator" +
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -77,7 +81,7 @@ public class SQLiteDonationRepository implements DonationRepository {
 
         String sql = "UPDATE " + TABLE_NAME + " SET " +
                 "member_id = ?, receipt_no = ?, donate_date = ?, extra_no = ?, amount = ?, summary = ?, donate_note = ?, other_note = ?, donor_no = ?, " +
-                "light_no = ?, should_pay = ?, donate_type = ? " +
+                "light_no = ?, should_pay = ?, donate_type = ?, creator = ? " +
                 "WHERE id = ?";
 
         try (Connection connection = databaseManager.getConnection();
@@ -138,6 +142,74 @@ public class SQLiteDonationRepository implements DonationRepository {
     }
 
     @Override
+    public List<Donation> findByMemberIds(List<Integer> memberIds, int limit, int offset) throws SQLException {
+        List<Donation> donations = new ArrayList<>();
+
+        if (memberIds == null || memberIds.isEmpty()) return donations;
+
+        // 1. 根據 ID 數量產生等量的問號，例如 "?, ?, ?"
+        String placeholders = memberIds.stream()
+                .map(id -> "?")
+                .collect(Collectors.joining(", "));
+
+        // 2. 組合 SQL
+        String sql = "SELECT * FROM " + TABLE_NAME +
+                " WHERE member_id IN (" + placeholders + ") " +
+                "ORDER BY donate_date DESC, id DESC " +
+                "LIMIT ? OFFSET ?";
+
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            // 3. 設定 IN 裡面的參數
+            int index = 1;
+            for (Integer id : memberIds) {
+                statement.setInt(index++, id);
+            }
+
+            // 4. 設定分頁參數 (注意順序要在 IN 之後)
+            statement.setInt(index++, limit);
+            statement.setInt(index++, offset);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    donations.add(mapRow(resultSet));
+                }
+            }
+        }
+        return donations;
+    }
+
+    @Override
+    public int getDonationCount(List<Integer> memberIds) throws SQLException {
+        if (memberIds == null || memberIds.isEmpty()) return 0;
+
+        // 1. 根據 ID 數量產生等量的問號，例如 "?, ?, ?"
+        String placeholders = memberIds.stream()
+                .map(id -> "?")
+                .collect(Collectors.joining(", "));
+
+        // 2. 組合 SQL
+        String sql = "SELECT COUNT(1) FROM " + TABLE_NAME +
+                " WHERE member_id IN (" + placeholders + ")";
+
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            // 3. 設定 IN 裡面的參數
+            int index = 1;
+            for (Integer id : memberIds) {
+                statement.setInt(index++, id);
+            }
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt(1);
+                }
+            }
+        }
+        return 0;
+    }
+
+    @Override
     public List<Donation> findAll() throws SQLException {
         String sql = "SELECT * FROM " + TABLE_NAME + " ORDER BY donate_date DESC, id DESC";
         List<Donation> donations = new ArrayList<>();
@@ -166,6 +238,7 @@ public class SQLiteDonationRepository implements DonationRepository {
         statement.setString(10, donation.getLightNo());
         statement.setObject(11, donation.getShouldPay());
         statement.setString(12, donation.getDonateType());
+        statement.setString(13, donation.getCreator());
     }
 
     private Donation mapRow(ResultSet resultSet) throws SQLException {
@@ -183,6 +256,7 @@ public class SQLiteDonationRepository implements DonationRepository {
         donation.setLightNo(resultSet.getString("light_no"));
         donation.setShouldPay((Integer) resultSet.getObject("should_pay"));
         donation.setDonateType(resultSet.getString("donate_type"));
+        donation.setCreator(resultSet.getString("creator"));
         return donation;
     }
 }

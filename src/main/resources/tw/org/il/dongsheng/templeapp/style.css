@@ -76,13 +76,47 @@
     -fx-border-color: #999;
 }
 
-.table-view {
-    -fx-border-color: #999;
+/* 1. 只針對標題列區塊著色 */
+/* --- 會員表格 --- */
+#memberTable .column-header,
+#memberTable .column-header-background {
+    -fx-background-color: #FFFFCC;
+}
+#memberTable .column-header {
+    /* 補回間隔線：顏色設為比背景深一點的顏色 */
+    -fx-border-color: #1a252f;
+    -fx-border-width: 0 1 1 0; /* 右邊和下面有線，左邊和上面沒有 */
+}
+/* --- 捐款表格 --- */
+#donationTable .column-header,
+#donationTable .column-header-background {
+    -fx-background-color: #FFE4E1;
+}
+
+#donationTable .column-header {
+    /* 補回間隔線 */
+    -fx-border-color: #1a252f;
+    -fx-border-width: 0 1 1 0;
+}
+
+/* 2. 標題文字顏色 */
+.table-view .column-header .label {
+    -fx-text-fill: black;
+    -fx-font-weight: bold;
 }
 
 .table-row-cell:even {
     -fx-background-color: #EDE7F6;
     -fx-background-insets: 0;
+}
+
+.table-row-cell:selected,
+.table-row-cell:focused:selected {
+    -fx-background-color: lightgray;
+}
+
+.table-cell:selected {
+    -fx-background-color: lightgray;
 }
 
 .titled-pane > .title {

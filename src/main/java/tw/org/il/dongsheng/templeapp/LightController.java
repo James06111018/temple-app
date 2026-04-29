@@ -1,5 +1,9 @@
 package tw.org.il.dongsheng.templeapp;
 
+import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
@@ -11,49 +15,79 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.util.StringConverter;
+import tw.org.il.dongsheng.templeapp.model.Donation;
+import tw.org.il.dongsheng.templeapp.model.DonationCategory;
 import tw.org.il.dongsheng.templeapp.model.LightMember;
+import tw.org.il.dongsheng.templeapp.repository.DonationCategoryRepository;
 import tw.org.il.dongsheng.templeapp.repository.DonationRepository;
 import tw.org.il.dongsheng.templeapp.repository.LightMemberRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationCategoryRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteLightMemberRepository;
+import tw.org.il.dongsheng.templeapp.service.DonationCategoryService;
 import tw.org.il.dongsheng.templeapp.service.DonationService;
 import tw.org.il.dongsheng.templeapp.service.LightMemberService;
 import tw.org.il.dongsheng.templeapp.util.AlertDialog;
 import tw.org.il.dongsheng.templeapp.util.AreaUtil;
+import tw.org.il.dongsheng.templeapp.util.PaginationBar;
 import tw.org.il.dongsheng.templeapp.util.Util;
 
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 
 /**
  * 信眾點燈 / 中元普渡 共用頁面
  */
 public class LightController {
 
+    private DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd");
+
     private LightMemberService lightService;
     private DonationService donationService;
+    private DonationCategoryService donationCategoryService;
 
     @FXML GridPane memberInputGrid;
-
     @FXML private TextField idField, nameField, phoneField, zipCodeField, addressField
             , birthSunField, birthMoonField, ageField, zodiacField, yearCycleField, hourField
             , memberNoteField, contactField, idNumberField, sortField, aField, bField;
     @FXML private ComboBox<String> genderBox, cityBox, distBox, mailBox;
 
-    @FXML private Button btnContact, btnWord;
+    @FXML GridPane donateInputGrid;
+    @FXML private ComboBox<DonationCategory> donateTypeField;
+    @FXML private TextField receiptNoField, extraNoField, amountField, summaryField, donateNoteField
+            , otherNoteField, donorNoField, lightNoField, shouldPayField;
+    @FXML private DatePicker donateDateField;
+
+    @FXML private Button btnContact, btnWord, btnToggle;
+
+    @FXML private SplitPane splitPane;
+    private boolean isSplitMember = true;
 
     @FXML
     private TableView<LightMember> memberTable;
     @FXML private TableColumn<LightMember, String> colName, colMail, colSolar, colLunar, colZodiac, colEra, colHour, colGender;
     @FXML private TableColumn<LightMember, Integer> colId, colAge;
 
+    @FXML
+    private TableView<Donation> donationTable;
+    @FXML private TableColumn<Donation, String> colReceiptNo, colDonateDate, colExtraNo, colDonationType, colSummary, colDonateNote
+            , colOtherNote, colDonorNo, colLightNo, colSeqNo, coCreator;
+    @FXML private TableColumn<Donation, Integer> colAmount, colShouldPay;
+
+    @FXML private PaginationBar memberPageBar, donationPageBar;
+
+    private List<LightMember> allMember = new LinkedList<>(); // 查詢的信眾，所有的家屬(含自已)
+    private Map<String, String> categoryMap = new LinkedHashMap<>(); // 捐款類別資料: id, code-name
+
     private String type;
+
     public void setType(String type) {
         this.type = type;
     }
@@ -123,14 +157,26 @@ public class LightController {
         showTooltip(btnContact, "連結往來寺廟");
         showTooltip(btnWord, "造字資訊");
 
+        // 讓分割線不接受滑鼠事件
+        Platform.runLater(() -> {
+            splitPane.lookupAll(".split-pane-divider").forEach(node -> {
+                node.setMouseTransparent(true);
+            });
+        });
+        // 初始比例（左40% 右60%）
+        splitPane.setDividerPositions(0.9);
 
-        // 設定每個欄位對應 Member 類別的屬性名稱 (變數名)
+        // 視窗變動時維持比例（重要）
+        splitPane.widthProperty().addListener((obs, oldVal, newVal) -> {
+            splitPane.setDividerPositions(0.9);
+        });
+
+        // 設定每個欄位對應 LightMember 類別的屬性名稱 (變數名)
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colId.setCellFactory(column -> new TableCell<>() {
             @Override
             protected void updateItem(Integer item, boolean empty) { // 這裡改為 Integer
                 super.updateItem(item, empty);
-
                 if (empty || item == null) {
                     setText(null);
                 } else {
@@ -147,24 +193,119 @@ public class LightController {
         colEra.setCellValueFactory(new PropertyValueFactory<>("zodiacYear"));
         colHour.setCellValueFactory(new PropertyValueFactory<>("birthTime"));
         colGender.setCellValueFactory(new PropertyValueFactory<>("gender"));
+
+        memberPageBar.setOnAction(()-> executeMemberSearch());
+
+        // 設定每個欄位對應 Donation 類別的屬性名稱 (變數名)
+        colReceiptNo.setCellValueFactory(new PropertyValueFactory<>("receiptNo"));
+        colReceiptNo.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(Util.stringFormat(Integer.parseInt(item)));
+                }
+            }
+        });
+        colDonateDate.setCellValueFactory(new PropertyValueFactory<>("donateDate"));
+        colExtraNo.setCellValueFactory(new PropertyValueFactory<>("extraNo"));
+        colAmount.setCellValueFactory(new PropertyValueFactory<>("amount"));
+        colDonationType.setCellValueFactory(new PropertyValueFactory<>("donateType"));
+        colDonationType.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if(empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(categoryMap.get(item));
+                }
+            }
+        });
+        colSummary.setCellValueFactory(new PropertyValueFactory<>("summary"));
+        colDonateNote.setCellValueFactory(new PropertyValueFactory<>("donateNote"));
+        colOtherNote.setCellValueFactory(new PropertyValueFactory<>("otherNote"));
+        colDonorNo.setCellValueFactory(new PropertyValueFactory<>("donorNo"));
+        colLightNo.setCellValueFactory(new PropertyValueFactory<>("lightNo"));
+        colShouldPay.setCellValueFactory(new PropertyValueFactory<>("shouldPay"));
+//        colSeqNo.setCellValueFactory(new PropertyValueFactory<>(""));
+        coCreator.setCellValueFactory(new PropertyValueFactory<>("creator"));
     }
 
     public void initData() {
         try {
             if (type.equals("light")) {
-                LightMemberRepository lightMemberRepo = new SQLiteLightMemberRepository(SQLiteDatabaseManager.getInstance());
+                SQLiteDatabaseManager manager = SQLiteDatabaseManager.getInstance();
+                LightMemberRepository lightMemberRepo = new SQLiteLightMemberRepository(manager);
                 lightMemberRepo.createTable();
                 lightService = new LightMemberService(lightMemberRepo);
 
-                DonationRepository donationRepo = new SQLiteDonationRepository(SQLiteDatabaseManager.getInstance());
+                DonationRepository donationRepo = new SQLiteDonationRepository(manager);
                 donationRepo.createTable();
                 donationService = new DonationService(donationRepo);
+
+                DonationCategoryRepository donationCategoryRepo = new SQLiteDonationCategoryRepository(manager);
+                donationCategoryService = new DonationCategoryService(donationCategoryRepo);
+
+                // 捐款作業
+                initDonation();
+
             } else if (type.equals("ghost")) {
 
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private void initDonation() {
+        try {
+            List<DonationCategory> categories = donationCategoryService.findAll().stream()
+                    .filter(DonationCategory::isEnabled).toList();
+
+            donateTypeField.setItems(Util.toObservableList(categories));
+
+            categories.stream().forEach(action-> categoryMap.put(String.valueOf(action.getId()), action.getCode() + " - " + action.getName()));
+
+            donateTypeField.setOnAction(e -> {
+                DonationCategory d = donateTypeField.getValue();
+                if (d != null) {
+                    amountField.setText(String.valueOf(d.getAmount()));
+                }
+            });
+            donateDateField.setConverter(new StringConverter<>() {
+                @Override
+                public String toString(LocalDate date) {
+                    if (date != null) {
+                        return dateFormatter.format(date);
+                    }
+                    return "";
+                }
+
+                @Override
+                public LocalDate fromString(String string) {
+                    if (string != null && !string.isEmpty()) {
+                        return LocalDate.parse(string, dateFormatter);
+                    }
+                    return null;
+                }
+            });
+            donateDateField.focusedProperty().addListener((obs, oldVal, newVal) -> {
+                if (!newVal) {
+                    try {
+                        donateDateField.setValue(
+                                donateDateField.getConverter().fromString(donateDateField.getEditor().getText()));
+                    } catch (Exception e) {
+                        donateDateField.getEditor().clear();
+                    }
+                }
+            });
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     @FXML
@@ -186,43 +327,7 @@ public class LightController {
             return;
         }
 
-        try {
-            Optional<LightMember> list = lightService.findByName(name);
-//            System.out.println("onSearch : "+name+ " , list : "+list.stream().count());
-            if (list.isPresent()) {
-                list.ifPresentOrElse(
-                        member -> {
-                            idField.setText(Util.stringFormat(member.getId()));
-                            genderBox.setValue(member.getGender());
-                            phoneField.setText(member.getPhone());
-                            zipCodeField.setText(member.getZipCode());
-                            addressField.setText(member.getAddress());
-                            birthSunField.setText(member.getBirthDate());
-                            birthMoonField.setText(member.getLunarBirthDate());
-                            hourField.setText(member.getBirthTime());
-                            memberNoteField.setText(member.getNote());
-
-                            // todo 查到資料後，再去查一次家屬資料(依地址or電話?)
-                            try {
-                                List<LightMember> all = lightService.findAllHouse(member.getAddress());
-                                // 把資料塞進表格
-                                memberTable.setItems(Util.toObservableList(all));
-
-                                memberTable.refresh();
-                            } catch (SQLException e) {
-                                throw new RuntimeException(e);
-                            }
-                        },
-                        ()-> {}
-                );
-            } else {
-                memberTable.getItems().clear();
-                clearForm(memberInputGrid);
-                AlertDialog.showInfo("信眾點燈", "查無資料");
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+        executeMemberSearch();
     }
 
     @FXML
@@ -248,16 +353,16 @@ public class LightController {
                 zipCodeField.getText(),
                 birthSunField.getText(),
                 birthMoonField.getText(),
-                parseInteger(ageField.getText()),
+                Util.parseInteger(ageField.getText()),
                 zodiacField.getText(),
                 yearCycleField.getText(),
                 hourField.getText(),
                 memberNoteField.getText(),
                 contactField.getText(),
                 idNumberField.getText(),
-                parseInteger(sortField.getText()),
-                parseInteger(aField.getText()),
-                parseInteger(bField.getText()),
+                Util.parseInteger(sortField.getText()),
+                Util.parseInteger(aField.getText()),
+                Util.parseInteger(bField.getText()),
                 mailBox.getValue(),
                 genderBox.getValue()
         );
@@ -281,11 +386,14 @@ public class LightController {
     @FXML
     public void onClearField() {
         clearForm(memberInputGrid);
+        clearForm(donateInputGrid);
+        clearAllErrors();
+        clearDonationErrors();
         memberTable.getItems().clear();
     }
 
     @FXML
-    public void onOpenKeypad() throws IOException {
+    public void onOpenKeypad(ActionEvent event) throws IOException {
         FXMLLoader loader = new FXMLLoader(
                 getClass().getResource("number-keypad.fxml")
         );
@@ -294,9 +402,20 @@ public class LightController {
 
         NumberKeypadController controller = loader.getController();
 
-        // 回傳值（填入電話欄位）
+        Button source = (Button) event.getSource();
+        String targetId = (String) source.getUserData();
+        // 回傳值
         controller.setOnConfirm(value -> {
-            phoneField.setText(value);
+            TextField target = null;
+            switch (targetId) {
+                case "txtPhone":
+                    target = phoneField;
+                    break;
+                case "txtAmount":
+                    target = amountField;
+                    break;
+            }
+            openKeypad(target, value);
         });
 
         Stage stage = new Stage();
@@ -331,7 +450,180 @@ public class LightController {
 
     @FXML
     public void onDonationAdd() {
+        boolean hasId = true;
+        String id = idField.getText();
+        if (Util.isEmpty(id)) {
+            hasId = false;
+        } else {
+            try {
+                if(!lightService.exists(Util.parseInteger(id))) {
+                    hasId = false;
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (!hasId) {
+            AlertDialog.showError(null, "無此信眾的電腦編號");
+            return;
+        }
 
+        if (!validateDonationForm()) {
+            return;
+        }
+
+        // TODO 新增 creator登入的姓名
+        Donation donation = new Donation(
+                null,
+                Util.parseInteger(Util.stringReplaceZero(id)),
+                receiptNoField.getText(),
+                donateDateField.getValue().format(dateFormatter),
+                extraNoField.getText(),
+                Util.parseInteger(amountField.getText()),
+                summaryField.getText(),
+                donateNoteField.getText(),
+                otherNoteField.getText(),
+                donorNoField.getText(),
+                lightNoField.getText(),
+                Util.parseInteger(shouldPayField.getText()),
+                String.valueOf(donateTypeField.getValue().getId()),
+                "LOGIN"
+        );
+
+        try {
+            donationService.save(donation);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        clearForm(donateInputGrid);
+    }
+
+    @FXML
+    public void onSplitChange() {
+        if (isSplitMember) {
+            isSplitMember = false;
+            splitPane.setDividerPositions(0.0);
+        } else {
+            isSplitMember = true;
+            splitPane.setDividerPositions(0.9);
+            memberTable.refresh();
+        }
+        updateToggleButtonStyle();
+    }
+
+    private void executeMemberSearch() {
+
+        String name = nameField.getText();
+        try {
+            Optional<LightMember> list = lightService.findByName(name);
+            if (list.isPresent()) {
+                list.ifPresentOrElse(
+                        member -> {
+                            setMemberData(member);
+
+                            // todo 查到資料後，再去查一次家屬資料(依地址or電話?)
+                            // 家屬(含查詢的人)、捐款資料
+                            try {
+                                allMember.clear();
+
+                                int limit = memberPageBar.getPageSize();
+                                int offset = memberPageBar.getOffset();
+
+                                String keyword = member.getAddress();
+                                allMember = lightService.findAllHouse(keyword, limit, offset);
+                                int total = lightService.getMemberCount(keyword);
+
+                                // 把資料塞進表格
+                                memberTable.setItems(Util.toObservableList(allMember));
+                                memberPageBar.setTotalCount(total);
+
+                                memberTable.refresh();
+
+                                /**
+                                 * 捐款資料
+                                 */
+                                int dLimit = donationPageBar.getPageSize();
+                                int dOffset = donationPageBar.getOffset();
+                                List<Integer> memberIds = allMember.stream()
+                                        .map(LightMember::getId)
+                                        .collect(Collectors.toList());
+
+                                List<Donation> donations = donationService.findByMemberIds(memberIds, dLimit, dOffset);
+                                int dTotal = donationService.getDonationCount(memberIds);
+
+                                donationTable.setItems(Util.toObservableList(donations));
+                                donationPageBar.setTotalCount(dTotal);
+
+                                donationTable.refresh();
+
+                            } catch (SQLException e) {
+                                throw new RuntimeException(e);
+                            }
+                        },
+                        ()-> {}
+                );
+            } else {
+                memberTable.getItems().clear();
+                clearForm(memberInputGrid);
+                AlertDialog.showInfo("信眾點燈", "查無信眾資料");
+            }
+
+            // 假捐款資料
+//            ObservableList<Donation> data = FXCollections.observableArrayList(
+//                    new Donation(1, 101, "20260428001", "2026.04.28", "", 1200, "庚子年補運祈福燈", "信眾親自辦理", "無", "T01", "L50", 1200, "點燈", "管理員"),
+//                    new Donation(2, 102, "20260428002", "2026.04.28", "E-99", 500, "隨喜油香", "感謝廟方指引", "收據需郵寄", "", "", 500, "油香", "陳小姐"),
+//                    new Donation(3, 103, "20260428003", "2026.04.28", "", 3600, "全家安太歲(共六員)", "長子、次女犯太歲需加強", "贈送平安符*6", "Z08", "", 3600, "太歲燈", "管理員"),
+//                    new Donation(4, 101, "20260428001", "2026.04.28", "", 1200, "庚子年補運祈福燈", "信眾親自辦理", "無", "T01", "L50", 1200, "點燈", "管理員"),
+//                    new Donation(5, 102, "20260428002", "2026.04.28", "E-99", 500, "隨喜油香", "感謝廟方指引", "收據需郵寄", "", "", 500, "油香", "陳小姐"),
+//                    new Donation(6, 103, "20260428003", "2026.04.28", "", 3600, "全家安太歲(共六員)", "長子、次女犯太歲需加強", "贈送平安符*6", "Z08", "", 3600, "太歲燈", "管理員"),
+//                    new Donation(7, 101, "20260428001", "2026.04.28", "", 1200, "庚子年補運祈福燈", "信眾親自辦理", "無", "T01", "L50", 1200, "點燈", "管理員"),
+//                    new Donation(8, 102, "20260428002", "2026.04.28", "E-99", 500, "隨喜油香", "感謝廟方指引", "收據需郵寄", "", "", 500, "油香", "陳小姐"),
+//                    new Donation(9, 103, "20260428003", "2026.04.28", "", 3600, "全家安太歲(共六員)", "長子、次女犯太歲需加強", "贈送平安符*6", "Z08", "", 3600, "太歲燈", "管理員"),
+//                    new Donation(10, 101, "20260428001", "2026.04.28", "", 1200, "庚子年補運祈福燈", "信眾親自辦理", "無", "T01", "L50", 1200, "點燈", "管理員"),
+//                    new Donation(11, 102, "20260428002", "2026.04.28", "E-99", 500, "隨喜油香", "感謝廟方指引", "收據需郵寄", "", "", 500, "油香", "陳小姐"),
+//                    new Donation(12, 103, "20260428003", "2026.04.28", "", 3600, "全家安太歲(共六員)", "長子、次女犯太歲需加強", "贈送平安符*6", "Z08", "", 3600, "太歲燈", "管理員")
+//            );
+//            donationTable.setItems(data);
+//            donationTable.refresh();
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // 設置上方信眾資料
+    private void setMemberData(LightMember member) {
+        idField.setText(Util.stringFormat(member.getId()));
+        genderBox.setValue(member.getGender());
+        phoneField.setText(member.getPhone());
+        zipCodeField.setText(member.getZipCode());
+        addressField.setText(member.getAddress());
+        mailBox.setValue(member.getIsMail());
+        birthSunField.setText(member.getBirthDate());
+        birthMoonField.setText(member.getLunarBirthDate());
+        hourField.setText(member.getBirthTime());
+        memberNoteField.setText(member.getNote());
+    }
+
+    private void openKeypad(TextField target, String value) {
+        if (target == null) return;
+        target.setText(value);
+    }
+
+    private void updateToggleButtonStyle() {
+        if (isSplitMember) {
+            btnToggle.getStyleClass().removeAll("btn-yellow"); // 安全起見用 removeAll
+            if (!btnToggle.getStyleClass().contains("btn-pink")) {
+                btnToggle.getStyleClass().add("btn-pink");
+            }
+        } else {
+            btnToggle.getStyleClass().removeAll("btn-pink");
+            if (!btnToggle.getStyleClass().contains("btn-yellow")) {
+                btnToggle.getStyleClass().add("btn-yellow");
+            }
+        }
+        btnToggle.setText(isSplitMember ? "←" : "→");
     }
 
     private void clearForm(Pane container) {
@@ -359,12 +651,12 @@ public class LightController {
         clearAllErrors();
         boolean valid = true;
 
-        if (isEmpty(idField.getText())) {
+        if (Util.isEmpty(idField.getText())) {
             setError(idField, "請輸入電腦編號");
             valid = false;
         }
 
-        if (isEmpty(nameField.getText())) {
+        if (Util.isEmpty(nameField.getText())) {
             setError(nameField, "請輸入姓名");
             valid = false;
         }
@@ -374,22 +666,22 @@ public class LightController {
             valid = false;
         }
 
-        if (isEmpty(zipCodeField.getText())) {
+        if (Util.isEmpty(zipCodeField.getText())) {
             setError(zipCodeField, "請輸入郵遞區號");
             valid = false;
         }
 
-        if (isEmpty(addressField.getText())) {
+        if (Util.isEmpty(addressField.getText())) {
             setError(addressField, "請輸入地址");
             valid = false;
         }
 
-        if (isEmpty(birthSunField.getText() )) {
+        if (Util.isEmpty(birthSunField.getText() )) {
             setError(birthSunField, "請輸入國曆生日");
             valid = false;
         }
 
-        if (isEmpty(birthMoonField.getText())) {
+        if (Util.isEmpty(birthMoonField.getText())) {
             setError(birthMoonField, "請輸入農曆生日");
             valid = false;
         }
@@ -397,14 +689,47 @@ public class LightController {
         return valid;
     }
 
+    private boolean validateDonationForm() {
+        clearDonationErrors();
+        boolean valid = true;
+        if (donateTypeField.getSelectionModel().isEmpty()) {
+            setError(donateTypeField, "請選擇款項類別");
+            valid = false;
+        }
+
+        if (Util.isEmpty(receiptNoField.getText())) {
+            setError(receiptNoField, "請輸入收據編號");
+            valid = false;
+        }
+
+        if (donateDateField.getValue() == null) {
+            setError(donateDateField, "請輸入捐款日期");
+            valid = false;
+        }
+
+        if (Util.isEmpty(amountField.getText())) {
+            setError(amountField, "請輸入金額");
+            valid = false;
+        }
+        return valid;
+    }
+
     private void setError(Control field, String message) {
-        field.getStyleClass().add("error");
+        if (field instanceof DatePicker) {
+            field.setStyle("-fx-border-color: red;");
+        } else {
+            field.getStyleClass().add("error");
+        }
 
         showTooltip(field, message);
     }
 
     private void clearError(Control field) {
-        field.getStyleClass().remove("error");
+        if (field instanceof DatePicker) {
+            field.setStyle(null);
+        } else {
+            field.getStyleClass().remove("error");
+        }
         field.setTooltip(null);
     }
 
@@ -423,19 +748,11 @@ public class LightController {
         clearError(birthMoonField);
     }
 
-    private boolean isEmpty(String s) {
-        return s == null || s.trim().isEmpty();
-    }
-
-    private Integer parseInteger(String text) {
-        try {
-            if (text == null || text.trim().isEmpty()) {
-                return null;
-            }
-            return Integer.valueOf(text);
-        } catch (NumberFormatException e) {
-            return null;
-        }
+    private void clearDonationErrors() {
+        clearError(donateTypeField);
+        clearError(receiptNoField);
+        clearError(donateDateField);
+        clearError(amountField);
     }
 
     private String normalizeRocDate(String text) {

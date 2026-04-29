@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<!-- 因ide不認得 fx:root的寫法，所以會認定沒有controller，可忽略下方紅字 -->
+<fx:root type="javafx.scene.layout.HBox" alignment="CENTER_LEFT" spacing="10"
+         style="-fx-padding: 5; -fx-background-color: #f4f4f4; -fx-border-color: #ccc; -fx-border-width: 1 0 0 0;"
+         xmlns:fx="http://javafx.com/fxml">
+
+    <Button fx:id="btnFirst" text="|&lt;" onAction="#handleFirst" />
+    <Button fx:id="btnPrev" text="&lt;" onAction="#handlePrev" />
+
+    <Separator orientation="VERTICAL" />
+
+    <Label text="第" />
+    <TextField fx:id="txtCurrentPage" text="1" prefWidth="45" alignment="CENTER" />
+    <Label fx:id="lblTotalPages" text="/ 0 頁" />
+
+    <Separator orientation="VERTICAL" />
+
+    <Button fx:id="btnNext" text="&gt;" onAction="#handleNext" />
+    <Button fx:id="btnLast" text="&gt;|" onAction="#handleLast" />
+
+    <Separator orientation="VERTICAL" />
+
+    <Label fx:id="lblTotalCount" text="總筆數：0" style="-fx-font-weight: bold;" />
+
+    <Region HBox.hgrow="ALWAYS" /> <Label text="每頁" />
+    <ComboBox fx:id="comboPageSize" prefWidth="80" />
+    <Label text="筆" />
+</fx:root>

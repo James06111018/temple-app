@@ -89,6 +89,7 @@ public class SQLiteDonationCategoryRepository implements DonationCategoryReposit
              ResultSet resultSet = statement.executeQuery()) {
             while (resultSet.next()) {
                 DonationCategory d = new DonationCategory(
+                        resultSet.getInt("id"),
                         resultSet.getString("code"),
                         resultSet.getString("name"),
                         resultSet.getString("type"),

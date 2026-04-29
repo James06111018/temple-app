@@ -6,6 +6,7 @@
 
 <?import javafx.collections.FXCollections?>
 <?import java.lang.String?>
+<?import tw.org.il.dongsheng.templeapp.util.PaginationBar?>
 <BorderPane fx:controller="tw.org.il.dongsheng.templeapp.LightController" stylesheets="@style.css"
             xmlns:fx="http://javafx.com/fxml" xmlns="http://javafx.com/javafx">
 
@@ -70,7 +71,7 @@
                     <Label text="電話" GridPane.columnIndex="0" GridPane.rowIndex="1" />
                     <HBox spacing="2" GridPane.columnIndex="1" GridPane.rowIndex="1">
                         <TextField fx:id="phoneField" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-                        <Button text="…" style="-fx-font-size: 10;" styleClass="btn-green" onAction="#onOpenKeypad" />
+                        <Button text="…" style="-fx-font-size: 10;" styleClass="btn-green" onAction="#onOpenKeypad" userData="txtPhone"/>
                     </HBox>
 
                     <Label text="縣市別" GridPane.columnIndex="2" GridPane.rowIndex="1" />
@@ -133,40 +134,69 @@
                         <Label text="丁" />
                         <TextField fx:id="bField" prefWidth="40" />
                         <Label text="口" />
-                        <Button text="←" style="-fx-font-size: 10;" styleClass="btn-pink" />
+                        <Button fx:id="btnToggle" text="←" style="-fx-font-size: 10;" styleClass="btn-pink" onAction="#onSplitChange" />
                     </HBox>
-
                 </GridPane>
 
-                <TableView fx:id="memberTable" prefWidth="600" maxWidth="700" VBox.vgrow="ALWAYS">
-                    <columns>
-                        <TableColumn fx:id="colId" text="電腦編號"  prefWidth="80" styleClass="btn-yellow" />
-                        <TableColumn fx:id="colName" text="姓名" prefWidth="80" styleClass="btn-yellow"/>
-                        <TableColumn fx:id="colMail" text="郵寄" prefWidth="40" styleClass="btn-yellow"/>
-                        <TableColumn fx:id="colSolar" text="國曆生日" prefWidth="100" styleClass="btn-yellow"/>
-                        <TableColumn fx:id="colLunar" text="農曆生日" prefWidth="100" styleClass="btn-yellow"/>
-                        <TableColumn fx:id="colAge" text="年齡" prefWidth="40" styleClass="btn-yellow"/>
-                        <TableColumn fx:id="colZodiac" text="生肖" prefWidth="50" styleClass="btn-yellow"/>
-                        <TableColumn fx:id="colEra" text="歲次" prefWidth="60" styleClass="btn-yellow"/>
-                        <TableColumn fx:id="colHour" text="時辰" prefWidth="60" styleClass="btn-yellow"/>
-                        <TableColumn fx:id="colGender" text="性別" prefWidth="50" styleClass="btn-yellow"/>
-                    </columns>
-                    <columnResizePolicy>
-                        <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY" />
-                    </columnResizePolicy>
-                </TableView>
-<!--                <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-background-color: #eee; -fx-padding: 5; -fx-border-color: #ccc; -fx-border-width: 1 0 0 0;">-->
-<!--                    <Button text="|&lt;" /> <Button text="&lt;" />   <TextField fx:id="currentPageField" prefWidth="40" text="1" alignment="CENTER" />-->
-<!--                    <Label fx:id="totalRecordsLabel" text="總筆數：5" />-->
-<!--                    <Button text="&gt;" />   <Button text="&gt;|" />-->
-<!--                </HBox>-->
+                <VBox maxWidth="800">
+                    <SplitPane fx:id="splitPane" dividerPositions="0.9">
+
+                        <!-- 左：會員 -->
+                        <VBox spacing="5" minWidth="0">
+                            <TableView fx:id="memberTable">
+                                <columns>
+                                    <TableColumn fx:id="colId" text="電腦編號" prefWidth="60"  />
+                                    <TableColumn fx:id="colName" text="姓名" prefWidth="90" />
+                                    <TableColumn fx:id="colMail" text="郵寄" prefWidth="30" />
+                                    <TableColumn fx:id="colSolar" text="國曆生日" prefWidth="60" />
+                                    <TableColumn fx:id="colLunar" text="農曆生日" prefWidth="60" />
+                                    <TableColumn fx:id="colAge" text="年齡" prefWidth="30" />
+                                    <TableColumn fx:id="colZodiac" text="生肖" prefWidth="30" />
+                                    <TableColumn fx:id="colEra" text="歲次" prefWidth="30" />
+                                    <TableColumn fx:id="colHour" text="時辰" prefWidth="30" />
+                                    <TableColumn fx:id="colGender" text="性別" prefWidth="30" />
+                                </columns>
+                                <columnResizePolicy>
+                                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+                                </columnResizePolicy>
+                            </TableView>
+                            <PaginationBar fx:id="memberPageBar"/>
+                        </VBox>
+
+                        <!-- 右：捐款 -->
+                        <VBox spacing="5" minWidth="0">
+                            <TableView fx:id="donationTable" VBox.vgrow="ALWAYS" minWidth="500">
+                                <columns>
+                                    <TableColumn fx:id="colReceiptNo" text="收據編號" prefWidth="80"/>
+                                    <TableColumn fx:id="colDonateDate" text="捐款日期" prefWidth="80"/>
+                                    <TableColumn fx:id="colExtraNo" text="補登號碼" prefWidth="80"/>
+                                    <TableColumn fx:id="colAmount" text="金額" prefWidth="60"/>
+                                    <TableColumn fx:id="colDonationType" text="款項類別" prefWidth="100"/>
+                                    <TableColumn fx:id="colSummary" text="摘要" prefWidth="150"/>
+                                    <TableColumn fx:id="colDonateNote" text="捐款備註" prefWidth="150"/>
+                                    <TableColumn fx:id="colOtherNote" text="其他註記" prefWidth="150"/>
+                                    <TableColumn fx:id="colDonorNo" text="太歲燈號" prefWidth="80"/>
+                                    <TableColumn fx:id="colLightNo" text="光明燈號" prefWidth="80"/>
+                                    <TableColumn fx:id="colShouldPay" text="應繳金額" prefWidth="80"/>
+                                    <TableColumn fx:id="colSeqNo" text="編號" prefWidth="60"/>
+                                    <TableColumn fx:id="coCreator" text="經辦人" prefWidth="60"/>
+                                </columns>
+                                <columnResizePolicy>
+                                    <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY" />
+                                </columnResizePolicy>
+                            </TableView>
+                            <PaginationBar fx:id="donationPageBar"/>
+                        </VBox>
+
+                    </SplitPane>
+                </VBox>
 
             </VBox>
 
             <VBox prefWidth="320" spacing="5" alignment="TOP_CENTER">
                 <padding><Insets/></padding>
                 <TitledPane alignment="CENTER" animated="false" collapsible="false" text="捐款作業" style="-fx-text-fill: white">
-                    <GridPane hgap="4" vgap="10">
+                    <GridPane fx:id="donateInputGrid" hgap="4" vgap="10">
                         <Label text="款項類別" GridPane.rowIndex="0" GridPane.columnIndex="0" />
                         <ComboBox fx:id="donateTypeField" prefWidth="180" GridPane.rowIndex="0" GridPane.columnIndex="1" />
 
@@ -182,18 +212,18 @@
                         <Label text="金額" GridPane.rowIndex="4" GridPane.columnIndex="0" />
                         <HBox GridPane.rowIndex="4" GridPane.columnIndex="1">
                             <TextField fx:id="amountField" prefWidth="190" style="-fx-text-fill: red; -fx-font-weight: bold;" />
-                            <Button text="數字" styleClass="btn-green" style="-fx-font-size: 10;"/>
+                            <Button text="數字" styleClass="btn-green" style="-fx-font-size: 10;" onAction="#onOpenKeypad" userData="txtAmount"/>
                         </HBox>
 
                         <Label text="摘要" GridPane.rowIndex="5" GridPane.columnIndex="0" />
                         <HBox GridPane.rowIndex="5" GridPane.columnIndex="1">
-                            <TextField fx:id="summaryField" prefWidth="190" style="-fx-text-fill: red; -fx-font-weight: bold;" />
+                            <TextField fx:id="summaryField" prefWidth="190" />
                             <Button text="詞彙" styleClass="btn-green" style="-fx-font-size: 10;"/>
                         </HBox>
 
                         <Label text="捐款備註" GridPane.rowIndex="6" GridPane.columnIndex="0" />
                         <HBox GridPane.rowIndex="6" GridPane.columnIndex="1">
-                            <TextField fx:id="donateNoteField" prefWidth="190" style="-fx-text-fill: red; -fx-font-weight: bold;" />
+                            <TextField fx:id="donateNoteField" prefWidth="190" />
                             <Button text="家屬" styleClass="btn-green" style="-fx-font-size: 10;"/>
                         </HBox>
 
@@ -207,7 +237,7 @@
                         <TextField fx:id="lightNoField" GridPane.rowIndex="9" GridPane.columnIndex="1" />
 
                         <Label text="應繳金額" GridPane.rowIndex="10" GridPane.columnIndex="0" />
-                        <TextField fx:id="shouldPayField" GridPane.rowIndex="10" GridPane.columnIndex="1" />
+                        <TextField fx:id="shouldPayField" GridPane.rowIndex="10" GridPane.columnIndex="1" style="-fx-text-fill: red; -fx-font-weight: bold;" />
 
                         <HBox spacing="5" style="-fx-padding: 10 0 0 0;" GridPane.rowIndex="11" GridPane.columnIndex="0" GridPane.columnSpan="4">
                             <Button prefWidth="60" maxWidth="Infinity" text="新增" styleClass="btn-purple" onAction="#onDonationAdd"/>

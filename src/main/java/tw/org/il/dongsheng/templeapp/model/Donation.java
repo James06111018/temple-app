@@ -16,6 +16,7 @@ public class Donation {
     private String lightNo;
     private Integer shouldPay;
     private String donateType;
+    private String creator;
 
     public Donation() {
     }
@@ -33,7 +34,8 @@ public class Donation {
             String donorNo,
             String lightNo,
             Integer shouldPay,
-            String donateType
+            String donateType,
+            String creator
     ) {
         this.id = id;
         this.memberId = memberId;
@@ -48,6 +50,7 @@ public class Donation {
         this.lightNo = lightNo;
         this.shouldPay = shouldPay;
         this.donateType = donateType;
+        this.creator = creator;
     }
 
     public Integer getId() {
@@ -152,6 +155,14 @@ public class Donation {
 
     public void setDonateType(String donateType) {
         this.donateType = donateType;
+    }
+
+    public String getCreator() {
+        return creator;
+    }
+
+    public void setCreator(String creator) {
+        this.creator = creator;
     }
 
     @Override

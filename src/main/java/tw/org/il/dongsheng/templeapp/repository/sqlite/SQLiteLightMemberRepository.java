@@ -140,13 +140,15 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
     }
 
     @Override
-    public List<LightMember> findByAddress(String address) throws SQLException {
-        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE address = ? ORDER BY id DESC";
+    public List<LightMember> findByAddress(String keyword, int limit, int offset) throws SQLException {
+        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE address = ? ORDER BY id DESC LIMIT ? OFFSET ?";
         List<LightMember> members = new ArrayList<>();
 
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, address);
+            statement.setString(1, keyword);
+            statement.setInt(2, limit);
+            statement.setInt(3, offset);
 
             try(ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
@@ -156,6 +158,21 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
         }
 
         return members;
+    }
+
+    @Override
+    public int getMemberCount(String keyword) throws SQLException {
+        String sql = "SELECT COUNT(1) AS count FROM " + TABLE_NAME + " WHERE address = ?";
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, keyword);
+            try(ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt(1);
+                }
+            }
+        }
+        return 0;
     }
 
     @Override
