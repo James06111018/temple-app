@@ -65,13 +65,12 @@ public class DonationCategoryController {
         colName.setCellValueFactory(data -> data.getValue().nameProperty());
         colEnabled.setCellValueFactory(data -> data.getValue().enabledProperty());
 
-        // ComboBox TODO 先用固定，後續再看需不需要抽出來或是不需要
+        // ComboBox todo 先用固定，後續再看需不需要抽出來或是不需要
         cmbType.setItems(FXCollections.observableArrayList(
                 "點燈", "法會", "捐款"
         ));
 
         // 初始化資料
-//        initMockData();
         masterData = Util.toObservableList(service.findAll());
 
         tblCategory.setItems(masterData);
@@ -97,17 +96,6 @@ public class DonationCategoryController {
         btnCancel.setOnAction(e -> onCancel());
 
         setMode(Mode.VIEW);
-    }
-
-    // ===== 初始化假資料 =====
-    private void initMockData() {
-        masterData.addAll(
-                new DonationCategory("L001", "光明燈", "點燈", 600, true, 1, ""),
-                new DonationCategory("T001", "安太歲", "點燈", 800, true, 2, ""),
-                new DonationCategory("M001", "媽祖燈", "點燈", 500, true, 3, ""),
-                new DonationCategory("F001", "中元普渡", "法會", 0, true, 4, ""),
-                new DonationCategory("O001", "其他收入", "捐款", 0, true, 5, "")
-        );
     }
 
     // ===== 載入表單 =====

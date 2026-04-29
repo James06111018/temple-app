@@ -98,7 +98,6 @@ public class LightController {
 
         UnaryOperator<TextFormatter.Change> dateFilter = change -> {
             String text = change.getControlNewText();
-
             if (text.matches("\\d{0,3}(\\.\\d{0,2}){0,2}")) {
                 return change;
             }
@@ -119,22 +118,16 @@ public class LightController {
             }
         });
         birthMoonField.textProperty().addListener((obs, oldVal, newVal) -> {
-
             if (!isValidRocDateFormat(newVal)) {
                 return;
             }
-
             LocalDate date = parseRocDate(newVal);
-
             if (date != null) {
-
                 // 年齡
                 Integer age = calculateTraditionAge(date.getYear());
                 ageField.setText(age != null ? String.valueOf(age) : "");
-
                 // 生肖
                 zodiacField.setText(getZodiac(date.getYear()));
-
                 // 歲次
                 yearCycleField.setText(getYearCycle(date.getYear()));
             } else {
@@ -194,6 +187,13 @@ public class LightController {
         colHour.setCellValueFactory(new PropertyValueFactory<>("birthTime"));
         colGender.setCellValueFactory(new PropertyValueFactory<>("gender"));
 
+        memberTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                setMemberData(newVal);
+            }
+        });
+
+        memberPageBar.setTotalCount(0);
         memberPageBar.setOnAction(()-> executeMemberSearch());
 
         // 設定每個欄位對應 Donation 類別的屬性名稱 (變數名)
@@ -232,6 +232,15 @@ public class LightController {
         colShouldPay.setCellValueFactory(new PropertyValueFactory<>("shouldPay"));
 //        colSeqNo.setCellValueFactory(new PropertyValueFactory<>(""));
         coCreator.setCellValueFactory(new PropertyValueFactory<>("creator"));
+
+        donationPageBar.setTotalCount(0);
+        donationPageBar.setOnAction(()-> {
+            try {
+                executeDonationSearch();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     public void initData() {
@@ -332,7 +341,6 @@ public class LightController {
 
     @FXML
     public void onSave() {
-
         if (!validateForm()) {
             return;
         }
@@ -371,16 +379,27 @@ public class LightController {
             // 判斷新增或修改
             if (id == null || !lightService.exists(id)) {
                 lightService.save(member);
-                AlertDialog.showInfo("信眾點燈", "新增成功");
+                AlertDialog.showInfo("信眾點燈", "新增信眾成功");
             } else {
                 lightService.update(member);
-                AlertDialog.showInfo("信眾點燈", "修改成功");
+                AlertDialog.showInfo("信眾點燈", "修改信眾成功");
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
 
-        clearForm(memberInputGrid);
+        resetUI();
+    }
+
+    private void resetUI() {
+        clearForm((memberInputGrid));
+
+        memberTable.setItems(FXCollections.observableArrayList());
+        memberPageBar.setTotalCount(0);
+        memberTable.getSelectionModel().clearSelection();
+
+        donationTable.setItems(FXCollections.observableArrayList());
+        donationPageBar.setTotalCount(0);
     }
 
     @FXML
@@ -491,7 +510,11 @@ public class LightController {
         );
 
         try {
-            donationService.save(donation);
+            Donation newDonation = donationService.save(donation);
+            AlertDialog.showInfo("信眾點燈", "新增捐款作業成功");
+            donationTable.getItems().add(0, newDonation);
+//            donationTable.getSelectionModel().select(0);
+            donationTable.scrollTo(0);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -513,7 +536,6 @@ public class LightController {
     }
 
     private void executeMemberSearch() {
-
         String name = nameField.getText();
         try {
             Optional<LightMember> list = lightService.findByName(name);
@@ -540,22 +562,7 @@ public class LightController {
 
                                 memberTable.refresh();
 
-                                /**
-                                 * 捐款資料
-                                 */
-                                int dLimit = donationPageBar.getPageSize();
-                                int dOffset = donationPageBar.getOffset();
-                                List<Integer> memberIds = allMember.stream()
-                                        .map(LightMember::getId)
-                                        .collect(Collectors.toList());
-
-                                List<Donation> donations = donationService.findByMemberIds(memberIds, dLimit, dOffset);
-                                int dTotal = donationService.getDonationCount(memberIds);
-
-                                donationTable.setItems(Util.toObservableList(donations));
-                                donationPageBar.setTotalCount(dTotal);
-
-                                donationTable.refresh();
+                                executeDonationSearch();
 
                             } catch (SQLException e) {
                                 throw new RuntimeException(e);
@@ -568,33 +575,33 @@ public class LightController {
                 clearForm(memberInputGrid);
                 AlertDialog.showInfo("信眾點燈", "查無信眾資料");
             }
-
-            // 假捐款資料
-//            ObservableList<Donation> data = FXCollections.observableArrayList(
-//                    new Donation(1, 101, "20260428001", "2026.04.28", "", 1200, "庚子年補運祈福燈", "信眾親自辦理", "無", "T01", "L50", 1200, "點燈", "管理員"),
-//                    new Donation(2, 102, "20260428002", "2026.04.28", "E-99", 500, "隨喜油香", "感謝廟方指引", "收據需郵寄", "", "", 500, "油香", "陳小姐"),
-//                    new Donation(3, 103, "20260428003", "2026.04.28", "", 3600, "全家安太歲(共六員)", "長子、次女犯太歲需加強", "贈送平安符*6", "Z08", "", 3600, "太歲燈", "管理員"),
-//                    new Donation(4, 101, "20260428001", "2026.04.28", "", 1200, "庚子年補運祈福燈", "信眾親自辦理", "無", "T01", "L50", 1200, "點燈", "管理員"),
-//                    new Donation(5, 102, "20260428002", "2026.04.28", "E-99", 500, "隨喜油香", "感謝廟方指引", "收據需郵寄", "", "", 500, "油香", "陳小姐"),
-//                    new Donation(6, 103, "20260428003", "2026.04.28", "", 3600, "全家安太歲(共六員)", "長子、次女犯太歲需加強", "贈送平安符*6", "Z08", "", 3600, "太歲燈", "管理員"),
-//                    new Donation(7, 101, "20260428001", "2026.04.28", "", 1200, "庚子年補運祈福燈", "信眾親自辦理", "無", "T01", "L50", 1200, "點燈", "管理員"),
-//                    new Donation(8, 102, "20260428002", "2026.04.28", "E-99", 500, "隨喜油香", "感謝廟方指引", "收據需郵寄", "", "", 500, "油香", "陳小姐"),
-//                    new Donation(9, 103, "20260428003", "2026.04.28", "", 3600, "全家安太歲(共六員)", "長子、次女犯太歲需加強", "贈送平安符*6", "Z08", "", 3600, "太歲燈", "管理員"),
-//                    new Donation(10, 101, "20260428001", "2026.04.28", "", 1200, "庚子年補運祈福燈", "信眾親自辦理", "無", "T01", "L50", 1200, "點燈", "管理員"),
-//                    new Donation(11, 102, "20260428002", "2026.04.28", "E-99", 500, "隨喜油香", "感謝廟方指引", "收據需郵寄", "", "", 500, "油香", "陳小姐"),
-//                    new Donation(12, 103, "20260428003", "2026.04.28", "", 3600, "全家安太歲(共六員)", "長子、次女犯太歲需加強", "贈送平安符*6", "Z08", "", 3600, "太歲燈", "管理員")
-//            );
-//            donationTable.setItems(data);
-//            donationTable.refresh();
-
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
+    private void executeDonationSearch() throws SQLException {
+        /**
+         * 捐款資料
+         */
+        int dLimit = donationPageBar.getPageSize();
+        int dOffset = donationPageBar.getOffset();
+        List<Integer> memberIds = allMember.stream()
+                .map(LightMember::getId)
+                .collect(Collectors.toList());
+
+        List<Donation> donations = donationService.findByMemberIds(memberIds, dLimit, dOffset);
+        int dTotal = donationService.getDonationCount(memberIds);
+        donationTable.setItems(Util.toObservableList(donations));
+        donationPageBar.setTotalCount(dTotal);
+
+        donationTable.refresh();
+    }
+
     // 設置上方信眾資料
     private void setMemberData(LightMember member) {
         idField.setText(Util.stringFormat(member.getId()));
+        nameField.setText(member.getName());
         genderBox.setValue(member.getGender());
         phoneField.setText(member.getPhone());
         zipCodeField.setText(member.getZipCode());
