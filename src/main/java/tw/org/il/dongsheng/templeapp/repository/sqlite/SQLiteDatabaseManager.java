@@ -1,5 +1,8 @@
 package tw.org.il.dongsheng.templeapp.repository.sqlite;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -15,7 +18,8 @@ public class SQLiteDatabaseManager {
 
     public static SQLiteDatabaseManager getInstance() {
         if (instance == null) {
-            instance = new SQLiteDatabaseManager("temple.db");
+            Path dbPath = getDatabasePath();
+            instance = new SQLiteDatabaseManager(dbPath.toString());
         }
         return instance;
     }
@@ -27,5 +31,34 @@ public class SQLiteDatabaseManager {
             throw new RuntimeException(e);
         }
         return DriverManager.getConnection(url);
+    }
+
+    private static Path getDatabasePath() {
+        try {
+            Path dbDir = getAppDataDir();
+            Files.createDirectories(dbDir);
+            return dbDir.resolve("temple.db").toAbsolutePath();
+        } catch (Exception e) {
+            throw new RuntimeException("建立資料庫資料夾失敗", e);
+        }
+    }
+
+    private static Path getAppDataDir() {
+        String os = System.getProperty("os.name").toLowerCase();
+
+        if (os.contains("win")) {
+            return Paths.get(System.getenv("APPDATA"), "TempleApp");
+        }
+
+        if (os.contains("mac")) {
+            return Paths.get(
+                    System.getProperty("user.home"),
+                    "Library",
+                    "Application Support",
+                    "TempleApp"
+            );
+        }
+
+        return Paths.get(System.getProperty("user.home"), ".templeapp");
     }
 }
