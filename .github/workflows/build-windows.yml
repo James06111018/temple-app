@@ -33,19 +33,26 @@ jobs:
         run: |
           dotnet tool install --global wix --version 4.0.5
 
+      - name: Read Gradle version
+        shell: powershell
+        run: |
+            $version = .\gradlew.bat -q properties | Select-String "^version:" | ForEach-Object { ($_ -split "\s+")[1] }
+            "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Package EXE
         shell: cmd
         run: |
           jpackage ^
             --type exe ^
             --name TempleApp ^
-            --app-version 1.0.0 ^
+            --app-version %VERSION% ^
             --input build\libs ^
             --main-jar templeapp.jar ^
             --main-class tw.org.il.dongsheng.templeapp.TempleApplication ^
             --module-path javafx\javafx-sdk-21.0.2\lib ^
             --add-modules javafx.controls,javafx.fxml,javafx.graphics ^
             --java-options "-Dfile.encoding=UTF-8" ^
+            --java-options "-Dprism.order=sw" ^
             --dest dist ^
             --win-menu ^
             --win-shortcut

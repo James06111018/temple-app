@@ -28,8 +28,16 @@ jobs:
       # 4️⃣ 下載 JavaFX
       - name: Download JavaFX
         run: |
-          curl -L -o javafx.zip https://download2.gluonhq.com/openjfx/21.0.2/openjfx-21.0.2_osx-aarch64_bin-sdk.zip
-          unzip javafx.zip -d javafx
+           curl -L -o javafx.zip https://download2.gluonhq.com/openjfx/21.0.2/openjfx-21.0.2_osx-x64_bin-sdk.zip
+            unzip javafx.zip -d javafx
+#          curl -L -o javafx.zip https://download2.gluonhq.com/openjfx/21.0.2/openjfx-21.0.2_osx-aarch64_bin-sdk.zip
+#          unzip javafx.zip -d javafx
+
+      # 讀取版本號
+      - name: Read Gradle version
+        run: |
+          VERSION=$(./gradlew -q properties | grep "^version:" | awk '{print $2}')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       # 5️⃣ 打包 dmg
       - name: Package macOS dmg
@@ -37,7 +45,7 @@ jobs:
           jpackage \
             --type dmg \
             --name TempleApp \
-            --app-version 1.0.0 \
+            --app-version ${{ env.VERSION }} \
             --input build/libs \
             --main-jar templeapp.jar \
             --main-class tw.org.il.dongsheng.templeapp.TempleApplication \
