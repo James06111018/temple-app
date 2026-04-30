@@ -55,7 +55,7 @@ jobs:
 
       - name: Download JavaFX JMODS
         run: |
-          curl -L -o javafx-jmods.zip https://download2.gluonhq.com/openjfx/21.0.2/javafx-jmods-21.0.2_osx-x64_bin-jmods.zip
+          curl -L -o javafx-jmods.zip https://download2.gluonhq.com/openjfx/21.0.2/javafx-jmods-21.0.2_osx-aarch64_bin-jmods.zip
           unzip javafx-jmods.zip -d javafx-jmods
       - name: Create runtime image
         run: |
