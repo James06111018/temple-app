@@ -42,7 +42,7 @@ jobs:
             --app-version 1.0.0 ^
             --input build\libs ^
             --main-jar templeapp.jar ^
-            --main-class tw.org.il.dongsheng.templeapp.MainApp ^
+            --main-class tw.org.il.dongsheng.templeapp.TempleApplication ^
             --module-path javafx\javafx-sdk-21.0.2\lib ^
             --add-modules javafx.controls,javafx.fxml,javafx.graphics ^
             --java-options "-Dfile.encoding=UTF-8" ^

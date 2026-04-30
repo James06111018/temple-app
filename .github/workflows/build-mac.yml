@@ -1,0 +1,58 @@
+name: Build macOS App
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+
+    steps:
+      # 1️⃣ 下載程式碼
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2️⃣ 安裝 Java
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # 3️⃣ 建置 jar
+      - name: Build jar
+        run: ./gradlew clean jar
+
+      # 4️⃣ 下載 JavaFX
+      - name: Download JavaFX
+        run: |
+          curl -L -o javafx.zip https://download2.gluonhq.com/openjfx/21.0.2/openjfx-21.0.2_osx-aarch64_bin-sdk.zip
+          unzip javafx.zip -d javafx
+
+      # 5️⃣ 打包 dmg
+      - name: Package macOS dmg
+        run: |
+          jpackage \
+            --type dmg \
+            --name TempleApp \
+            --app-version 1.0.0 \
+            --input build/libs \
+            --main-jar templeapp.jar \
+            --main-class tw.org.il.dongsheng.templeapp.TempleApplication \
+            --module-path javafx/javafx-sdk-21.0.2/lib \
+            --add-modules javafx.controls,javafx.fxml,javafx.graphics \
+            --java-options "-Dfile.encoding=UTF-8" \
+            --dest dist
+
+      # 6️⃣ 確認輸出
+      - name: List dist
+        run: ls -l dist
+
+      # 7️⃣ 上傳下載檔
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TempleApp-macOS
+          path: dist/*
