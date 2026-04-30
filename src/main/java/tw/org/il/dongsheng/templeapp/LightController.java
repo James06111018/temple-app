@@ -256,6 +256,7 @@ public class LightController {
                 donationService = new DonationService(donationRepo);
 
                 DonationCategoryRepository donationCategoryRepo = new SQLiteDonationCategoryRepository(manager);
+                donationCategoryRepo.createTable();
                 donationCategoryService = new DonationCategoryService(donationCategoryRepo);
 
                 // 捐款作業
