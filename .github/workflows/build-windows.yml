@@ -84,7 +84,6 @@ jobs:
             --icon packaging\icon.ico ^
             --dest dist ^
             --win-menu ^
-            --win-menu-group "宮廟點燈系統" ^
             --win-shortcut
 
       - name: Rename exe
