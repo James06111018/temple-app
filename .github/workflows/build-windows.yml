@@ -56,6 +56,12 @@ jobs:
         run: |
           dotnet tool install --global wix --version 4.0.5
 
+      - name: Read app name
+        shell: powershell
+        run: |
+          $appName = (Select-String -Path "src/main/resources/settings.properties" -Pattern "^app.name=").Line.Split("=")[1]
+          "APP_NAME=$appName" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Read Gradle version
         shell: powershell
         run: |
@@ -67,13 +73,14 @@ jobs:
         run: |
           jpackage ^
             --type exe ^
-            --name TempleApp ^
+            --name %APP_NAME% ^
             --app-version %VERSION% ^
             --input build\libs ^
             --main-jar templeapp.jar ^
             --main-class tw.org.il.dongsheng.templeapp.TempleApplication ^
             --runtime-image runtime ^
             --java-options "-Dfile.encoding=UTF-8" ^
+            --icon packaging\icon.ico ^
             --dest dist ^
             --win-menu ^
             --win-shortcut   

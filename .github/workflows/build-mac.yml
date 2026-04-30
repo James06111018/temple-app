@@ -21,6 +21,11 @@ jobs:
       - name: Build jar
         run: ./gradlew clean shadowJar
 
+      - name: Read app name
+        run: |
+          APP_NAME=$(grep "^app.name=" src/main/resources/settings.properties | cut -d'=' -f2)
+          echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV  
+
       - name: Read Gradle version
         run: |
           VERSION=$(./gradlew -q properties | grep "^version:" | awk '{print $2}')
@@ -37,7 +42,7 @@ jobs:
         run: |
           jpackage \
             --type dmg \
-            --name TempleApp \
+            --name ${{ env.APP_NAME }} \
             --app-version ${{ env.APP_VERSION }} \
             --input build/libs \
             --main-jar templeapp.jar \

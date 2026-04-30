@@ -25,7 +25,10 @@
         </menus>
     </MenuBar>
 
-    <TabPane fx:id="mainTabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="NEVER">
+    <TabPane fx:id="mainTabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="NEVER"
+             minHeight="38"
+             prefHeight="38"
+             maxHeight="38">
         <tabs>
             <Tab fx:id="tabLight" id="light">
                 <graphic>
