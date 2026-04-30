@@ -23,7 +23,7 @@ jobs:
 
       - name: Read app name
         run: |
-          APP_NAME=$(grep "^app.name=" src/main/resources/settings.properties | cut -d'=' -f2)
+          APP_NAME=$(grep "^app.name=" src/main/resources/settings.properties | cut -d'=' -f2- | xargs)
           echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV  
 
       - name: Read Gradle version
@@ -42,7 +42,7 @@ jobs:
         run: |
           jpackage \
             --type dmg \
-            --name ${{ env.APP_NAME }} \
+            --name "${{ env.APP_NAME }}" \
             --app-version ${{ env.APP_VERSION }} \
             --input build/libs \
             --main-jar templeapp.jar \

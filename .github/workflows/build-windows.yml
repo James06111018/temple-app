@@ -59,22 +59,27 @@ jobs:
       - name: Read app name
         shell: powershell
         run: |
-          $appName = (Select-String -Path "src/main/resources/settings.properties" -Pattern "^app.name=").Line.Split("=")[1]
-          "APP_NAME=$appName" | Out-File -FilePath $env:GITHUB_ENV -Append
+          $line = Select-String -Path "src/main/resources/settings.properties" -Pattern "^\s*app\.name\s*=" | Select-Object -First 1
+          $appName = ($line.Line -split "=", 2)[1].Trim()
+          "APP_NAME=$appName" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "APP_NAME=$appName"
 
       - name: Read Gradle version
         shell: powershell
         run: |
-            $version = .\gradlew.bat -q properties | Select-String "^version:" | ForEach-Object { ($_ -split "\s+")[1] }
-            "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+          $version = .\gradlew.bat -q properties | Select-String "^version:" | ForEach-Object { ($_ -split "\s+")[1] }
+          $appVersion = $version -replace "-SNAPSHOT",""
+          $appVersion = $appVersion -replace "^0\.","1."
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "APP_VERSION=$appVersion" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Package EXE
         shell: cmd
         run: |
           jpackage ^
             --type exe ^
-            --name %APP_NAME% ^
-            --app-version %VERSION% ^
+            --name "%APP_NAME%" ^
+            --app-version "%APP_VERSION%" ^
             --input build\libs ^
             --main-jar templeapp.jar ^
             --main-class tw.org.il.dongsheng.templeapp.TempleApplication ^
