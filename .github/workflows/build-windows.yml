@@ -25,14 +25,21 @@ jobs:
       - name: Download JavaFX JMODS
         shell: powershell
         run: |
-          Invoke-WebRequest -Uri "https://download2.gluonhq.com/openjfx/21.0.2/javafx-jmods-21.0.2_windows-x64_bin-jmods.zip" -OutFile javafx-jmods.zip
-          Expand-Archive javafx-jmods.zip -DestinationPath javafx-jmods
+          $version = "21.0.2"
+          $base = "https://repo1.maven.org/maven2/org/openjfx"
+
+          New-Item -ItemType Directory -Force javafx-jmods | Out-Null
+
+          Invoke-WebRequest "$base/javafx-base/$version/javafx-base-$version-win.jar" -OutFile "javafx-jmods/javafx-base.jar"
+          Invoke-WebRequest "$base/javafx-graphics/$version/javafx-graphics-$version-win.jar" -OutFile "javafx-jmods/javafx-graphics.jar"
+          Invoke-WebRequest "$base/javafx-controls/$version/javafx-controls-$version-win.jar" -OutFile "javafx-jmods/javafx-controls.jar"
+          Invoke-WebRequest "$base/javafx-fxml/$version/javafx-fxml-$version-win.jar" -OutFile "javafx-jmods/javafx-fxml.jar"
 
       - name: Create runtime image
         shell: cmd
         run: |
           jlink ^
-            --module-path "%JAVA_HOME%\jmods;javafx-jmods\javafx-jmods-21.0.2" ^
+            --module-path "%JAVA_HOME%\jmods;javafx-jmods" ^
             --add-modules java.base,java.desktop,java.sql,java.naming,javafx.controls,javafx.fxml,javafx.graphics ^
             --output runtime ^
             --strip-debug ^
