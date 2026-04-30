@@ -1,0 +1,184 @@
+name: Release All Mac Desktop Apps
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  JAVA_VERSION: '21'
+  JAVAFX_VERSION: '21.0.2'
+  APP_ID: TempleApp
+  MAIN_JAR: templeapp.jar
+  MAIN_CLASS: tw.org.il.dongsheng.templeapp.TempleApplication
+
+jobs:
+#  release-windows:
+#    runs-on: windows-latest
+#
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - uses: actions/setup-java@v4
+#        with:
+#          distribution: temurin
+#          java-version: ${{ env.JAVA_VERSION }}
+#
+#      - name: Build jar
+#        run: .\gradlew.bat clean shadowJar
+#
+#      - name: Read version
+#        shell: powershell
+#        run: |
+#          $version = .\gradlew.bat -q properties | Select-String "^version:" | ForEach-Object { ($_ -split "\s+")[1] }
+#          $appVersion = $version -replace "-SNAPSHOT",""
+#          $appVersion = $appVersion -replace "^0\.","1."
+#          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+#          "APP_VERSION=$appVersion" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+#
+#      - name: Download JavaFX
+#        shell: powershell
+#        run: |
+#          $version = "${{ env.JAVAFX_VERSION }}"
+#          $base = "https://repo1.maven.org/maven2/org/openjfx"
+#          New-Item -ItemType Directory -Force javafx-jmods | Out-Null
+#          Invoke-WebRequest "$base/javafx-base/$version/javafx-base-$version-win.jar" -OutFile "javafx-jmods/javafx-base.jar"
+#          Invoke-WebRequest "$base/javafx-graphics/$version/javafx-graphics-$version-win.jar" -OutFile "javafx-jmods/javafx-graphics.jar"
+#          Invoke-WebRequest "$base/javafx-controls/$version/javafx-controls-$version-win.jar" -OutFile "javafx-jmods/javafx-controls.jar"
+#          Invoke-WebRequest "$base/javafx-fxml/$version/javafx-fxml-$version-win.jar" -OutFile "javafx-jmods/javafx-fxml.jar"
+#
+#      - name: Create runtime image
+#        shell: cmd
+#        run: |
+#          jlink ^
+#            --module-path "%JAVA_HOME%\jmods;javafx-jmods" ^
+#            --add-modules java.base,java.desktop,java.sql,java.naming,javafx.controls,javafx.fxml,javafx.graphics ^
+#            --output runtime ^
+#            --strip-debug ^
+#            --no-header-files ^
+#            --no-man-pages
+#
+#      - name: Install WiX
+#        shell: powershell
+#        run: dotnet tool install --global wix --version 4.0.5
+#
+#      - name: Package Windows exe
+#        shell: cmd
+#        run: |
+#          jpackage ^
+#            --type exe ^
+#            --name %APP_ID% ^
+#            --app-version "%APP_VERSION%" ^
+#            --input build\libs ^
+#            --main-jar %MAIN_JAR% ^
+#            --main-class %MAIN_CLASS% ^
+#            --runtime-image runtime ^
+#            --java-options "-Dfile.encoding=UTF-8" ^
+#            --icon packaging\icon.ico ^
+#            --dest dist ^
+#            --win-menu ^
+#            --win-menu-group TempleApp ^
+#            --win-shortcut
+#
+#      - name: Rename exe
+#        shell: powershell
+#        run: |
+#          $exe = Get-ChildItem dist -Filter *.exe | Select-Object -First 1
+#          Rename-Item $exe.FullName "TempleApp-Windows-$env:VERSION.exe"
+#
+#      - name: Upload Windows to Release
+#        uses: softprops/action-gh-release@v2
+#        with:
+#          tag_name: v${{ env.VERSION }}
+#          name: TempleApp v${{ env.VERSION }}
+#          files: dist/*.exe
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-mac:
+    strategy:
+      matrix:
+        include:
+          - runner: macos-13
+            arch: x64
+            javafx_arch: x64
+          - runner: macos-latest
+            arch: arm64
+            javafx_arch: aarch64
+
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Build jar
+        run: ./gradlew clean shadowJar
+
+      - name: Read app name
+        run: |
+          APP_NAME=$(python3 - <<'PY'
+          import re
+
+          path = "src/main/resources/settings.properties"
+
+          with open(path, "r", encoding="utf-8") as f:
+              text = f.read()
+
+          match = re.search(r"^app\.name=(.*)$", text, re.MULTILINE)
+          if not match:
+              raise SystemExit("app.name not found")
+
+          value = match.group(1).strip()
+          value = value.encode("utf-8").decode("unicode_escape")
+          print(value)
+          PY
+          )
+
+          echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
+          echo "APP_NAME=$APP_NAME"
+
+      - name: Read version
+        run: |
+          VERSION=$(./gradlew -q properties | grep "^version:" | awk '{print $2}')
+          APP_VERSION=$(echo "$VERSION" | sed 's/-SNAPSHOT//' | sed 's/^0\./1./')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+
+      - name: Download JavaFX
+        run: |
+          curl -L -o javafx.zip https://download2.gluonhq.com/openjfx/${{ env.JAVAFX_VERSION }}/openjfx-${{ env.JAVAFX_VERSION }}_osx-${{ matrix.javafx_arch }}_bin-sdk.zip
+          unzip javafx.zip -d javafx
+
+      - name: Package macOS dmg
+        run: |
+          jpackage \
+            --type dmg \
+            --name "${{ env.APP_NAME }}" \
+            --app-version ${{ env.APP_VERSION }} \
+            --input build/libs \
+            --main-jar ${{ env.MAIN_JAR }} \
+            --main-class ${{ env.MAIN_CLASS }} \
+            --module-path javafx/javafx-sdk-${{ env.JAVAFX_VERSION }}/lib \
+            --add-modules javafx.controls,javafx.fxml,javafx.graphics \
+            --java-options "-Dfile.encoding=UTF-8" \
+            --icon packaging/icon.icns \
+            --dest dist
+
+      - name: Rename dmg
+        run: |
+          mv dist/*.dmg dist/TempleApp-macOS-${{ matrix.arch }}-${{ env.VERSION }}.dmg
+
+      - name: Upload macOS to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: TempleApp v${{ env.VERSION }}
+          files: dist/*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
