@@ -19,7 +19,7 @@ jobs:
           java-version: '21'
 
       - name: Build jar
-        run: ./gradlew clean jar
+        run: ./gradlew clean shadowJar
 
       - name: Read Gradle version
         run: |
