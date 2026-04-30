@@ -20,7 +20,7 @@ jobs:
           java-version: '21'
 
       - name: Build jar
-        run: gradlew.bat clean jar
+        run: .\gradlew.bat clean jar
 
       - name: Download JavaFX SDK
         shell: powershell
