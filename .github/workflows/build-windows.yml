@@ -22,23 +22,27 @@ jobs:
       - name: Build jar
         run: .\gradlew.bat clean jar
 
-      - name: Download JavaFX SDK
+      - name: Download JavaFX JMODS
         shell: powershell
         run: |
-          Invoke-WebRequest -Uri "https://download2.gluonhq.com/openjfx/21.0.2/openjfx-21.0.2_windows-x64_bin-sdk.zip" -OutFile javafx.zip
-          Expand-Archive javafx.zip -DestinationPath javafx
+          Invoke-WebRequest -Uri "https://download2.gluonhq.com/openjfx/21.0.2/javafx-jmods-21.0.2_windows-x64_bin-jmods.zip" -OutFile javafx-jmods.zip
+          Expand-Archive javafx-jmods.zip -DestinationPath javafx-jmods
 
       - name: Create runtime image
         shell: cmd
         run: |
           jlink ^
-            --module-path "%JAVA_HOME%\jmods;javafx\javafx-sdk-21.0.2\lib" ^
-            --add-modules java.base,java.desktop,java.sql,javafx.controls,javafx.fxml,javafx.graphics ^
+            --module-path "%JAVA_HOME%\jmods;javafx-jmods\javafx-jmods-21.0.2" ^
+            --add-modules java.base,java.desktop,java.sql,java.naming,javafx.controls,javafx.fxml,javafx.graphics ^
             --output runtime ^
             --strip-debug ^
-            --compress 2 ^
             --no-header-files ^
             --no-man-pages
+
+      - name: Check JavaFX native dlls
+        shell: powershell
+        run: |
+          Get-ChildItem runtime\bin | Where-Object { $_.Name -match "prism|glass|javafx" } 
 
       - name: Install WiX
         shell: powershell
@@ -65,7 +69,7 @@ jobs:
             --java-options "-Dfile.encoding=UTF-8" ^
             --dest dist ^
             --win-menu ^
-            --win-shortcut
+            --win-shortcut   
 
       - name: Upload installer
         uses: actions/upload-artifact@v4

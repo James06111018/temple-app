@@ -1,66 +1,62 @@
-name: Build macOS App
+name: Release macOS App
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
+
+permissions:
+  contents: write
 
 jobs:
-  build-mac:
+  release-mac:
     runs-on: macos-latest
 
     steps:
-      # 1️⃣ 下載程式碼
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # 2️⃣ 安裝 Java
-      - name: Set up JDK
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
 
-      # 3️⃣ 建置 jar
       - name: Build jar
         run: ./gradlew clean jar
 
-      # 4️⃣ 下載 JavaFX
+      - name: Read Gradle version
+        run: |
+          VERSION=$(./gradlew -q properties | grep "^version:" | awk '{print $2}')
+          APP_VERSION=$(echo "$VERSION" | sed 's/-SNAPSHOT//' | sed 's/^0\./1./')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+
       - name: Download JavaFX
         run: |
           curl -L -o javafx.zip https://download2.gluonhq.com/openjfx/21.0.2/openjfx-21.0.2_osx-x64_bin-sdk.zip
           unzip javafx.zip -d javafx
-#          curl -L -o javafx.zip https://download2.gluonhq.com/openjfx/21.0.2/openjfx-21.0.2_osx-aarch64_bin-sdk.zip
-#          unzip javafx.zip -d javafx
 
-      # 讀取版本號
-      - name: Read Gradle version
-        run: |
-          VERSION=$(./gradlew -q properties | grep "^version:" | awk '{print $2}')
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-      # 5️⃣ 打包 dmg
-      - name: Package macOS dmg
+      - name: Package dmg
         run: |
           jpackage \
             --type dmg \
             --name TempleApp \
-            --app-version ${{ env.VERSION }} \
+            --app-version ${{ env.APP_VERSION }} \
             --input build/libs \
             --main-jar templeapp.jar \
             --main-class tw.org.il.dongsheng.templeapp.TempleApplication \
             --module-path javafx/javafx-sdk-21.0.2/lib \
             --add-modules javafx.controls,javafx.fxml,javafx.graphics \
             --java-options "-Dfile.encoding=UTF-8" \
+            --icon packaging/icon.icns \
             --dest dist
 
-      # 6️⃣ 確認輸出
-      - name: List dist
-        run: ls -l dist
+      - name: Rename dmg
+        run: |
+          mv dist/*.dmg dist/TempleApp-macOS-x64-${{ env.VERSION }}.dmg
 
-      # 7️⃣ 上傳下載檔
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: TempleApp-macOS
-          path: dist/*
+          tag_name: v${{ env.VERSION }}
+          name: TempleApp v${{ env.VERSION }}
+          files: dist/*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
