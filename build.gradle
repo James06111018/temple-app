@@ -81,3 +81,13 @@ jlink {
 jlinkZip {
     group = 'distribution'
 }
+
+jar {
+    archiveFileName = 'templeapp.jar'
+
+    manifest {
+        attributes(
+                'Main-Class': 'tw.org.il.dongsheng.templeapp.TempleApplication'
+        )
+    }
+}

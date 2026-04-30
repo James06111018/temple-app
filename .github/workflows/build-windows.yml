@@ -1,0 +1,57 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build jar
+        run: gradlew.bat clean jar
+
+      - name: Download JavaFX SDK
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://download2.gluonhq.com/openjfx/21.0.2/openjfx-21.0.2_windows-x64_bin-sdk.zip" -OutFile javafx.zip
+          Expand-Archive javafx.zip -DestinationPath javafx
+
+      - name: Install WiX
+        shell: powershell
+        run: |
+          dotnet tool install --global wix --version 4.0.5
+
+      - name: Package EXE
+        shell: cmd
+        run: |
+          jpackage ^
+            --type exe ^
+            --name TempleApp ^
+            --app-version 1.0.0 ^
+            --input build\libs ^
+            --main-jar templeapp.jar ^
+            --main-class tw.org.il.dongsheng.templeapp.MainApp ^
+            --module-path javafx\javafx-sdk-21.0.2\lib ^
+            --add-modules javafx.controls,javafx.fxml,javafx.graphics ^
+            --java-options "-Dfile.encoding=UTF-8" ^
+            --dest dist ^
+            --win-menu ^
+            --win-shortcut
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: TempleApp-Windows
+          path: dist
