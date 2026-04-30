@@ -7,7 +7,7 @@ plugins {
 }
 
 group 'tw.org.il.dongsheng'
-version '0.1.0'
+version '1.0.0'
 
 processResources {
     filesMatching("**/settings.properties") {
