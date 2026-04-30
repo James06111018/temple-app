@@ -23,8 +23,28 @@ jobs:
 
       - name: Read app name
         run: |
-          APP_NAME=$(grep "^app.name=" src/main/resources/settings.properties | cut -d'=' -f2- | xargs)
-          echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV  
+          APP_NAME=$(python3 - <<'PY'
+          import configparser
+          import re
+
+          path = "src/main/resources/settings.properties"
+
+          with open(path, "r", encoding="utf-8") as f:
+              text = f.read()
+
+          match = re.search(r"^app\.name=(.*)$", text, re.MULTILINE)
+          if not match:
+              raise SystemExit("app.name not found")
+
+          value = match.group(1).strip()
+          value = value.encode("utf-8").decode("unicode_escape")
+
+          print(value)
+          PY
+          )
+
+          echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
+          echo "APP_NAME=$APP_NAME"  
 
       - name: Read Gradle version
         run: |

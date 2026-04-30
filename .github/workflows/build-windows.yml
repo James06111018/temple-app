@@ -1,12 +1,13 @@
-name: Build Windows EXE
+name: Release Windows EXE
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
+
+permissions:
+  contents: write
 
 jobs:
-  build-windows:
+  release-windows:
     runs-on: windows-latest
 
     steps:
@@ -46,11 +47,6 @@ jobs:
             --no-header-files ^
             --no-man-pages
 
-      - name: Check JavaFX native dlls
-        shell: powershell
-        run: |
-          Get-ChildItem runtime\bin | Where-Object { $_.Name -match "prism|glass|javafx" } 
-
       - name: Install WiX
         shell: powershell
         run: |
@@ -78,7 +74,7 @@ jobs:
         run: |
           jpackage ^
             --type exe ^
-            --name "%APP_NAME%" ^
+            --name TempleApp ^
             --app-version "%APP_VERSION%" ^
             --input build\libs ^
             --main-jar templeapp.jar ^
@@ -88,10 +84,20 @@ jobs:
             --icon packaging\icon.ico ^
             --dest dist ^
             --win-menu ^
-            --win-shortcut   
+            --win-menu-group "宮廟點燈系統" ^
+            --win-shortcut
 
-      - name: Upload installer
-        uses: actions/upload-artifact@v4
+      - name: Rename exe
+        shell: powershell
+        run: |
+          $exe = Get-ChildItem dist -Filter *.exe | Select-Object -First 1
+          Rename-Item $exe.FullName "TempleApp-Windows-$env:VERSION.exe"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: TempleApp-Windows
-          path: dist
+          tag_name: v${{ env.VERSION }}
+          name: TempleApp v${{ env.VERSION }}
+          files: dist/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
