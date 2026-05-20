@@ -8,7 +8,8 @@
 <?import java.lang.String?>
 <?import tw.org.il.dongsheng.templeapp.util.PaginationBar?>
 <BorderPane fx:controller="tw.org.il.dongsheng.templeapp.LightController" stylesheets="@style.css"
-            xmlns:fx="http://javafx.com/fxml" xmlns="http://javafx.com/javafx">
+            xmlns:fx="http://javafx.com/fxml" xmlns="http://javafx.com/javafx"
+            style="-fx-background-color: #f0f0f0;">
 
     <top>
         <VBox>

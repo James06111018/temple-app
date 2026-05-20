@@ -22,6 +22,9 @@ public class TempleApplication extends Application {
         Scene scene = new Scene(root, 1200, 800, Color.WHITE);
         stage.setTitle(bundle.getString("app.title"));
         stage.setScene(scene);
+        stage.setMaximized(true);
+//        stage.setMinHeight(1000);
+//        stage.setMinWidth(700);
         stage.show();
     }
 

@@ -13,7 +13,8 @@
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tw.org.il.dongsheng.templeapp.TempleController"
-            stylesheets="@style.css">
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
 
     <!-- 🔷 上方 -->
     <top>
