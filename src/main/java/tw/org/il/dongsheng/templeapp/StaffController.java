@@ -16,12 +16,13 @@ public class StaffController {
     public void initialize() {
 
         Map<String, List<String>> areaMap = AreaUtil.getAllTaiwanAreas();
+        cityBox.getItems().add("");
         cityBox.getItems().addAll(areaMap.keySet());
         cityBox.valueProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal != null) {
-                distBox.getItems().clear();
+            distBox.getItems().clear();
+            distBox.getSelectionModel().clearSelection();
+            if (newVal != null && !newVal.isBlank()) {
                 distBox.getItems().addAll(areaMap.get(newVal));
-                distBox.getSelectionModel().selectFirst();
             }
         });
     }

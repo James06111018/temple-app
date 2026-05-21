@@ -92,6 +92,7 @@ public class LightController {
     private LightMember referenceMember;
     private boolean addMode = false;
     private DonationMode donationMode = DonationMode.BROWSE;
+    private boolean loadingMemberData = false;
 
     private String type;
 
@@ -149,12 +150,19 @@ public class LightController {
         });
 
         Map<String, List<String>> areaMap = AreaUtil.getAllTaiwanAreas();
+        cityBox.getItems().add("");
         cityBox.getItems().addAll(areaMap.keySet());
         cityBox.valueProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal != null) {
-                distBox.getItems().clear();
+            distBox.getItems().clear();
+            distBox.getSelectionModel().clearSelection();
+            if (newVal != null && !newVal.isBlank()) {
                 distBox.getItems().addAll(areaMap.get(newVal));
-                distBox.getSelectionModel().selectFirst();
+            }
+        });
+        distBox.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null && !loadingMemberData) {
+                zipCodeField.setText(AreaUtil.getZipCode(newVal));
+                addressField.setText(AreaUtil.getAddressPrefix(cityBox.getValue(), newVal));
             }
         });
 
@@ -417,7 +425,7 @@ public class LightController {
                 nameField.getText(),
                 phoneField.getText(),
                 cityBox.getValue(),
-                distBox.getValue(),
+                AreaUtil.getDistrictName(distBox.getValue()),
                 addressField.getText(),
                 zipCodeField.getText(),
                 birthSunField.getText(),
@@ -774,16 +782,26 @@ public class LightController {
     // 設置上方信眾資料
     private void setMemberData(LightMember member) {
         idField.setText(Util.stringFormat(member.getId()));
-        nameField.setText(member.getName());
-        genderBox.setValue(member.getGender());
-        phoneField.setText(member.getPhone());
-        zipCodeField.setText(member.getZipCode());
-        addressField.setText(member.getAddress());
-        mailBox.setValue(member.getIsMail());
-        birthSunField.setText(member.getBirthDate());
-        birthMoonField.setText(member.getLunarBirthDate());
-        hourField.setText(member.getBirthTime());
-        memberNoteField.setText(member.getNote());
+        loadingMemberData = true;
+        try {
+            nameField.setText(member.getName());
+            genderBox.setValue(member.getGender());
+            phoneField.setText(member.getPhone());
+            cityBox.setValue(member.getCity());
+            if (member.getCity() != null) {
+                String areaText = AreaUtil.findAreaText(member.getCity(), member.getDist());
+                distBox.setValue(areaText != null ? areaText : member.getDist());
+            }
+            zipCodeField.setText(member.getZipCode());
+            addressField.setText(member.getAddress());
+            mailBox.setValue(member.getIsMail());
+            birthSunField.setText(member.getBirthDate());
+            birthMoonField.setText(member.getLunarBirthDate());
+            hourField.setText(member.getBirthTime());
+            memberNoteField.setText(member.getNote());
+        } finally {
+            loadingMemberData = false;
+        }
     }
 
     private void setDonationData(Donation donation) {
