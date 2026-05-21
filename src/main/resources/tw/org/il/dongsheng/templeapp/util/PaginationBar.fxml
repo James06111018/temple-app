@@ -14,18 +14,12 @@
 
     <Label text="第" />
     <TextField fx:id="txtCurrentPage" text="1" prefWidth="45" alignment="CENTER" />
-    <Label fx:id="lblTotalPages" text="/ 0 頁" />
+    <Label fx:id="lblTotalPages" text="/ 0 筆" />
 
     <Separator orientation="VERTICAL" />
 
     <Button fx:id="btnNext" text="&gt;" onAction="#handleNext" />
     <Button fx:id="btnLast" text="&gt;|" onAction="#handleLast" />
 
-    <Separator orientation="VERTICAL" />
-
-    <Label fx:id="lblTotalCount" text="總筆數：0" style="-fx-font-weight: bold;" />
-
-    <Region HBox.hgrow="ALWAYS" /> <Label text="每頁" />
-    <ComboBox fx:id="comboPageSize" prefWidth="80" />
-    <Label text="筆" />
+    <Region HBox.hgrow="ALWAYS" />
 </fx:root>

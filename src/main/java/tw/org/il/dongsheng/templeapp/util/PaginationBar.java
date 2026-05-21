@@ -3,7 +3,6 @@ package tw.org.il.dongsheng.templeapp.util;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
@@ -14,12 +13,11 @@ public class PaginationBar extends HBox {
     @FXML
     private Button btnFirst, btnPrev, btnNext, btnLast;
     @FXML private TextField txtCurrentPage;
-    @FXML private Label lblTotalPages, lblTotalCount;
-    @FXML private ComboBox<Integer> comboPageSize;
+    @FXML private Label lblTotalPages;
 
-    private int currentPage = 0; // 0-based
+    private int currentIndex = 0; // 0-based
     private int totalCount = 0;
-    private Runnable onAction; // 當頁碼改變時要執行的動作（例如去資料庫抓資料）
+    private Runnable onAction; // 當筆次改變時要執行的動作（例如選取表格資料列）
 
     public PaginationBar() {
         // 加載 FXML
@@ -32,61 +30,71 @@ public class PaginationBar extends HBox {
             throw new RuntimeException(exception);
         }
 
-        initComboBox();
-        // 監聽文字框輸入頁碼直接跳轉
-        txtCurrentPage.setOnAction(e -> jumpToPage());
-    }
-
-    private void initComboBox() {
-        comboPageSize.getItems().addAll(20, 50, 100, 200);
-        comboPageSize.setValue(20);
-        comboPageSize.setOnAction(e -> {
-            currentPage = 0; // 更換每頁筆數時回到第一頁
-            if (onAction != null) onAction.run();
-        });
+        // 監聽文字框輸入筆次直接跳轉
+        txtCurrentPage.setOnAction(e -> jumpToRecord());
     }
 
     // 更新 UI 狀態的方法，由 Controller 調用
     public void setTotalCount(int count) {
-        this.totalCount = count;
-        int totalPages = getTotalPages();
-        lblTotalPages.setText("/ " + totalPages + " 頁");
-        lblTotalCount.setText("總筆數：" + totalCount);
+        this.totalCount = Math.max(count, 0);
+        if (totalCount == 0) {
+            currentIndex = 0;
+        } else if (currentIndex >= totalCount) {
+            currentIndex = totalCount - 1;
+        }
+        lblTotalPages.setText("/ " + totalCount + " 筆");
         updateButtonStatus();
     }
 
-    public int getPageSize() { return comboPageSize.getValue(); }
-    public int getCurrentPage() { return currentPage; }
-    public int getOffset() { return currentPage * getPageSize(); } // 直接給 SQL 使用
+    public int getPageSize() { return Math.max(totalCount, 1); }
+    public int getCurrentPage() { return currentIndex; }
+    public int getCurrentIndex() { return currentIndex; }
+    public int getOffset() { return 0; }
+
+    public void setCurrentIndex(int index) {
+        if (totalCount == 0) {
+            currentIndex = 0;
+        } else {
+            currentIndex = Math.max(0, Math.min(index, totalCount - 1));
+        }
+        updateButtonStatus();
+    }
 
     public void setOnAction(Runnable action) { this.onAction = action; }
 
-    @FXML private void handleFirst() { currentPage = 0; onAction.run(); }
-    @FXML private void handlePrev() { currentPage--; onAction.run(); }
-    @FXML private void handleNext() { currentPage++; onAction.run(); }
-    @FXML private void handleLast() { currentPage = getTotalPages() - 1; onAction.run(); }
+    @FXML private void handleFirst() { moveTo(0); }
+    @FXML private void handlePrev() { moveTo(currentIndex - 1); }
+    @FXML private void handleNext() { moveTo(currentIndex + 1); }
+    @FXML private void handleLast() { moveTo(totalCount - 1); }
 
-    private void jumpToPage() {
+    private void jumpToRecord() {
         try {
             int target = Integer.parseInt(txtCurrentPage.getText()) - 1;
-            if (target >= 0 && target < getTotalPages()) {
-                currentPage = target;
-                onAction.run();
+            if (target >= 0 && target < totalCount) {
+                moveTo(target);
+            } else {
+                updateButtonStatus();
             }
-        } catch (Exception e) { txtCurrentPage.setText(String.valueOf(currentPage + 1)); }
+        } catch (Exception e) {
+            updateButtonStatus();
+        }
     }
 
-    private int getTotalPages() {
-        return (int) Math.ceil((double) totalCount / getPageSize());
+    private void moveTo(int index) {
+        setCurrentIndex(index);
+        if (onAction != null) {
+            onAction.run();
+        }
     }
 
     private void updateButtonStatus() {
-        boolean isFirst = (currentPage == 0);
-        boolean isLast = (currentPage >= getTotalPages() - 1 || getTotalPages() == 0);
+        boolean isEmpty = totalCount == 0;
+        boolean isFirst = isEmpty || currentIndex == 0;
+        boolean isLast = isEmpty || currentIndex >= totalCount - 1;
         btnFirst.setDisable(isFirst);
         btnPrev.setDisable(isFirst);
         btnNext.setDisable(isLast);
         btnLast.setDisable(isLast);
-        txtCurrentPage.setText(String.valueOf(currentPage + 1));
+        txtCurrentPage.setText(isEmpty ? "0" : String.valueOf(currentIndex + 1));
     }
 }

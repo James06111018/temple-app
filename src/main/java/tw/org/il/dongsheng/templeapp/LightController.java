@@ -194,7 +194,7 @@ public class LightController {
         });
 
         memberPageBar.setTotalCount(0);
-        memberPageBar.setOnAction(()-> executeMemberSearch());
+        memberPageBar.setOnAction(() -> selectTableRow(memberTable, memberPageBar.getCurrentIndex()));
 
         // 設定每個欄位對應 Donation 類別的屬性名稱 (變數名)
         colReceiptNo.setCellValueFactory(new PropertyValueFactory<>("receiptNo"));
@@ -234,13 +234,7 @@ public class LightController {
         coCreator.setCellValueFactory(new PropertyValueFactory<>("creator"));
 
         donationPageBar.setTotalCount(0);
-        donationPageBar.setOnAction(()-> {
-            try {
-                executeDonationSearch();
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        donationPageBar.setOnAction(() -> selectTableRow(donationTable, donationPageBar.getCurrentIndex()));
     }
 
     public void initData() {
@@ -514,8 +508,9 @@ public class LightController {
             Donation newDonation = donationService.save(donation);
             AlertDialog.showInfo("信眾點燈", "新增捐款作業成功");
             donationTable.getItems().add(0, newDonation);
-//            donationTable.getSelectionModel().select(0);
-            donationTable.scrollTo(0);
+            donationPageBar.setTotalCount(donationTable.getItems().size());
+            donationPageBar.setCurrentIndex(0);
+            selectTableRow(donationTable, 0);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -550,16 +545,16 @@ public class LightController {
                             try {
                                 allMember.clear();
 
-                                int limit = memberPageBar.getPageSize();
-                                int offset = memberPageBar.getOffset();
-
                                 String keyword = member.getAddress();
-                                allMember = lightService.findAllHouse(keyword, limit, offset);
                                 int total = lightService.getMemberCount(keyword);
+                                allMember = lightService.findAllHouse(keyword, Math.max(total, 1), 0);
 
                                 // 把資料塞進表格
                                 memberTable.setItems(Util.toObservableList(allMember));
                                 memberPageBar.setTotalCount(total);
+                                int selectedIndex = Math.max(0, allMember.indexOf(member));
+                                memberPageBar.setCurrentIndex(selectedIndex);
+                                selectTableRow(memberTable, selectedIndex);
 
                                 memberTable.refresh();
 
@@ -585,18 +580,29 @@ public class LightController {
         /**
          * 捐款資料
          */
-        int dLimit = donationPageBar.getPageSize();
-        int dOffset = donationPageBar.getOffset();
         List<Integer> memberIds = allMember.stream()
                 .map(LightMember::getId)
                 .collect(Collectors.toList());
 
-        List<Donation> donations = donationService.findByMemberIds(memberIds, dLimit, dOffset);
         int dTotal = donationService.getDonationCount(memberIds);
+        List<Donation> donations = donationService.findByMemberIds(memberIds, Math.max(dTotal, 1), 0);
         donationTable.setItems(Util.toObservableList(donations));
         donationPageBar.setTotalCount(dTotal);
+        donationPageBar.setCurrentIndex(0);
+        selectTableRow(donationTable, 0);
 
         donationTable.refresh();
+    }
+
+    private <T> void selectTableRow(TableView<T> tableView, int index) {
+        if (tableView.getItems().isEmpty()) {
+            tableView.getSelectionModel().clearSelection();
+            return;
+        }
+
+        int safeIndex = Math.max(0, Math.min(index, tableView.getItems().size() - 1));
+        tableView.getSelectionModel().select(safeIndex);
+        tableView.scrollTo(safeIndex);
     }
 
     // 設置上方信眾資料
