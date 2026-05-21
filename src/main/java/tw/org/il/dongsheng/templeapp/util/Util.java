@@ -24,6 +24,10 @@ public final class Util {
         return s == null || s.trim().isEmpty() || s.trim().isBlank();
     }
 
+    public static String emptyToDefault(String value, String defaultValue) {
+        return isEmpty(value) ? defaultValue : value;
+    }
+
     public static boolean isBlank(String value) {
         return value == null || value.trim().isBlank();
     }

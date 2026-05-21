@@ -64,6 +64,11 @@
     -fx-text-fill: black;
 }
 
+.btn-save-active {
+    -fx-background-color: #FF7F8A;
+    -fx-text-fill: black;
+}
+
 .btn-yellow {
     -fx-background-color: #FFFFCC;
     -fx-text-fill: black;

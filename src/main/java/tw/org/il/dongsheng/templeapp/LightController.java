@@ -11,6 +11,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
 import javafx.stage.Modality;
@@ -65,7 +66,9 @@ public class LightController {
             , otherNoteField, donorNoField, lightNoField, shouldPayField;
     @FXML private DatePicker donateDateField;
 
-    @FXML private Button btnContact, btnWord, btnToggle;
+    @FXML private Button generateIdButton, saveButton, btnContact, btnWord, btnToggle;
+    @FXML private HBox donationButtonBox;
+    @FXML private Button donationPrimaryButton, donationSecondaryButton, donationDeleteButton, donationSupplementButton;
 
     @FXML private SplitPane splitPane;
     private boolean isSplitMember = true;
@@ -86,6 +89,9 @@ public class LightController {
 
     private List<LightMember> allMember = new LinkedList<>(); // 查詢的信眾，所有的家屬(含自已)
     private Map<String, String> categoryMap = new LinkedHashMap<>(); // 捐款類別資料: id, code-name
+    private LightMember referenceMember;
+    private boolean addMode = false;
+    private DonationMode donationMode = DonationMode.BROWSE;
 
     private String type;
 
@@ -198,6 +204,7 @@ public class LightController {
         memberTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 setMemberData(newVal);
+                referenceMember = newVal;
             }
         });
 
@@ -243,6 +250,13 @@ public class LightController {
 
         donationPageBar.setTotalCount(0);
         donationPageBar.setOnAction(() -> selectTableRow(donationTable, donationPageBar.getCurrentIndex()));
+        donationTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (donationMode == DonationMode.EDIT && newVal != null) {
+                setDonationData(newVal);
+            }
+        });
+        setDonationMode(DonationMode.BROWSE);
+        setDonationAvailable(false);
     }
 
     public void initData() {
@@ -322,10 +336,44 @@ public class LightController {
 
     @FXML
     public void onGenerateId() {
+        if (warnIfDonationEditing()) {
+            return;
+        }
+
         try {
             int nextId = lightService.getNextId();
             String result = Util.stringFormat(nextId);
+
+            LightMember previousMember = referenceMember;
+            boolean useReference = false;
+            if (previousMember != null) {
+                useReference = AlertDialog.showConfirm(
+                        "參照地址",
+                        "是否要參照前一位香客的地址和電話資料？\n\n（ " +
+                                Util.emptyToDefault(previousMember.getAddress(), "無地址資料") +
+                                " ）"
+                );
+            }
+
+            clearForm(memberInputGrid);
+            clearForm(donateInputGrid);
+            clearAllErrors();
+            clearDonationErrors();
+
             idField.setText(result);
+            if (useReference) {
+                phoneField.setText(previousMember.getPhone());
+                zipCodeField.setText(previousMember.getZipCode());
+                addressField.setText(previousMember.getAddress());
+            }
+
+            allMember.clear();
+            memberTable.getItems().clear();
+            memberPageBar.setTotalCount(0);
+            memberTable.getSelectionModel().clearSelection();
+            donationTable.getItems().clear();
+            donationPageBar.setTotalCount(0);
+            setAddMode(true);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -333,6 +381,10 @@ public class LightController {
 
     @FXML
     public void onSearch() {
+        if (warnIfDonationEditing()) {
+            return;
+        }
+
         String id = idField.getText();
         String name = nameField.getText();
         String phone = phoneField.getText();
@@ -346,6 +398,10 @@ public class LightController {
 
     @FXML
     public void onSave() {
+        if (warnIfDonationEditing()) {
+            return;
+        }
+
         if (!validateForm()) {
             return;
         }
@@ -394,6 +450,7 @@ public class LightController {
         }
 
         resetUI();
+        setAddMode(false);
     }
 
     private void resetUI() {
@@ -409,11 +466,25 @@ public class LightController {
 
     @FXML
     public void onClearField() {
+        if (warnIfDonationEditing()) {
+            return;
+        }
+
         clearForm(memberInputGrid);
         clearForm(donateInputGrid);
         clearAllErrors();
         clearDonationErrors();
+        allMember.clear();
+        referenceMember = null;
         memberTable.getItems().clear();
+        memberTable.getSelectionModel().clearSelection();
+        donationTable.getItems().clear();
+        donationTable.getSelectionModel().clearSelection();
+        memberPageBar.setTotalCount(0);
+        donationPageBar.setTotalCount(0);
+        setAddMode(false);
+        setDonationMode(DonationMode.BROWSE);
+        setDonationAvailable(false);
     }
 
     @FXML
@@ -473,7 +544,45 @@ public class LightController {
     }
 
     @FXML
-    public void onDonationAdd() {
+    public void onDonationAddMode() {
+        if (!hasSelectedMember()) {
+            return;
+        }
+        clearForm(donateInputGrid);
+        donateDateField.setValue(LocalDate.now());
+        setDonationMode(DonationMode.ADD);
+        donateTypeField.requestFocus();
+        donateTypeField.show();
+    }
+
+    @FXML
+    public void onDonationEditMode() {
+        Donation selectedDonation = donationTable.getSelectionModel().getSelectedItem();
+        if (selectedDonation == null) {
+            AlertDialog.showInfo("信眾點燈", "請先選擇要修改的捐款資料");
+            return;
+        }
+        setDonationData(selectedDonation);
+        setDonationMode(DonationMode.EDIT);
+    }
+
+    @FXML
+    public void onDonationConfirm() {
+        if (donationMode == DonationMode.ADD) {
+            onDonationAdd();
+        } else if (donationMode == DonationMode.EDIT) {
+            onDonationUpdate();
+        }
+    }
+
+    @FXML
+    public void onDonationCancel() {
+        clearForm(donateInputGrid);
+        clearDonationErrors();
+        setDonationMode(DonationMode.BROWSE);
+    }
+
+    private void onDonationAdd() {
         boolean hasId = true;
         String id = idField.getText();
         if (Util.isEmpty(id)) {
@@ -521,11 +630,44 @@ public class LightController {
             donationPageBar.setTotalCount(donationTable.getItems().size());
             donationPageBar.setCurrentIndex(0);
             selectTableRow(donationTable, 0);
+            setDonationMode(DonationMode.BROWSE);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
 
         clearForm(donateInputGrid);
+    }
+
+    private void onDonationUpdate() {
+        Donation selectedDonation = donationTable.getSelectionModel().getSelectedItem();
+        if (selectedDonation == null) {
+            AlertDialog.showInfo("信眾點燈", "請先選擇要修改的捐款資料");
+            return;
+        }
+        if (!validateDonationForm()) {
+            return;
+        }
+
+        selectedDonation.setDonateType(String.valueOf(donateTypeField.getValue().getId()));
+        selectedDonation.setReceiptNo(receiptNoField.getText());
+        selectedDonation.setDonateDate(donateDateField.getValue().format(dateFormatter));
+        selectedDonation.setExtraNo(extraNoField.getText());
+        selectedDonation.setAmount(Util.parseInteger(amountField.getText()));
+        selectedDonation.setSummary(summaryField.getText());
+        selectedDonation.setDonateNote(donateNoteField.getText());
+        selectedDonation.setOtherNote(otherNoteField.getText());
+        selectedDonation.setDonorNo(donorNoField.getText());
+        selectedDonation.setLightNo(lightNoField.getText());
+        selectedDonation.setShouldPay(Util.parseInteger(shouldPayField.getText()));
+
+        try {
+            donationService.update(selectedDonation);
+            AlertDialog.showInfo("信眾點燈", "修改捐款作業成功");
+            donationTable.refresh();
+            setDonationMode(DonationMode.BROWSE);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @FXML
@@ -557,7 +699,9 @@ public class LightController {
             }
 
             LightMember member = matches.get(0);
+            referenceMember = member;
             setMemberData(member);
+            setAddMode(false);
 
             // 查到資料後，再以地址帶出同戶家屬(含查詢的人)與捐款資料
             allMember.clear();
@@ -593,6 +737,7 @@ public class LightController {
         donationPageBar.setTotalCount(dTotal);
         donationPageBar.setCurrentIndex(0);
         selectTableRow(donationTable, 0);
+        setDonationAvailable(true);
 
         donationTable.refresh();
     }
@@ -623,9 +768,135 @@ public class LightController {
         memberNoteField.setText(member.getNote());
     }
 
+    private void setDonationData(Donation donation) {
+        selectDonationCategory(donation.getDonateType());
+        receiptNoField.setText(donation.getReceiptNo());
+        donateDateField.setValue(parseDonationDate(donation.getDonateDate()));
+        extraNoField.setText(donation.getExtraNo());
+        amountField.setText(donation.getAmount() == null ? "" : String.valueOf(donation.getAmount()));
+        summaryField.setText(donation.getSummary());
+        donateNoteField.setText(donation.getDonateNote());
+        otherNoteField.setText(donation.getOtherNote());
+        donorNoField.setText(donation.getDonorNo());
+        lightNoField.setText(donation.getLightNo());
+        shouldPayField.setText(donation.getShouldPay() == null ? "" : String.valueOf(donation.getShouldPay()));
+    }
+
     private void openKeypad(TextField target, String value) {
         if (target == null) return;
         target.setText(value);
+    }
+
+    private void setAddMode(boolean addMode) {
+        this.addMode = addMode;
+        if (addMode) {
+            setDonationAvailable(false);
+        }
+
+        saveButton.getStyleClass().removeAll("btn-purple", "btn-save-active");
+        saveButton.getStyleClass().add(addMode ? "btn-save-active" : "btn-purple");
+    }
+
+    private boolean hasSelectedMember() {
+        return !Util.isEmpty(idField.getText()) && !memberTable.getItems().isEmpty();
+    }
+
+    private boolean warnIfDonationEditing() {
+        if (donationMode == DonationMode.BROWSE) {
+            return false;
+        }
+
+        AlertDialog.showWarning("信眾點燈", "捐款作業進行中，請先取消，才能操作其他功能！");
+        return true;
+    }
+
+    private void setDonationAvailable(boolean available) {
+        donationPrimaryButton.setDisable(!available);
+        donationSecondaryButton.setDisable(!available);
+        donationDeleteButton.setDisable(!available);
+        donationSupplementButton.setDisable(!available);
+        setDonationFieldsEditable(false);
+    }
+
+    private void setDonationMode(DonationMode mode) {
+        donationMode = mode;
+        boolean editing = mode != DonationMode.BROWSE;
+
+        memberInputGrid.setDisable(editing);
+        memberTable.setDisable(editing);
+        memberPageBar.setDisable(editing);
+        donationTable.setDisable(editing);
+        donationPageBar.setDisable(editing);
+
+        donationPrimaryButton.setText(editing ? "確認" : "新增");
+        donationSecondaryButton.setText(editing ? "取消" : "修改");
+        donationPrimaryButton.setOnAction(editing ? event -> onDonationConfirm() : event -> onDonationAddMode());
+        donationSecondaryButton.setOnAction(editing ? event -> onDonationCancel() : event -> onDonationEditMode());
+        donationDeleteButton.setDisable(editing || !hasSelectedMember());
+        donationSupplementButton.setDisable(editing || !hasSelectedMember());
+
+        donationPrimaryButton.getStyleClass().removeAll("btn-purple", "btn-save-active");
+        donationSecondaryButton.getStyleClass().removeAll("btn-purple", "btn-save-active");
+        donationPrimaryButton.getStyleClass().add(editing ? "btn-save-active" : "btn-purple");
+        donationSecondaryButton.getStyleClass().add(editing ? "btn-save-active" : "btn-purple");
+
+        setDonationFieldsEditable(editing);
+        if (mode == DonationMode.ADD) {
+            receiptNoField.setDisable(true);
+            donateDateField.setDisable(true);
+            donorNoField.setDisable(true);
+            lightNoField.setDisable(true);
+        } else if (mode == DonationMode.EDIT) {
+            donateTypeField.setDisable(true);
+            receiptNoField.setDisable(true);
+            extraNoField.setDisable(true);
+            donorNoField.setDisable(true);
+            lightNoField.setDisable(true);
+            shouldPayField.setDisable(true);
+        }
+    }
+
+    private void setDonationFieldsEditable(boolean editable) {
+        donateTypeField.setDisable(!editable);
+        receiptNoField.setDisable(!editable);
+        donateDateField.setDisable(!editable);
+        extraNoField.setDisable(!editable);
+        amountField.setDisable(!editable);
+        summaryField.setDisable(!editable);
+        donateNoteField.setDisable(!editable);
+        otherNoteField.setDisable(!editable);
+        donorNoField.setDisable(!editable);
+        lightNoField.setDisable(!editable);
+        shouldPayField.setDisable(!editable);
+    }
+
+    private void selectDonationCategory(String categoryId) {
+        if (categoryId == null) {
+            donateTypeField.getSelectionModel().clearSelection();
+            return;
+        }
+        donateTypeField.getItems().stream()
+                .filter(category -> String.valueOf(category.getId()).equals(categoryId))
+                .findFirst()
+                .ifPresent(category -> donateTypeField.getSelectionModel().select(category));
+    }
+
+    private LocalDate parseDonationDate(String value) {
+        try {
+            return Util.isEmpty(value) ? null : LocalDate.parse(value, dateFormatter);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public void onBlockedDuringDonation() {
+        warnIfDonationEditing();
+    }
+
+    private enum DonationMode {
+        BROWSE,
+        ADD,
+        EDIT
     }
 
     private void updateToggleButtonStyle() {
@@ -714,7 +985,7 @@ public class LightController {
             valid = false;
         }
 
-        if (Util.isEmpty(receiptNoField.getText())) {
+        if (donationMode == DonationMode.EDIT && Util.isEmpty(receiptNoField.getText())) {
             setError(receiptNoField, "請輸入收據編號");
             valid = false;
         }

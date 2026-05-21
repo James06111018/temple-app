@@ -14,17 +14,17 @@
     <top>
         <VBox>
             <ToolBar style="-fx-background-color: #f0f0f0;">
-                <Button styleClass="btn-action" text="新增電腦編號" onAction="#onGenerateId" />
+                <Button fx:id="generateIdButton" styleClass="btn-action" text="新增電腦編號" onAction="#onGenerateId" />
                 <Button fx:id="saveButton" styleClass="btn-purple" text="存檔" onAction="#onSave" />
-                <Button fx:id="delButton" styleClass="btn-purple" text="刪除" />
+                <Button fx:id="delButton" styleClass="btn-purple" text="刪除" onAction="#onBlockedDuringDonation" />
                 <Button fx:id="searchButton" styleClass="btn-purple" text="查詢" onAction="#onSearch"/>
                 <Button fx:id="clearButton" styleClass="btn-purple" text="欄位淨空" onAction="#onClearField"/>
-                <Button fx:id="totalAmountButton" styleClass="btn-purple" text="總金額" />
+                <Button fx:id="totalAmountButton" styleClass="btn-purple" text="總金額" onAction="#onBlockedDuringDonation" />
                 <Separator orientation="VERTICAL" />
-                <Button fx:id="prevButton" styleClass="btn-yellow" text="上筆" />
-                <Button fx:id="nextButton" styleClass="btn-yellow" text="下筆" />
-                <Button fx:id="allLightButton" styleClass="btn-highlight" text="全戶點燈" />
-                <Button fx:id="manageButton" styleClass="btn-pink" text="管理"/>
+                <Button fx:id="prevButton" styleClass="btn-yellow" text="上筆" onAction="#onBlockedDuringDonation" />
+                <Button fx:id="nextButton" styleClass="btn-yellow" text="下筆" onAction="#onBlockedDuringDonation" />
+                <Button fx:id="allLightButton" styleClass="btn-highlight" text="全戶點燈" onAction="#onBlockedDuringDonation" />
+                <Button fx:id="manageButton" styleClass="btn-pink" text="管理" onAction="#onBlockedDuringDonation"/>
             </ToolBar>
         </VBox>
     </top>
@@ -243,11 +243,11 @@
                         <Label text="應繳金額" GridPane.rowIndex="10" GridPane.columnIndex="0" />
                         <TextField fx:id="shouldPayField" GridPane.rowIndex="10" GridPane.columnIndex="1" style="-fx-text-fill: red; -fx-font-weight: bold;" />
 
-                        <HBox spacing="5" style="-fx-padding: 10 0 0 0;" GridPane.rowIndex="11" GridPane.columnIndex="0" GridPane.columnSpan="4">
-                            <Button prefWidth="60" maxWidth="Infinity" text="新增" styleClass="btn-purple" onAction="#onDonationAdd"/>
-                            <Button prefWidth="60" maxWidth="Infinity" text="修改" styleClass="btn-purple"/>
-                            <Button prefWidth="60" maxWidth="Infinity" text="刪除" styleClass="btn-purple"/>
-                            <Button prefWidth="60" maxWidth="Infinity" text="補據" styleClass="btn-purple"/>
+                        <HBox fx:id="donationButtonBox" spacing="5" style="-fx-padding: 10 0 0 0;" GridPane.rowIndex="11" GridPane.columnIndex="0" GridPane.columnSpan="4">
+                            <Button fx:id="donationPrimaryButton" prefWidth="60" maxWidth="Infinity" text="新增" styleClass="btn-purple" onAction="#onDonationAddMode"/>
+                            <Button fx:id="donationSecondaryButton" prefWidth="60" maxWidth="Infinity" text="修改" styleClass="btn-purple" onAction="#onDonationEditMode"/>
+                            <Button fx:id="donationDeleteButton" prefWidth="60" maxWidth="Infinity" text="刪除" styleClass="btn-purple"/>
+                            <Button fx:id="donationSupplementButton" prefWidth="60" maxWidth="Infinity" text="補據" styleClass="btn-purple"/>
                         </HBox>
                     </GridPane>
                 </TitledPane>
