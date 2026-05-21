@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane prefWidth="900" prefHeight="520"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.WordInfoController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
+    <center>
+        <TabPane fx:id="wordTabPane" tabClosingPolicy="UNAVAILABLE" />
+    </center>
+    <bottom>
+        <HBox alignment="CENTER_LEFT" style="-fx-padding: 10 18 10 18;">
+            <Button text="列印" prefWidth="90" styleClass="btn-purple" onAction="#onPrint" />
+            <Label fx:id="platformHintLabel" style="-fx-padding: 0 0 0 16;" />
+            <Region HBox.hgrow="ALWAYS" />
+            <Button text="更新" prefWidth="90" styleClass="btn-pink" onAction="#onUpdate" />
+        </HBox>
+    </bottom>
+</BorderPane>

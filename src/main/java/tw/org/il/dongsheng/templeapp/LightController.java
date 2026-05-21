@@ -544,6 +544,24 @@ public class LightController {
     }
 
     @FXML
+    public void onOpenWordInfo() throws IOException {
+        FXMLLoader loader = new FXMLLoader(
+                getClass().getResource("word-info.fxml")
+        );
+
+        Parent root = loader.load();
+        WordInfoController controller = loader.getController();
+        controller.setOnSelected(value -> nameField.appendText(value));
+
+        Stage stage = new Stage();
+        stage.setTitle("造字資訊");
+        stage.setScene(new Scene(root));
+        stage.initModality(Modality.APPLICATION_MODAL);
+
+        stage.showAndWait();
+    }
+
+    @FXML
     public void onDonationAddMode() {
         if (!hasSelectedMember()) {
             return;
