@@ -96,6 +96,10 @@ public class LightController {
     public void initialize() {
         System.out.println("View LightController 初始化中...");
 
+        idField.setOnAction(event -> onSearch());
+        nameField.setOnAction(event -> onSearch());
+        phoneField.setOnAction(event -> onSearch());
+
         UnaryOperator<TextFormatter.Change> dateFilter = change -> {
             String text = change.getControlNewText();
             if (text.matches("\\d{0,3}(\\.\\d{0,2}){0,2}")) {
@@ -325,9 +329,11 @@ public class LightController {
 
     @FXML
     public void onSearch() {
+        String id = idField.getText();
         String name = nameField.getText();
-        if( name.isEmpty() || name.isBlank()) {
-            AlertDialog.showInfo("信眾點燈", "請輸入欲查詢姓名");
+        String phone = phoneField.getText();
+        if(Util.isEmpty(id) && Util.isEmpty(name) && Util.isEmpty(phone)) {
+            AlertDialog.showInfo("信眾點燈", "請至少輸入電腦編號、姓名或電話其中一項");
             return;
         }
 
@@ -532,45 +538,38 @@ public class LightController {
     }
 
     private void executeMemberSearch() {
+        String id = idField.getText();
         String name = nameField.getText();
+        String phone = phoneField.getText();
         try {
-            Optional<LightMember> list = lightService.findByName(name);
-            if (list.isPresent()) {
-                list.ifPresentOrElse(
-                        member -> {
-                            setMemberData(member);
-
-                            // todo 查到資料後，再去查一次家屬資料(依地址or電話?)
-                            // 家屬(含查詢的人)、捐款資料
-                            try {
-                                allMember.clear();
-
-                                String keyword = member.getAddress();
-                                int total = lightService.getMemberCount(keyword);
-                                allMember = lightService.findAllHouse(keyword, Math.max(total, 1), 0);
-
-                                // 把資料塞進表格
-                                memberTable.setItems(Util.toObservableList(allMember));
-                                memberPageBar.setTotalCount(total);
-                                int selectedIndex = Math.max(0, allMember.indexOf(member));
-                                memberPageBar.setCurrentIndex(selectedIndex);
-                                selectTableRow(memberTable, selectedIndex);
-
-                                memberTable.refresh();
-
-                                executeDonationSearch();
-
-                            } catch (SQLException e) {
-                                throw new RuntimeException(e);
-                            }
-                        },
-                        ()-> {}
-                );
-            } else {
+            List<LightMember> matches = lightService.search(id, name, phone);
+            if (matches.isEmpty()) {
                 memberTable.getItems().clear();
-                clearForm(memberInputGrid);
+                memberPageBar.setTotalCount(0);
+                donationTable.getItems().clear();
+                donationPageBar.setTotalCount(0);
                 AlertDialog.showInfo("信眾點燈", "查無信眾資料");
+                return;
             }
+
+            LightMember member = matches.get(0);
+            setMemberData(member);
+
+            // 查到資料後，再以地址帶出同戶家屬(含查詢的人)與捐款資料
+            allMember.clear();
+            String keyword = member.getAddress();
+            int total = lightService.getMemberCount(keyword);
+            allMember = lightService.findAllHouse(keyword, Math.max(total, 1), 0);
+
+            memberTable.setItems(Util.toObservableList(allMember));
+            memberPageBar.setTotalCount(total);
+            int selectedIndex = Math.max(0, allMember.indexOf(member));
+            memberPageBar.setCurrentIndex(selectedIndex);
+            selectTableRow(memberTable, selectedIndex);
+
+            memberTable.refresh();
+
+            executeDonationSearch();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

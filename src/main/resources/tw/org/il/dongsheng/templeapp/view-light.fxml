@@ -45,7 +45,7 @@
                     </columnConstraints>
 
                     <Label text="電腦編號" GridPane.columnIndex="0" GridPane.rowIndex="0" />
-                    <TextField fx:id="idField" editable="false" style="-fx-background-color: #ffffcc;" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+                    <TextField fx:id="idField" GridPane.columnIndex="1" GridPane.rowIndex="0" />
 
                     <Label text="姓名" GridPane.columnIndex="2" GridPane.rowIndex="0" />
                     <HBox spacing="2" GridPane.columnIndex="3" GridPane.rowIndex="0">

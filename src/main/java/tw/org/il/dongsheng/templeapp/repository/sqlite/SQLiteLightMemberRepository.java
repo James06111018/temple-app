@@ -2,6 +2,7 @@ package tw.org.il.dongsheng.templeapp.repository.sqlite;
 
 import tw.org.il.dongsheng.templeapp.model.LightMember;
 import tw.org.il.dongsheng.templeapp.repository.LightMemberRepository;
+import tw.org.il.dongsheng.templeapp.util.Util;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -137,6 +138,43 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
             }
         }
         return Optional.empty();
+    }
+
+    @Override
+    public List<LightMember> search(String id, String name, String phone) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT * FROM " + TABLE_NAME + " WHERE 1 = 1");
+        List<String> params = new ArrayList<>();
+
+        if (!Util.isBlank(id)) {
+            sql.append(" AND (CAST(id AS TEXT) LIKE ? OR printf('%07d', id) LIKE ?)");
+            String normalizedId = id.trim();
+            params.add("%" + Util.trimLeadingZeros(normalizedId) + "%");
+            params.add("%" + normalizedId + "%");
+        }
+        if (!Util.isBlank(name)) {
+            sql.append(" AND name LIKE ?");
+            params.add("%" + name.trim() + "%");
+        }
+        if (!Util.isBlank(phone)) {
+            sql.append(" AND phone LIKE ?");
+            params.add("%" + phone.trim() + "%");
+        }
+
+        sql.append(" ORDER BY id DESC");
+        List<LightMember> members = new ArrayList<>();
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                statement.setString(i + 1, params.get(i));
+            }
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    members.add(mapRow(resultSet));
+                }
+            }
+        }
+        return members;
     }
 
     @Override

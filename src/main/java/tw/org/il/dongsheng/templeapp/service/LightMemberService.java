@@ -23,6 +23,10 @@ public class LightMemberService {
         return repo.findByName(name);
     }
 
+    public List<LightMember> search(String id, String name, String phone) throws SQLException {
+        return repo.search(id, name, phone);
+    }
+
     public List<LightMember> findAllHouse(String keyword, int limit, int offset) throws SQLException {
         return repo.findByAddress(keyword, limit, offset);
     }

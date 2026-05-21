@@ -20,6 +20,8 @@ public interface LightMemberRepository {
 
     Optional<LightMember> findByName(String name) throws SQLException;
 
+    List<LightMember> search(String id, String name, String phone) throws SQLException;
+
     List<LightMember> findByAddress(String keyword, int limit, int offset) throws SQLException;
     int getMemberCount(String keyword) throws SQLException;
     List<LightMember> findAll() throws SQLException;

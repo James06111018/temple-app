@@ -24,6 +24,15 @@ public final class Util {
         return s == null || s.trim().isEmpty() || s.trim().isBlank();
     }
 
+    public static boolean isBlank(String value) {
+        return value == null || value.trim().isBlank();
+    }
+
+    public static String trimLeadingZeros(String value) {
+        String result = value.replaceFirst("^0+", "");
+        return result.isEmpty() ? "0" : result;
+    }
+
     public static Integer parseInteger(String text) {
         try {
             if (text == null || text.trim().isEmpty()) {
