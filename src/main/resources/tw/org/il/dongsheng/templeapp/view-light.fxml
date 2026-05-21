@@ -146,19 +146,22 @@
                         <VBox spacing="5" minWidth="0">
                             <TableView fx:id="memberTable">
                                 <columns>
-                                    <TableColumn fx:id="colId" text="電腦編號" prefWidth="60"  />
-                                    <TableColumn fx:id="colName" text="姓名" prefWidth="90" />
-                                    <TableColumn fx:id="colMail" text="郵寄" prefWidth="30" />
-                                    <TableColumn fx:id="colSolar" text="國曆生日" prefWidth="60" />
-                                    <TableColumn fx:id="colLunar" text="農曆生日" prefWidth="60" />
-                                    <TableColumn fx:id="colAge" text="年齡" prefWidth="30" />
-                                    <TableColumn fx:id="colZodiac" text="生肖" prefWidth="30" />
-                                    <TableColumn fx:id="colEra" text="歲次" prefWidth="30" />
-                                    <TableColumn fx:id="colHour" text="時辰" prefWidth="30" />
-                                    <TableColumn fx:id="colGender" text="性別" prefWidth="30" />
+                                    <TableColumn fx:id="colId" text="電腦編號" minWidth="70" prefWidth="70" />
+                                    <TableColumn fx:id="colName" text="姓名" minWidth="90" prefWidth="90" />
+                                    <TableColumn fx:id="colMail" text="郵寄" minWidth="45" prefWidth="45" />
+                                    <TableColumn fx:id="colSolar" text="國曆生日" minWidth="90" prefWidth="90" />
+                                    <TableColumn fx:id="colLunar" text="農曆生日" minWidth="90" prefWidth="90" />
+                                    <TableColumn fx:id="colAge" text="年齡" minWidth="45" prefWidth="45" />
+                                    <TableColumn fx:id="colZodiac" text="生肖" minWidth="45" prefWidth="45" />
+                                    <TableColumn fx:id="colEra" text="歲次" minWidth="55" prefWidth="55" />
+                                    <TableColumn fx:id="colHour" text="時辰" minWidth="45" prefWidth="45" />
+                                    <TableColumn fx:id="colGender" text="性別" minWidth="45" prefWidth="45" />
+                                    <TableColumn fx:id="colAddress" text="地址" minWidth="260" prefWidth="260" />
+                                    <TableColumn fx:id="colPhone" text="電話" minWidth="110" prefWidth="110" />
+                                    <TableColumn fx:id="colZipCode" text="郵遞區號" minWidth="80" prefWidth="80" />
                                 </columns>
                                 <columnResizePolicy>
-                                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+                                    <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY" />
                                 </columnResizePolicy>
                             </TableView>
                             <PaginationBar fx:id="memberPageBar"/>

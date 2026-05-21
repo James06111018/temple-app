@@ -72,7 +72,8 @@ public class LightController {
 
     @FXML
     private TableView<LightMember> memberTable;
-    @FXML private TableColumn<LightMember, String> colName, colMail, colSolar, colLunar, colZodiac, colEra, colHour, colGender;
+    @FXML private TableColumn<LightMember, String> colName, colMail, colSolar, colLunar, colZodiac, colEra, colHour, colGender
+            , colAddress, colPhone, colZipCode;
     @FXML private TableColumn<LightMember, Integer> colId, colAge;
 
     @FXML
@@ -190,6 +191,9 @@ public class LightController {
         colEra.setCellValueFactory(new PropertyValueFactory<>("zodiacYear"));
         colHour.setCellValueFactory(new PropertyValueFactory<>("birthTime"));
         colGender.setCellValueFactory(new PropertyValueFactory<>("gender"));
+        colAddress.setCellValueFactory(new PropertyValueFactory<>("address"));
+        colPhone.setCellValueFactory(new PropertyValueFactory<>("phone"));
+        colZipCode.setCellValueFactory(new PropertyValueFactory<>("zipCode"));
 
         memberTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {

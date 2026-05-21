@@ -21,6 +21,8 @@
 .table-view .table-cell {
     -fx-alignment: CENTER-LEFT;
     -fx-padding: 0 0 0 5; /* 上 右 下 左，左邊留 5px 比較美觀 */
+    -fx-border-color: #777777;
+    -fx-border-width: 0 1 1 0;
 }
 
 /* 如果你想連標頭 (Header) 也一起靠左 */
@@ -53,7 +55,7 @@
 }
 
 .btn-purple {
-    -fx-background-color: #9792C5;
+    -fx-background-color: #B8B5F2;
     -fx-text-fill: black;
 }
 
@@ -106,17 +108,22 @@
 }
 
 .table-row-cell:even {
-    -fx-background-color: #EDE7F6;
+    -fx-background-color: #B8B5F2;
     -fx-background-insets: 0;
 }
 
 .table-row-cell:selected,
 .table-row-cell:focused:selected {
-    -fx-background-color: lightgray;
+    -fx-background-color: #00A9E8;
 }
 
+.table-row-cell:selected .table-cell,
+.table-row-cell:focused:selected .table-cell,
 .table-cell:selected {
-    -fx-background-color: lightgray;
+    -fx-background-color: #00A9E8;
+    -fx-border-color: #777777;
+    -fx-border-width: 0 1 1 0;
+    -fx-text-fill: white;
 }
 
 .titled-pane > .title {
@@ -124,4 +131,3 @@
     -fx-background-insets: 0, 1, 2;
     -fx-background-radius: 5 5 0 0; /* 圓角設定 */
 }
-
