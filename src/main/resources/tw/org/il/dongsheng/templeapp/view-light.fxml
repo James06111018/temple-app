@@ -19,12 +19,12 @@
                 <Button fx:id="delButton" styleClass="btn-purple" text="刪除" onAction="#onBlockedDuringDonation" />
                 <Button fx:id="searchButton" styleClass="btn-purple" text="查詢" onAction="#onSearch"/>
                 <Button fx:id="clearButton" styleClass="btn-purple" text="欄位淨空" onAction="#onClearField"/>
-                <Button fx:id="totalAmountButton" styleClass="btn-purple" text="總金額" onAction="#onBlockedDuringDonation" />
+                <Button fx:id="totalAmountButton" styleClass="btn-purple" text="總金額" onAction="#onOpenTotalAmount" />
                 <Separator orientation="VERTICAL" />
                 <Button fx:id="prevButton" styleClass="btn-yellow" text="上筆" onAction="#onBlockedDuringDonation" />
                 <Button fx:id="nextButton" styleClass="btn-yellow" text="下筆" onAction="#onBlockedDuringDonation" />
-                <Button fx:id="allLightButton" styleClass="btn-highlight" text="全戶點燈" onAction="#onBlockedDuringDonation" />
-                <Button fx:id="manageButton" styleClass="btn-pink" text="管理" onAction="#onBlockedDuringDonation"/>
+                <Button fx:id="allLightButton" styleClass="btn-highlight" text="全戶點燈" onAction="#onOpenHouseholdLight" />
+                <Button fx:id="manageButton" styleClass="btn-pink" text="管理" onAction="#onOpenLightDataManagement"/>
             </ToolBar>
         </VBox>
     </top>

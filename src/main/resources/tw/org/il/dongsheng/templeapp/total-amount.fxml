@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane prefWidth="570" prefHeight="300"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.TotalAmountController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
+    <center>
+        <GridPane hgap="8" vgap="14" style="-fx-padding: 40 28 24 60;">
+            <columnConstraints>
+                <ColumnConstraints halignment="RIGHT" minWidth="92" />
+                <ColumnConstraints minWidth="86" />
+                <ColumnConstraints halignment="CENTER" minWidth="24" />
+                <ColumnConstraints minWidth="118" />
+                <ColumnConstraints minWidth="28" />
+                <ColumnConstraints minWidth="124" />
+            </columnConstraints>
+
+            <Label text="電腦編號" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+            <TextField fx:id="memberIdField" prefWidth="82" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+
+            <Label text="收入(+)" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+            <TextField text="9" alignment="CENTER_RIGHT" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+            <Label text="筆" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+            <TextField text="2700" alignment="CENTER_RIGHT" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+            <Button text="明細表" styleClass="btn-orange" prefWidth="124" prefHeight="38" onAction="#onPlaceholderAction" GridPane.columnIndex="5" GridPane.rowIndex="2" />
+
+            <Label text="支付(-)" GridPane.columnIndex="0" GridPane.rowIndex="3" />
+            <TextField text="0" alignment="CENTER_RIGHT" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+            <Label text="筆" GridPane.columnIndex="2" GridPane.rowIndex="3" />
+            <TextField text="0" alignment="CENTER_RIGHT" GridPane.columnIndex="3" GridPane.rowIndex="3" />
+            <Button text="分類表" styleClass="btn-orange" prefWidth="124" prefHeight="38" onAction="#onPlaceholderAction" GridPane.columnIndex="5" GridPane.rowIndex="3" />
+
+            <Label text="總計" GridPane.columnIndex="0" GridPane.rowIndex="4" />
+            <TextField text="9" alignment="CENTER_RIGHT" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+            <Label text="筆" GridPane.columnIndex="2" GridPane.rowIndex="4" />
+            <TextField text="2700" alignment="CENTER_RIGHT" GridPane.columnIndex="3" GridPane.rowIndex="4" />
+            <Button text="統計表" styleClass="btn-orange" prefWidth="124" prefHeight="38" onAction="#onPlaceholderAction" GridPane.columnIndex="5" GridPane.rowIndex="4" />
+        </GridPane>
+    </center>
+</BorderPane>

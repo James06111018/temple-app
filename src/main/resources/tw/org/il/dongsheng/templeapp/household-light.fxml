@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane prefWidth="1220" prefHeight="670"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.HouseholdLightController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
+    <center>
+        <VBox spacing="12" style="-fx-padding: 16 12 12 12;">
+            <TableView prefHeight="505" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn text="" prefWidth="28" />
+                    <TableColumn text="電腦編號" prefWidth="92" />
+                    <TableColumn text="姓名" prefWidth="104" />
+                    <TableColumn text="生肖" prefWidth="54" />
+                    <TableColumn text="年齡" prefWidth="54" />
+                    <TableColumn text="安太歲" prefWidth="72" />
+                    <TableColumn text="光明燈" prefWidth="72" />
+                    <TableColumn text="虎爺燈" prefWidth="72" />
+                    <TableColumn text="媽祖燈" prefWidth="72" />
+                    <TableColumn text="媽祖內殿燈" prefWidth="104" />
+                    <TableColumn text="宮燈" prefWidth="62" />
+                    <TableColumn text="註生內殿燈" prefWidth="104" />
+                    <TableColumn text="福德內殿燈" prefWidth="104" />
+                    <TableColumn text="三界公燈" prefWidth="88" />
+                    <TableColumn text="建議事項" prefWidth="124" />
+                    <TableColumn text="本年度點燈資訊" prefWidth="300" />
+                </columns>
+            </TableView>
+
+            <HBox spacing="6" alignment="CENTER_LEFT">
+                <Button text="|◀" />
+                <Button text="◀" />
+                <TextField text="1" alignment="CENTER_RIGHT" prefWidth="62" />
+                <Label text="總筆數： 8" />
+                <Button text="▶" />
+                <Button text="▶|" />
+                <Button text="◀" />
+                <TextField prefWidth="90" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Button text="▶" />
+            </HBox>
+
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <Label text="收據代表人" />
+                <ComboBox fx:id="collectorBox" prefWidth="180" />
+                <Label text="油香" />
+                <TextField prefWidth="100" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Button text="確定" styleClass="btn-orange" prefWidth="170" prefHeight="40" onAction="#onPlaceholderAction" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Label text="補登日期" />
+                <TextField prefWidth="90" />
+                <Label text="補登號碼" />
+                <TextField prefWidth="110" />
+            </HBox>
+        </VBox>
+    </center>
+</BorderPane>

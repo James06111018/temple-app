@@ -958,6 +958,48 @@ public class LightController {
         warnIfDonationEditing();
     }
 
+    @FXML
+    public void onOpenLightDataManagement() throws IOException {
+        if (warnIfDonationEditing()) {
+            return;
+        }
+        openModal("light-data-management.fxml", "信眾點燈資料管理", 1180, 670);
+    }
+
+    @FXML
+    public void onOpenTotalAmount() throws IOException {
+        if (warnIfDonationEditing()) {
+            return;
+        }
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("total-amount.fxml"));
+        Parent root = loader.load();
+        TotalAmountController controller = loader.getController();
+        controller.setMemberId(idField.getText());
+        showModal(root, "總金額", 570, 300);
+    }
+
+    @FXML
+    public void onOpenHouseholdLight() throws IOException {
+        if (warnIfDonationEditing()) {
+            return;
+        }
+        openModal("household-light.fxml", "全戶點燈", 1220, 670);
+    }
+
+    private void openModal(String fxml, String title, double width, double height) throws IOException {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource(fxml));
+        Parent root = loader.load();
+        showModal(root, title, width, height);
+    }
+
+    private void showModal(Parent root, String title, double width, double height) {
+        Stage stage = new Stage();
+        stage.setTitle(title);
+        stage.setScene(new Scene(root, width, height));
+        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.showAndWait();
+    }
+
     private enum DonationMode {
         BROWSE,
         ADD,
