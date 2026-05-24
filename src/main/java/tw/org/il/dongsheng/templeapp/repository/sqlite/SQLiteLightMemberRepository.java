@@ -49,6 +49,16 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
              Statement statement = connection.createStatement()) {
 //            statement.execute(dropSql);
             statement.execute(sql);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS light_member_audits (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        member_id INTEGER,
+                        action TEXT NOT NULL,
+                        changed_by TEXT,
+                        changed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        snapshot TEXT
+                    )
+                    """);
         }
     }
 
@@ -70,6 +80,7 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
                 }
             }
         }
+        saveAudit(member.getId(), "CREATE", "LOGIN", member.toString());
 
         return member;
     }
@@ -86,11 +97,16 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
                 "ding = ?, kou = ?, is_mail = ?, gender = ? " +
                 "WHERE id = ?";
 
+        Optional<LightMember> before = findById(member.getId());
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             setCommonFields(statement, member);
             statement.setObject(21, member.getId());
-            return statement.executeUpdate() > 0;
+            boolean updated = statement.executeUpdate() > 0;
+            if (updated) {
+                saveAudit(member.getId(), "UPDATE", "LOGIN", "before=" + before.map(LightMember::toString).orElse("") + "\nafter=" + member);
+            }
+            return updated;
         }
     }
 
@@ -264,6 +280,21 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
         statement.setObject(18, member.getKou());
         statement.setString(19, member.getIsMail());
         statement.setString(20, member.getGender());
+    }
+
+    private void saveAudit(Integer memberId, String action, String changedBy, String snapshot) throws SQLException {
+        String sql = """
+                INSERT INTO light_member_audits (member_id, action, changed_by, snapshot)
+                VALUES (?, ?, ?, ?)
+                """;
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setObject(1, memberId);
+            statement.setString(2, action);
+            statement.setString(3, changedBy);
+            statement.setString(4, snapshot);
+            statement.executeUpdate();
+        }
     }
 
     private LightMember mapRow(ResultSet resultSet) throws SQLException {

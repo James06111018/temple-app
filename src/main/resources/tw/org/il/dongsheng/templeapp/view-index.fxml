@@ -16,7 +16,7 @@
                 <MenuItem text="印表機設定"/>
             </Menu>
             <Menu text="工具(T)">
-                <MenuItem text="捐款類別" onAction="#handelDonationCategory" />
+                <MenuItem text="詞彙設定" onAction="#handleDictionary" />
             </Menu>
             <Menu fx:id="menuWindow" text="視窗(W)"/>
             <Menu text="關於(A)">

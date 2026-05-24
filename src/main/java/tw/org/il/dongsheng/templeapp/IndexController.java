@@ -9,6 +9,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -25,6 +26,7 @@ public class IndexController {
     @FXML MenuItem menuItemAbout;
 
     private final Map<String, OpenPage> openPages = new java.util.LinkedHashMap<>();
+    private boolean updatingTabSelection = false;
 
     private final Map<String, String> pageMap = Map.of(
             "light", "view-light.fxml",
@@ -36,17 +38,16 @@ public class IndexController {
 
     @FXML
     public void initialize() {
-        mainTabPane.getSelectionModel().selectedItemProperty().addListener(((observable, oldTab, newTab) -> {
-            if (newTab != null) {
-                loadPageByTab(newTab);
+        mainTabPane.setOnMouseClicked(event -> {
+            if (event.getButton() == MouseButton.PRIMARY && !updatingTabSelection) {
+                Tab selectedTab = mainTabPane.getSelectionModel().getSelectedItem();
+                if (selectedTab != null) {
+                    loadPageByTab(selectedTab);
+                }
             }
-        }));
+        });
 
-        if (!mainTabPane.getTabs().isEmpty()) {
-            Tab firstTab = mainTabPane.getTabs().get(0);
-            mainTabPane.getSelectionModel().select(firstTab);
-            loadPageByTab(firstTab);
-        }
+        clearSelectedTab();
 
         menuItemAbout.setText("版本 (v" + AppConfig.getVersion() + ")");
     }
@@ -230,6 +231,8 @@ public class IndexController {
                 lastId = key;
             }
             bringToFront(lastId);
+        } else {
+            clearSelectedTab();
         }
     }
 
@@ -242,6 +245,28 @@ public class IndexController {
         for (OpenPage page : openPages.values()) {
             page.menuItem.setSelected(page.id.equals(id));
         }
+        selectTab(id);
+    }
+
+    private void selectTab(String id) {
+        updatingTabSelection = true;
+        try {
+            mainTabPane.getTabs().stream()
+                    .filter(tab -> id.equals(tab.getId()))
+                    .findFirst()
+                    .ifPresent(tab -> mainTabPane.getSelectionModel().select(tab));
+        } finally {
+            updatingTabSelection = false;
+        }
+    }
+
+    private void clearSelectedTab() {
+        updatingTabSelection = true;
+        try {
+            mainTabPane.getSelectionModel().clearSelection();
+        } finally {
+            updatingTabSelection = false;
+        }
     }
 
     @FXML
@@ -250,15 +275,14 @@ public class IndexController {
     }
 
     @FXML
-    public void handelDonationCategory() throws IOException {
+    public void handleDictionary() throws IOException {
         FXMLLoader loader = new FXMLLoader(
-                getClass().getResource("view-donation-category.fxml")
+                getClass().getResource("dictionary.fxml")
         );
         Parent root = loader.load();
-//        DonationCategoryController controller = loader.getController();
 
         Stage stage = new Stage();
-        stage.setTitle("款項類別維護");
+        stage.setTitle("詞彙設定");
         stage.setScene(new Scene(root));
         stage.initModality(Modality.APPLICATION_MODAL);
 

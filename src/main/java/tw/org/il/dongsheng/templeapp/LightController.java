@@ -17,18 +17,17 @@ import javafx.scene.layout.Pane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
+import tw.org.il.dongsheng.templeapp.model.DictionaryItem;
 import tw.org.il.dongsheng.templeapp.model.Donation;
-import tw.org.il.dongsheng.templeapp.model.DonationCategory;
 import tw.org.il.dongsheng.templeapp.model.LightMember;
-import tw.org.il.dongsheng.templeapp.repository.DonationCategoryRepository;
 import tw.org.il.dongsheng.templeapp.repository.DonationRepository;
 import tw.org.il.dongsheng.templeapp.repository.LightMemberRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteAddressRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
-import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationCategoryRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDictionaryRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteHouseholdLightRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteLightMemberRepository;
-import tw.org.il.dongsheng.templeapp.service.DonationCategoryService;
 import tw.org.il.dongsheng.templeapp.service.DonationService;
 import tw.org.il.dongsheng.templeapp.service.LightMemberService;
 import tw.org.il.dongsheng.templeapp.util.AlertDialog;
@@ -53,8 +52,9 @@ public class LightController {
 
     private LightMemberService lightService;
     private DonationService donationService;
-    private DonationCategoryService donationCategoryService;
     private SQLiteAddressRepository addressRepository;
+    private SQLiteDictionaryRepository dictionaryRepository;
+    private SQLiteHouseholdLightRepository householdLightRepository;
 
     @FXML GridPane memberInputGrid;
     @FXML private TextField idField, nameField, phoneField, zipCodeField, addressField
@@ -63,7 +63,7 @@ public class LightController {
     @FXML private ComboBox<String> genderBox, cityBox, distBox, mailBox;
 
     @FXML GridPane donateInputGrid;
-    @FXML private ComboBox<DonationCategory> donateTypeField;
+    @FXML private ComboBox<DictionaryItem> donateTypeField;
     @FXML private TextField receiptNoField, extraNoField, amountField, summaryField, donateNoteField
             , otherNoteField, donorNoField, lightNoField, shouldPayField;
     @FXML private DatePicker donateDateField;
@@ -271,7 +271,7 @@ public class LightController {
 
     public void initData() {
         try {
-            if (type.equals("light")) {
+            if (type.equals("light") || type.equals("ghost")) {
                 SQLiteDatabaseManager manager = SQLiteDatabaseManager.getInstance();
                 LightMemberRepository lightMemberRepo = new SQLiteLightMemberRepository(manager);
                 lightMemberRepo.createTable();
@@ -281,17 +281,17 @@ public class LightController {
                 donationRepo.createTable();
                 donationService = new DonationService(donationRepo);
 
-                DonationCategoryRepository donationCategoryRepo = new SQLiteDonationCategoryRepository(manager);
-                donationCategoryRepo.createTable();
-                donationCategoryService = new DonationCategoryService(donationCategoryRepo);
-
                 addressRepository = new SQLiteAddressRepository(manager);
                 addressRepository.createTable();
 
+                householdLightRepository = new SQLiteHouseholdLightRepository(manager);
+                householdLightRepository.createTable();
+
+                dictionaryRepository = new SQLiteDictionaryRepository(manager);
+                dictionaryRepository.migrateFromLegacy();
+
                 // 捐款作業
                 initDonation();
-
-            } else if (type.equals("ghost")) {
 
             }
         } catch (SQLException e) {
@@ -301,17 +301,19 @@ public class LightController {
 
     private void initDonation() {
         try {
-            List<DonationCategory> categories = donationCategoryService.findAll().stream()
-                    .filter(DonationCategory::isEnabled).toList();
+            String dictionaryType = "ghost".equals(type)
+                    ? SQLiteDictionaryRepository.TYPE_DONATION_GHOST
+                    : SQLiteDictionaryRepository.TYPE_DONATION_LIGHT;
+            List<DictionaryItem> categories = dictionaryRepository.findEnabledItemsByType(dictionaryType);
 
             donateTypeField.setItems(Util.toObservableList(categories));
 
-            categories.stream().forEach(action-> categoryMap.put(String.valueOf(action.getId()), action.getCode() + " - " + action.getName()));
+            categories.stream().forEach(action-> categoryMap.put(String.valueOf(action.getId()), action.toString()));
 
             donateTypeField.setOnAction(e -> {
-                DonationCategory d = donateTypeField.getValue();
+                DictionaryItem d = donateTypeField.getValue();
                 if (d != null) {
-                    amountField.setText(String.valueOf(d.getAmount()));
+                    amountField.setText(d.getAmount() == null ? "" : String.valueOf(d.getAmount()));
                 }
             });
             donateDateField.setConverter(new StringConverter<>() {
@@ -988,7 +990,16 @@ public class LightController {
         if (warnIfDonationEditing()) {
             return;
         }
-        openModal("household-light.fxml", "全戶點燈", 1220, 670);
+        if (!hasSavedMemberData()) {
+            AlertDialog.showWarning("信眾點燈", "請先查詢基本資料！");
+            return;
+        }
+
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("household-light.fxml"));
+        Parent root = loader.load();
+        HouseholdLightController controller = loader.getController();
+        controller.setData(allMember, householdLightRepository, dictionaryRepository, getCurrentRocYear());
+        showModal(root, "全戶點燈", 1220, 670);
     }
 
     private void openModal(String fxml, String title, double width, double height) throws IOException {
@@ -1003,6 +1014,22 @@ public class LightController {
         stage.setScene(new Scene(root, width, height));
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.showAndWait();
+    }
+
+    private boolean hasSavedMemberData() {
+        Integer memberId = Util.parseInteger(Util.trimLeadingZeros(idField.getText()));
+        if (memberId == null || allMember.isEmpty()) {
+            return false;
+        }
+        try {
+            return lightService != null && lightService.exists(memberId);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private int getCurrentRocYear() {
+        return LocalDate.now().getYear() - 1911;
     }
 
     private enum DonationMode {

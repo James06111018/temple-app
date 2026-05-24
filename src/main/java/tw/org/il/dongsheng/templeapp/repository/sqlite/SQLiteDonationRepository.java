@@ -48,6 +48,17 @@ public class SQLiteDonationRepository implements DonationRepository {
 //            statement.execute(dropSql);
             statement.execute("PRAGMA foreign_keys = ON");
             statement.execute(sql);
+            statement.execute("""
+                    CREATE TABLE IF NOT EXISTS donation_audits (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        donation_id INTEGER,
+                        member_id INTEGER,
+                        action TEXT NOT NULL,
+                        changed_by TEXT,
+                        changed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        snapshot TEXT
+                    )
+                    """);
         }
     }
 
@@ -69,6 +80,7 @@ public class SQLiteDonationRepository implements DonationRepository {
                 }
             }
         }
+        saveAudit(donation.getId(), donation.getMemberId(), "CREATE", donation.getCreator(), donation.toString());
 
         return donation;
     }
@@ -84,12 +96,18 @@ public class SQLiteDonationRepository implements DonationRepository {
                 "light_no = ?, should_pay = ?, donate_type = ?, creator = ? " +
                 "WHERE id = ?";
 
+        Optional<Donation> before = findById(donation.getId());
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             connection.createStatement().execute("PRAGMA foreign_keys = ON");
             setCommonFields(statement, donation);
-            statement.setObject(13, donation.getId());
-            return statement.executeUpdate() > 0;
+            statement.setObject(14, donation.getId());
+            boolean updated = statement.executeUpdate() > 0;
+            if (updated) {
+                saveAudit(donation.getId(), donation.getMemberId(), "UPDATE", donation.getCreator(),
+                        "before=" + before.map(Donation::toString).orElse("") + "\nafter=" + donation);
+            }
+            return updated;
         }
     }
 
@@ -241,6 +259,22 @@ public class SQLiteDonationRepository implements DonationRepository {
         statement.setString(13, donation.getCreator());
     }
 
+    private void saveAudit(Integer donationId, Integer memberId, String action, String changedBy, String snapshot) throws SQLException {
+        String sql = """
+                INSERT INTO donation_audits (donation_id, member_id, action, changed_by, snapshot)
+                VALUES (?, ?, ?, ?, ?)
+                """;
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setObject(1, donationId);
+            statement.setObject(2, memberId);
+            statement.setString(3, action);
+            statement.setString(4, changedBy);
+            statement.setString(5, snapshot);
+            statement.executeUpdate();
+        }
+    }
+
     private Donation mapRow(ResultSet resultSet) throws SQLException {
         Donation donation = new Donation();
         donation.setId(resultSet.getInt("id"));
@@ -260,4 +294,3 @@ public class SQLiteDonationRepository implements DonationRepository {
         return donation;
     }
 }
-
