@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane prefWidth="920" prefHeight="620"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.AddressPickerController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #efefef;">
+
+    <top>
+        <HBox spacing="12" alignment="CENTER_LEFT" style="-fx-padding: 12 14 6 14;">
+            <Label text="常用郵遞區號" />
+            <TextField fx:id="zipCodeField" prefWidth="76" />
+            <Button text="儲存" styleClass="btn-orange" onAction="#onSavePreset" />
+            <Region HBox.hgrow="ALWAYS" />
+        </HBox>
+    </top>
+
+    <center>
+        <HBox spacing="12" style="-fx-padding: 4 14 8 14;">
+            <VBox spacing="6" prefWidth="420" HBox.hgrow="ALWAYS">
+                <Label text="常用地址設定" />
+                <TableView fx:id="presetTable" prefHeight="430" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="presetNoColumn" text="編號" prefWidth="56" />
+                        <TableColumn fx:id="presetAddressColumn" text="地址" prefWidth="330" />
+                    </columns>
+                </TableView>
+                <HBox spacing="6" alignment="CENTER_LEFT">
+                    <Button text="|◀" onAction="#onFirstPreset" />
+                    <Button text="◀" onAction="#onPreviousPreset" />
+                    <TextField fx:id="presetPageField" text="1" prefWidth="60" alignment="CENTER" />
+                    <Label fx:id="presetTotalLabel" text="總筆數：20" />
+                    <Region HBox.hgrow="ALWAYS" />
+                    <Button text="▶" onAction="#onNextPreset" />
+                    <Button text="▶|" onAction="#onLastPreset" />
+                </HBox>
+            </VBox>
+
+            <VBox spacing="6" prefWidth="122">
+                <Label text="村里" />
+                <ListView fx:id="villageList" prefHeight="430" VBox.vgrow="ALWAYS" />
+            </VBox>
+
+            <VBox spacing="6" prefWidth="92">
+                <Label text="字首" />
+                <TextField fx:id="prefixField" prefHeight="28" style="-fx-control-inner-background: #ffff99;" />
+                <ListView fx:id="prefixList" prefHeight="392" VBox.vgrow="ALWAYS" />
+            </VBox>
+
+            <VBox spacing="6" prefWidth="170">
+                <Label text="路名" />
+                <ListView fx:id="roadList" prefHeight="430" VBox.vgrow="ALWAYS" />
+            </VBox>
+
+            <GridPane hgap="12" vgap="10" alignment="TOP_CENTER" style="-fx-padding: 58 0 0 8;">
+                <Button text="1" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" />
+                <Button text="2" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.columnIndex="1" />
+                <Button text="3" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.columnIndex="2" />
+
+                <Button text="4" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.rowIndex="1" />
+                <Button text="5" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                <Button text="6" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+
+                <Button text="7" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.rowIndex="2" />
+                <Button text="8" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                <Button text="9" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+
+                <Button text="0" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.rowIndex="3" />
+                <Button text="之" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+                <Button text="解" prefWidth="72" prefHeight="46" onAction="#onBackspace" GridPane.columnIndex="2" GridPane.rowIndex="3" />
+
+                <Button text="村" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.rowIndex="4" />
+                <Button text="里" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+                <Button text="鄰" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.columnIndex="2" GridPane.rowIndex="4" />
+
+                <Button text="段" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.rowIndex="5" />
+                <Button text="巷" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+                <Button text="弄" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.columnIndex="2" GridPane.rowIndex="5" />
+
+                <Button text="號" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.rowIndex="6" />
+                <Button text="樓" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.columnIndex="1" GridPane.rowIndex="6" />
+                <Button text="室" prefWidth="72" prefHeight="46" onAction="#onAppendAddressToken" GridPane.columnIndex="2" GridPane.rowIndex="6" />
+            </GridPane>
+        </HBox>
+    </center>
+
+    <bottom>
+        <HBox spacing="8" alignment="CENTER_LEFT" style="-fx-padding: 6 14 12 14;">
+            <Label text="地址" />
+            <TextField fx:id="addressField" HBox.hgrow="ALWAYS" />
+            <Button text="確定" styleClass="btn-pink" onAction="#onConfirm" />
+            <Button text="重新輸入" styleClass="btn-green" onAction="#onClearAddress" />
+        </HBox>
+    </bottom>
+</BorderPane>

@@ -23,6 +23,7 @@ import tw.org.il.dongsheng.templeapp.model.LightMember;
 import tw.org.il.dongsheng.templeapp.repository.DonationCategoryRepository;
 import tw.org.il.dongsheng.templeapp.repository.DonationRepository;
 import tw.org.il.dongsheng.templeapp.repository.LightMemberRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteAddressRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationCategoryRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationRepository;
@@ -53,6 +54,7 @@ public class LightController {
     private LightMemberService lightService;
     private DonationService donationService;
     private DonationCategoryService donationCategoryService;
+    private SQLiteAddressRepository addressRepository;
 
     @FXML GridPane memberInputGrid;
     @FXML private TextField idField, nameField, phoneField, zipCodeField, addressField
@@ -282,6 +284,9 @@ public class LightController {
                 DonationCategoryRepository donationCategoryRepo = new SQLiteDonationCategoryRepository(manager);
                 donationCategoryRepo.createTable();
                 donationCategoryService = new DonationCategoryService(donationCategoryRepo);
+
+                addressRepository = new SQLiteAddressRepository(manager);
+                addressRepository.createTable();
 
                 // 捐款作業
                 initDonation();
@@ -563,6 +568,30 @@ public class LightController {
 
         Stage stage = new Stage();
         stage.setTitle("造字資訊");
+    }
+
+    public void onOpenAddressPicker() throws IOException {
+        FXMLLoader loader = new FXMLLoader(
+                getClass().getResource("address-picker.fxml")
+        );
+
+        Parent root = loader.load();
+
+        AddressPickerController controller = loader.getController();
+        controller.setAddressRepository(addressRepository);
+        controller.setInitialValues(
+                zipCodeField.getText(),
+                cityBox.getValue(),
+                distBox.getValue(),
+                addressField.getText()
+        );
+        controller.setOnConfirm(result -> {
+            zipCodeField.setText(result.zipCode());
+            addressField.setText(result.address());
+        });
+
+        Stage stage = new Stage();
+        stage.setTitle("路名選取");
         stage.setScene(new Scene(root));
         stage.initModality(Modality.APPLICATION_MODAL);
 
@@ -608,7 +637,7 @@ public class LightController {
         setDonationMode(DonationMode.BROWSE);
     }
 
-    private void onDonationAdd() {
+    public void onDonationAdd() {
         boolean hasId = true;
         String id = idField.getText();
         if (Util.isEmpty(id)) {
