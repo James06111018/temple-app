@@ -2,6 +2,7 @@ module tw.org.il.dongsheng.templeapp {
     requires javafx.controls;
     requires javafx.fxml;
     requires java.sql;
+    requires java.xml;
     requires javafx.swing;
     requires java.base;
 

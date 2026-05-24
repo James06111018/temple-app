@@ -4,6 +4,7 @@ import tw.org.il.dongsheng.templeapp.model.AddressPreset;
 import tw.org.il.dongsheng.templeapp.model.AddressRoad;
 import tw.org.il.dongsheng.templeapp.model.AddressVillage;
 import tw.org.il.dongsheng.templeapp.repository.AddressRepository;
+import tw.org.il.dongsheng.templeapp.util.AreaUtil;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -80,10 +81,40 @@ public class SQLiteAddressRepository implements AddressRepository {
             connection.setAutoCommit(false);
             statement.execute("DELETE FROM address_roads");
             for (AddressRoad road : roads) {
-                preparedStatement.setString(1, road.getCity());
-                preparedStatement.setString(2, road.getDistrict());
+                preparedStatement.setString(1, AreaUtil.normalizeCityName(road.getCity()));
+                preparedStatement.setString(2, AreaUtil.normalizeDistrictName(road.getDistrict()));
                 preparedStatement.setString(3, road.getRoad());
                 preparedStatement.setString(4, road.getPrefix());
+                preparedStatement.addBatch();
+            }
+            int[] rows = preparedStatement.executeBatch();
+            connection.commit();
+            for (int row : rows) {
+                if (row > 0 || row == Statement.SUCCESS_NO_INFO) {
+                    imported++;
+                }
+            }
+        }
+        return imported;
+    }
+
+    @Override
+    public int replaceVillages(List<AddressVillage> villages) throws SQLException {
+        createTable();
+        String sql = """
+                INSERT OR IGNORE INTO address_villages (city, district, village)
+                VALUES (?, ?, ?)
+                """;
+        int imported = 0;
+        try (Connection connection = databaseManager.getConnection();
+             Statement statement = connection.createStatement();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            connection.setAutoCommit(false);
+            statement.execute("DELETE FROM address_villages");
+            for (AddressVillage village : villages) {
+                preparedStatement.setString(1, AreaUtil.normalizeCityName(village.getCity()));
+                preparedStatement.setString(2, AreaUtil.normalizeDistrictName(village.getDistrict()));
+                preparedStatement.setString(3, village.getVillage());
                 preparedStatement.addBatch();
             }
             int[] rows = preparedStatement.executeBatch();
@@ -107,8 +138,8 @@ public class SQLiteAddressRepository implements AddressRepository {
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setString(1, preset.getZipCode());
-            statement.setString(2, preset.getCity());
-            statement.setString(3, preset.getDistrict());
+            statement.setString(2, AreaUtil.normalizeCityName(preset.getCity()));
+            statement.setString(3, AreaUtil.normalizeDistrictName(preset.getDistrict()));
             statement.setString(4, preset.getVillage());
             statement.setString(5, preset.getRoad());
             statement.setString(6, preset.getAddress());
@@ -136,12 +167,20 @@ public class SQLiteAddressRepository implements AddressRepository {
 
     @Override
     public List<AddressVillage> findVillages(String city, String district) throws SQLException {
+        List<AddressVillage> villages = findVillagesByArea(city, district);
+        if (villages.isEmpty() && district != null && !district.isBlank()) {
+            return findVillagesByArea(city, null);
+        }
+        return villages;
+    }
+
+    private List<AddressVillage> findVillagesByArea(String city, String district) throws SQLException {
         createTable();
         String sql = """
                 SELECT id, city, district, village
                 FROM address_villages
-                WHERE (? IS NULL OR city = ?)
-                  AND (? IS NULL OR district = ?)
+                WHERE (? IS NULL OR REPLACE(city, '臺', '台') = ?)
+                  AND (? IS NULL OR REPLACE(REPLACE(district, '　', ''), ' ', '') = ?)
                 ORDER BY village
                 """;
         List<AddressVillage> villages = new ArrayList<>();
@@ -170,8 +209,8 @@ public class SQLiteAddressRepository implements AddressRepository {
         String sql = """
                 SELECT id, zip_code, city, district, village, road, address, sort_order
                 FROM address_presets
-                WHERE (? IS NULL OR city = ?)
-                  AND (? IS NULL OR district = ?)
+                WHERE (? IS NULL OR REPLACE(city, '臺', '台') = ?)
+                  AND (? IS NULL OR REPLACE(REPLACE(district, '　', ''), ' ', '') = ?)
                 ORDER BY COALESCE(sort_order, id), id
                 """;
         List<AddressPreset> presets = new ArrayList<>();
@@ -194,8 +233,8 @@ public class SQLiteAddressRepository implements AddressRepository {
         String sql = """
                 SELECT id, city, district, road, prefix
                 FROM address_roads
-                WHERE (? IS NULL OR city = ?)
-                  AND (? IS NULL OR district = ?)
+                WHERE (? IS NULL OR REPLACE(city, '臺', '台') = ?)
+                  AND (? IS NULL OR REPLACE(REPLACE(district, '　', ''), ' ', '') = ?)
                   AND (? IS NULL OR prefix = ?)
                 ORDER BY road
                 """;
@@ -228,7 +267,9 @@ public class SQLiteAddressRepository implements AddressRepository {
     }
 
     private String normalizeFilter(String value) {
-        return value == null || value.isBlank() ? null : value;
+        return value == null || value.isBlank()
+                ? null
+                : AreaUtil.normalizeDistrictName(AreaUtil.normalizeCityName(value));
     }
 
     private AddressPreset mapPreset(ResultSet resultSet) throws SQLException {

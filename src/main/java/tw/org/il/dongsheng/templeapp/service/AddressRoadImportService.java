@@ -2,6 +2,7 @@ package tw.org.il.dongsheng.templeapp.service;
 
 import tw.org.il.dongsheng.templeapp.model.AddressRoad;
 import tw.org.il.dongsheng.templeapp.repository.AddressRepository;
+import tw.org.il.dongsheng.templeapp.util.AreaUtil;
 import tw.org.il.dongsheng.templeapp.util.CsvUtil;
 
 import java.io.BufferedReader;
@@ -60,8 +61,8 @@ public class AddressRoadImportService {
                 continue;
             }
             List<String> values = CsvUtil.parseLine(line);
-            String city = getValue(values, cityIndex);
-            String district = normalizeDistrict(city, getValue(values, districtIndex));
+            String city = AreaUtil.normalizeCityName(getValue(values, cityIndex));
+            String district = AreaUtil.normalizeDistrictName(normalizeDistrict(city, getValue(values, districtIndex)));
             String road = getValue(values, roadIndex);
             if (city.isBlank() || district.isBlank() || road.isBlank()) {
                 continue;

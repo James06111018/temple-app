@@ -32,6 +32,10 @@ public class AreaUtil {
         return parts.length == 2 ? parts[1] : areaText;
     }
 
+    public static String normalizeDistrictName(String district) {
+        return getDistrictName(district).replace("　", "").replace(" ", "");
+    }
+
     public static String findAreaText(String city, String district) {
         if (city == null || district == null) {
             return null;
@@ -47,10 +51,10 @@ public class AreaUtil {
     }
 
     public static String getAddressPrefix(String city, String areaText) {
-        return normalizeCityName(city) + getDistrictName(areaText);
+        return normalizeCityName(city) + normalizeDistrictName(areaText);
     }
 
-    private static String normalizeCityName(String city) {
+    public static String normalizeCityName(String city) {
         return city == null ? "" : city.replace("臺", "台");
     }
 

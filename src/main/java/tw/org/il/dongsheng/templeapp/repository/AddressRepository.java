@@ -12,6 +12,8 @@ public interface AddressRepository {
 
     int replaceRoads(List<AddressRoad> roads) throws SQLException;
 
+    int replaceVillages(List<AddressVillage> villages) throws SQLException;
+
     AddressPreset savePreset(AddressPreset preset) throws SQLException;
 
     List<AddressRoad> findRoads(String city, String district) throws SQLException;

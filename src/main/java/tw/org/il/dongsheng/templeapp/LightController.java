@@ -581,8 +581,8 @@ public class LightController {
         controller.setAddressRepository(addressRepository);
         controller.setInitialValues(
                 zipCodeField.getText(),
-                cityBox.getValue(),
-                distBox.getValue(),
+                AreaUtil.normalizeCityName(cityBox.getValue()),
+                AreaUtil.normalizeDistrictName(distBox.getValue()),
                 addressField.getText()
         );
         controller.setOnConfirm(result -> {

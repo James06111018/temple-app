@@ -79,6 +79,13 @@ tasks.register('importRoadData', JavaExec) {
     args = [project.findProperty('roadData') ?: '']
 }
 
+tasks.register('importVillageData', JavaExec) {
+    group = 'application'
+    description = 'Import village data from NLSC API into the local SQLite database.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'tw.org.il.dongsheng.templeapp.AddressVillageImportTool'
+}
+
 jlink {
     imageZip = project.file("${buildDir}/distributions/app-${javafx.platform.classifier}.zip")
     options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']

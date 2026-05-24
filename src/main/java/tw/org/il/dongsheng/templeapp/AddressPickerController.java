@@ -15,6 +15,7 @@ import tw.org.il.dongsheng.templeapp.model.AddressPreset;
 import tw.org.il.dongsheng.templeapp.model.AddressRoad;
 import tw.org.il.dongsheng.templeapp.model.AddressVillage;
 import tw.org.il.dongsheng.templeapp.repository.AddressRepository;
+import tw.org.il.dongsheng.templeapp.util.AreaUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,10 +31,12 @@ public class AddressPickerController {
     @FXML private ListView<String> villageList, prefixList, roadList;
 
     private final List<PresetRow> presets = new ArrayList<>();
+    private final List<String> allRoads = new ArrayList<>();
     private Consumer<AddressResult> onConfirm;
     private AddressRepository addressRepository;
     private String city = "";
     private String district = "";
+    private boolean updatingAddressOptions = false;
 
     public void setOnConfirm(Consumer<AddressResult> onConfirm) {
         this.onConfirm = onConfirm;
@@ -44,17 +47,20 @@ public class AddressPickerController {
     }
 
     public void setInitialValues(String zipCode, String city, String district, String address) {
-        this.city = valueOrEmpty(city);
-        this.district = valueOrEmpty(district);
+        this.city = AreaUtil.normalizeCityName(city);
+        this.district = AreaUtil.normalizeDistrictName(valueOrEmpty(district));
         zipCodeField.setText(valueOrEmpty(zipCode));
         addressField.setText(valueOrEmpty(address));
-        loadAddressData();
-        villageList.getSelectionModel().selectFirst();
-        prefixList.getSelectionModel().selectFirst();
-        roadList.getSelectionModel().selectFirst();
-        if (addressField.getText().isBlank()) {
-            rebuildAddressPreview();
+        clearAddressData();
+        boolean loaded = loadAddressData();
+        if (!loaded && addressRepository == null) {
+            loadFallbackData();
         }
+        villageList.getSelectionModel().selectFirst();
+        refreshPrefixItems(allRoads);
+        prefixList.getSelectionModel().selectFirst();
+        prefixField.clear();
+        roadList.getSelectionModel().selectFirst();
     }
 
     @FXML
@@ -62,17 +68,17 @@ public class AddressPickerController {
         presetNoColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().number()));
         presetAddressColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().address()));
 
-        loadFallbackData();
-
-        villageList.getSelectionModel().selectFirst();
-        prefixList.getSelectionModel().selectFirst();
-        roadList.getSelectionModel().selectFirst();
-
-        villageList.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> rebuildAddressPreview());
+        villageList.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            refreshRoadOptions();
+            rebuildAddressPreview();
+        });
         roadList.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> rebuildAddressPreview());
         prefixList.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (updatingAddressOptions) {
+                return;
+            }
             prefixField.setText(valueOrEmpty(newVal));
-            filterRoadsByPrefix(newVal);
+            refreshRoadOptions();
         });
 
         roadList.setOnMouseClicked(event -> {
@@ -171,37 +177,32 @@ public class AddressPickerController {
         close();
     }
 
-    private void loadAddressData() {
+    private boolean loadAddressData() {
         if (addressRepository == null) {
-            return;
+            return false;
         }
         try {
+            boolean loaded = false;
             List<AddressVillage> villages = addressRepository.findVillages(city, district);
-            if (!villages.isEmpty()) {
-                villageList.setItems(FXCollections.observableArrayList(
-                        villages.stream().map(AddressVillage::getVillage).toList()
-                ));
-            }
+            villageList.setItems(FXCollections.observableArrayList(withBlank(
+                    villages.stream().map(AddressVillage::getVillage).toList()
+            )));
+            loaded = loaded || !villages.isEmpty();
 
             List<AddressRoad> roads = addressRepository.findRoads(city, district);
-            if (!roads.isEmpty()) {
-                roadList.setItems(FXCollections.observableArrayList(
-                        roads.stream().map(AddressRoad::getRoad).toList()
-                ));
-                prefixList.setItems(FXCollections.observableArrayList(
-                        roads.stream().map(AddressRoad::getPrefix).distinct().sorted().toList()
-                ));
-            }
+            allRoads.clear();
+            allRoads.addAll(roads.stream().map(AddressRoad::getRoad).toList());
+            roadList.setItems(FXCollections.observableArrayList(withBlank(allRoads)));
+            refreshPrefixItems(allRoads);
+            loaded = loaded || !roads.isEmpty();
 
             List<AddressPreset> savedPresets = addressRepository.findPresets(city, district);
-            if (!savedPresets.isEmpty()) {
-                presets.clear();
-                for (int i = 0; i < savedPresets.size(); i++) {
-                    presets.add(new PresetRow(String.format("%02d", i + 1), savedPresets.get(i).getAddress()));
-                }
-                presetTable.setItems(FXCollections.observableArrayList(presets));
-                presetTotalLabel.setText("總筆數： " + presets.size());
+            for (int i = 0; i < savedPresets.size(); i++) {
+                presets.add(new PresetRow(String.format("%02d", i + 1), savedPresets.get(i).getAddress()));
             }
+            presetTable.setItems(FXCollections.observableArrayList(presets));
+            presetTotalLabel.setText("總筆數： " + presets.size());
+            return loaded || !savedPresets.isEmpty();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -209,19 +210,17 @@ public class AddressPickerController {
 
     private void loadFallbackData() {
         if (villageList.getItems().isEmpty()) {
-            villageList.setItems(FXCollections.observableArrayList(
+            villageList.setItems(FXCollections.observableArrayList(withBlank(Arrays.asList(
                     "七張里", "七結里", "大新里", "小東里", "中山里", "中興里", "文化里", "北門里",
                     "民權里", "成功里", "西門里", "孝廉里", "東村里", "南津里", "建業里", "思源里",
                     "泰山里", "神農里", "菜園里", "進士里"
-            ));
-        }
-        if (prefixList.getItems().isEmpty()) {
-            prefixList.setItems(FXCollections.observableArrayList(
-                    "一", "七", "力", "三", "大", "女", "小", "中", "北", "民", "成", "西", "孝", "東"
-            ));
+            ))));
         }
         if (roadList.getItems().isEmpty()) {
-            roadList.setItems(FXCollections.observableArrayList(defaultRoads()));
+            allRoads.clear();
+            allRoads.addAll(defaultRoads());
+            roadList.setItems(FXCollections.observableArrayList(withBlank(allRoads)));
+            refreshPrefixItems(allRoads);
         }
         if (presets.isEmpty()) {
             seedPresets();
@@ -250,34 +249,50 @@ public class AddressPickerController {
         }
     }
 
-    private void filterRoadsByPrefix(String prefix) {
-        List<String> allRoads = defaultRoads();
+    private void refreshRoadOptions() {
+        if (updatingAddressOptions) {
+            return;
+        }
+        updatingAddressOptions = true;
         try {
-            if (addressRepository != null) {
-                List<AddressRoad> roads = prefix == null || prefix.isBlank()
-                        ? addressRepository.findRoads(city, district)
-                        : addressRepository.findRoadsByPrefix(city, district, prefix);
-                if (!roads.isEmpty()) {
-                    allRoads = roads.stream().map(AddressRoad::getRoad).toList();
-                }
+            String selectedPrefix = valueOrEmpty(prefixList.getSelectionModel().getSelectedItem());
+            List<String> villageRoads = filterRoadsByVillage(allRoads, villageList.getSelectionModel().getSelectedItem());
+            List<String> baseRoads = villageRoads.isEmpty() ? allRoads : villageRoads;
+            List<String> filteredRoads = selectedPrefix.isBlank()
+                    ? baseRoads
+                    : baseRoads.stream().filter(road -> road.startsWith(selectedPrefix)).toList();
+
+            refreshPrefixItems(baseRoads);
+            if (!selectedPrefix.isBlank() && prefixList.getItems().contains(selectedPrefix)) {
+                prefixList.getSelectionModel().select(selectedPrefix);
+            } else {
+                prefixList.getSelectionModel().selectFirst();
+                prefixField.clear();
             }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+
+            roadList.setItems(FXCollections.observableArrayList(withBlank(filteredRoads)));
+            roadList.getSelectionModel().selectFirst();
+        } finally {
+            updatingAddressOptions = false;
         }
-        if (prefix == null || prefix.isBlank()) {
-            roadList.setItems(FXCollections.observableArrayList(allRoads));
-        } else {
-            roadList.setItems(FXCollections.observableArrayList(
-                    allRoads.stream().filter(road -> road.startsWith(prefix)).toList()
-            ));
-        }
-        roadList.getSelectionModel().selectFirst();
-        rebuildAddressPreview();
+    }
+
+    private void clearAddressData() {
+        presets.clear();
+        allRoads.clear();
+        presetTable.getItems().clear();
+        presetTotalLabel.setText("總筆數： 0");
+        villageList.getItems().clear();
+        prefixList.getItems().clear();
+        roadList.getItems().clear();
     }
 
     private void rebuildAddressPreview() {
         String village = valueOrEmpty(villageList.getSelectionModel().getSelectedItem());
         String road = valueOrEmpty(roadList.getSelectionModel().getSelectedItem());
+        if (village.isBlank() && road.isBlank()) {
+            return;
+        }
         String prefix = city + district + village + road;
         if (addressField.getText() == null || addressField.getText().isBlank()
                 || startsWithLocationPrefix(addressField.getText())) {
@@ -294,6 +309,40 @@ public class AddressPickerController {
 
     private String valueOrEmpty(String value) {
         return value == null ? "" : value;
+    }
+
+    private void refreshPrefixItems(List<String> roads) {
+        List<String> prefixes = roads.stream()
+                .filter(road -> road != null && !road.isBlank())
+                .map(road -> road.substring(0, 1))
+                .distinct()
+                .sorted()
+                .toList();
+        prefixList.setItems(FXCollections.observableArrayList(withBlank(prefixes)));
+    }
+
+    private List<String> filterRoadsByVillage(List<String> roads, String village) {
+        String villageName = removeVillageSuffix(valueOrEmpty(village));
+        if (villageName.isBlank()) {
+            return roads;
+        }
+        return roads.stream()
+                .filter(road -> road.startsWith(villageName))
+                .toList();
+    }
+
+    private String removeVillageSuffix(String village) {
+        if (village.endsWith("村") || village.endsWith("里")) {
+            return village.substring(0, village.length() - 1);
+        }
+        return village;
+    }
+
+    private List<String> withBlank(List<String> values) {
+        List<String> result = new ArrayList<>();
+        result.add("");
+        result.addAll(values);
+        return result;
     }
 
     private List<String> defaultRoads() {
