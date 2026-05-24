@@ -568,6 +568,11 @@ public class LightController {
 
         Stage stage = new Stage();
         stage.setTitle("造字資訊");
+        stage.setScene(new Scene(root));
+        stage.initModality(Modality.APPLICATION_MODAL);
+
+        stage.showAndWait();
+
     }
 
     public void onOpenAddressPicker() throws IOException {
