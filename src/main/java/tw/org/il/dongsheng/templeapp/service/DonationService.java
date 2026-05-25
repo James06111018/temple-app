@@ -18,6 +18,10 @@ public class DonationService {
         return repo.findByMemberIds(memberIds, limit, offset);
     }
 
+    public List<Donation> findByMemberId(int memberId) throws SQLException {
+        return repo.findByMemberId(memberId);
+    }
+
     public int getDonationCount(List<Integer> memberIds) throws SQLException {
         return repo.getDonationCount(memberIds);
     }

@@ -216,19 +216,19 @@
                         <Label text="金額" GridPane.rowIndex="4" GridPane.columnIndex="0" />
                         <HBox GridPane.rowIndex="4" GridPane.columnIndex="1">
                             <TextField fx:id="amountField" prefWidth="190" style="-fx-text-fill: red; -fx-font-weight: bold;" />
-                            <Button text="數字" styleClass="btn-green" style="-fx-font-size: 10;" onAction="#onOpenKeypad" userData="txtAmount"/>
+                            <Button fx:id="amountKeypadButton" text="數字" styleClass="btn-green" style="-fx-font-size: 10;" onAction="#onOpenKeypad" userData="txtAmount"/>
                         </HBox>
 
                         <Label text="摘要" GridPane.rowIndex="5" GridPane.columnIndex="0" />
                         <HBox GridPane.rowIndex="5" GridPane.columnIndex="1">
                             <TextField fx:id="summaryField" prefWidth="190" />
-                            <Button text="詞彙" styleClass="btn-green" style="-fx-font-size: 10;"/>
+                            <Button fx:id="summaryPhraseButton" text="詞彙" styleClass="btn-green" style="-fx-font-size: 10;" onAction="#onDonationAuxiliaryAction"/>
                         </HBox>
 
                         <Label text="捐款備註" GridPane.rowIndex="6" GridPane.columnIndex="0" />
                         <HBox GridPane.rowIndex="6" GridPane.columnIndex="1">
                             <TextField fx:id="donateNoteField" prefWidth="190" />
-                            <Button text="家屬" styleClass="btn-green" style="-fx-font-size: 10;"/>
+                            <Button fx:id="familyPhraseButton" text="家屬" styleClass="btn-green" style="-fx-font-size: 10;" onAction="#onDonationAuxiliaryAction"/>
                         </HBox>
 
                         <Label text="其他註記" GridPane.rowIndex="7" GridPane.columnIndex="0" />

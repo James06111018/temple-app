@@ -70,6 +70,7 @@ public class LightController {
     @FXML private Button generateIdButton, saveButton, btnContact, btnWord, btnToggle;
     @FXML private HBox donationButtonBox;
     @FXML private Button donationPrimaryButton, donationSecondaryButton, donationDeleteButton, donationSupplementButton;
+    @FXML private Button amountKeypadButton, summaryPhraseButton, familyPhraseButton;
 
     @FXML private SplitPane splitPane;
     private boolean isSplitMember = true;
@@ -955,6 +956,14 @@ public class LightController {
         donorNoField.setDisable(!editable);
         lightNoField.setDisable(!editable);
         shouldPayField.setDisable(!editable);
+        amountKeypadButton.setDisable(!editable);
+        summaryPhraseButton.setDisable(!editable);
+        familyPhraseButton.setDisable(!editable);
+    }
+
+    @FXML
+    private void onDonationAuxiliaryAction() {
+        // 後續詞彙/家屬快選會接在這裡；先保留按鈕可點擊狀態。
     }
 
     private void selectDonationCategory(String categoryId) {
@@ -998,10 +1007,18 @@ public class LightController {
             return;
         }
 
+        Integer memberId = Util.parseInteger(Util.trimLeadingZeros(idField.getText()));
+        List<Donation> donations;
+        try {
+            donations = donationService.findByMemberId(memberId);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
         FXMLLoader loader = new FXMLLoader(getClass().getResource("total-amount.fxml"));
         Parent root = loader.load();
         TotalAmountController controller = loader.getController();
-        controller.setMemberId(idField.getText());
+        controller.setSummary(idField.getText(), donations, categoryMap);
         showModal(root, "總金額", 620, 300);
     }
 
