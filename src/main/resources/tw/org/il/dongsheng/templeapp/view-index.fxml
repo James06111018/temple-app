@@ -14,6 +14,7 @@
             <Menu text="設定(S)">
                 <MenuItem text="系統設定"/>
                 <MenuItem text="印表機設定"/>
+                <MenuItem text="參數設定" onAction="#handleParameterSettings"/>
             </Menu>
             <Menu text="工具(T)">
                 <MenuItem text="詞彙設定" onAction="#handleDictionary" />

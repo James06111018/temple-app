@@ -7,6 +7,8 @@ public class DictionaryItem {
     private String name;
     private String description;
     private Integer amount;
+    private String direction;
+    private Integer defaultAmount;
     private boolean enabled;
     private Integer sortOrder;
     private Integer parentItemId;
@@ -15,16 +17,22 @@ public class DictionaryItem {
     }
 
     public DictionaryItem(Integer id, String categoryCode, String code, String name, String description, Integer amount, boolean enabled, Integer sortOrder) {
-        this(id, categoryCode, code, name, description, amount, enabled, sortOrder, null);
+        this(id, categoryCode, code, name, description, amount, null, amount, enabled, sortOrder, null);
     }
 
     public DictionaryItem(Integer id, String categoryCode, String code, String name, String description, Integer amount, boolean enabled, Integer sortOrder, Integer parentItemId) {
+        this(id, categoryCode, code, name, description, amount, null, amount, enabled, sortOrder, parentItemId);
+    }
+
+    public DictionaryItem(Integer id, String categoryCode, String code, String name, String description, Integer amount, String direction, Integer defaultAmount, boolean enabled, Integer sortOrder, Integer parentItemId) {
         this.id = id;
         this.categoryCode = categoryCode;
         this.code = code;
         this.name = name;
         this.description = description;
         this.amount = amount;
+        this.direction = direction;
+        this.defaultAmount = defaultAmount;
         this.enabled = enabled;
         this.sortOrder = sortOrder;
         this.parentItemId = parentItemId;
@@ -76,6 +84,22 @@ public class DictionaryItem {
 
     public void setAmount(Integer amount) {
         this.amount = amount;
+    }
+
+    public String getDirection() {
+        return direction;
+    }
+
+    public void setDirection(String direction) {
+        this.direction = direction;
+    }
+
+    public Integer getDefaultAmount() {
+        return defaultAmount;
+    }
+
+    public void setDefaultAmount(Integer defaultAmount) {
+        this.defaultAmount = defaultAmount;
     }
 
     public boolean isEnabled() {

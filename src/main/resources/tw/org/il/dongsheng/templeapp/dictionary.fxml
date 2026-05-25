@@ -4,7 +4,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane prefWidth="960" prefHeight="560"
+<BorderPane prefWidth="1080" prefHeight="560"
             xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tw.org.il.dongsheng.templeapp.DictionaryController"
@@ -12,7 +12,7 @@
             style="-fx-background-color: #f0f0f0;">
     <center>
         <HBox spacing="14" style="-fx-padding: 14;">
-            <VBox spacing="8" prefWidth="320" HBox.hgrow="NEVER">
+            <VBox spacing="8" prefWidth="410" HBox.hgrow="NEVER">
                 <TitledPane text="摘要" collapsible="false" animated="false" VBox.vgrow="ALWAYS">
                     <VBox spacing="8">
                         <HBox spacing="6" alignment="CENTER_LEFT">
@@ -21,8 +21,10 @@
                         </HBox>
                         <TableView fx:id="categoryTable" prefHeight="390" VBox.vgrow="ALWAYS">
                             <columns>
-                                <TableColumn fx:id="categoryCodeColumn" text="分類" prefWidth="72" />
-                                <TableColumn fx:id="categoryNameColumn" text="款項名稱" prefWidth="150" />
+                                <TableColumn fx:id="categoryCodeColumn" text="分類" prefWidth="54" />
+                                <TableColumn fx:id="categoryNameColumn" text="款項名稱" prefWidth="138" />
+                                <TableColumn fx:id="categoryDirectionColumn" text="收(+)付(-)" prefWidth="86" />
+                                <TableColumn fx:id="categoryDefaultAmountColumn" text="預設金額" prefWidth="88" />
                                 <TableColumn fx:id="categoryEnabledColumn" text="顯示" prefWidth="60" visible="false" />
                                 <TableColumn fx:id="categorySortColumn" text="排序" prefWidth="60" visible="false" />
                             </columns>

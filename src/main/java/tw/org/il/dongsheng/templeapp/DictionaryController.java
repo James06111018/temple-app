@@ -30,7 +30,8 @@ public class DictionaryController {
     @FXML private ComboBox<TypeOption> paymentTypeBox;
 
     @FXML private TableView<DictionaryItem> categoryTable, summaryTable, deleteReasonTable, supplementReasonTable;
-    @FXML private TableColumn<DictionaryItem, String> categoryCodeColumn, categoryNameColumn, categoryEnabledColumn, categorySortColumn;
+    @FXML private TableColumn<DictionaryItem, String> categoryCodeColumn, categoryNameColumn, categoryDirectionColumn,
+            categoryDefaultAmountColumn, categoryEnabledColumn, categorySortColumn;
     @FXML private TableColumn<DictionaryItem, String> summaryCodeColumn, summaryNameColumn, summaryDescriptionColumn;
     @FXML private TableColumn<DictionaryItem, String> deleteReasonCodeColumn, deleteReasonNameColumn;
     @FXML private TableColumn<DictionaryItem, String> supplementReasonCodeColumn, supplementReasonNameColumn;
@@ -64,6 +65,8 @@ public class DictionaryController {
     private void setupColumns() {
         categoryCodeColumn.setCellValueFactory(data -> text(data.getValue().getCode()));
         categoryNameColumn.setCellValueFactory(data -> text(data.getValue().getName()));
+        categoryDirectionColumn.setCellValueFactory(data -> text(data.getValue().getDirection()));
+        categoryDefaultAmountColumn.setCellValueFactory(data -> text(data.getValue().getDefaultAmount() == null ? "" : String.valueOf(data.getValue().getDefaultAmount())));
         categoryEnabledColumn.setCellValueFactory(data -> text(data.getValue().isEnabled() ? "V" : ""));
         categorySortColumn.setCellValueFactory(data -> text(data.getValue().getSortOrder() == null ? "" : String.valueOf(data.getValue().getSortOrder())));
         summaryCodeColumn.setCellValueFactory(data -> text(data.getValue().getCode()));
@@ -86,7 +89,7 @@ public class DictionaryController {
             AlertDialog.showInfo("詞彙設定", "新增前請先選擇類型");
             return;
         }
-        editItem(dialogTitle(type.value()), type.value(), null, null, includeAmount(type.value()));
+        editItem(dialogTitle(type.value()), type.value(), null, null, usesPaymentFields(type.value()));
     }
 
     @FXML
@@ -97,7 +100,7 @@ public class DictionaryController {
             return;
         }
         String type = typeByCategoryCode(selected.getCategoryCode());
-        editItem(dialogTitle(type), type, null, selected, includeAmount(type));
+        editItem(dialogTitle(type), type, null, selected, usesPaymentFields(type));
     }
 
     @FXML
@@ -154,8 +157,8 @@ public class DictionaryController {
         editItem("補據原因", SQLiteDictionaryRepository.TYPE_SUPPLEMENT_REASON, null, selected, false);
     }
 
-    private void editItem(String title, String type, Integer parentItemId, DictionaryItem item, boolean includeAmount) {
-        Optional<DictionaryItem> result = showItemDialog(title, item, includeAmount);
+    private void editItem(String title, String type, Integer parentItemId, DictionaryItem item, boolean usesPaymentFields) {
+        Optional<DictionaryItem> result = showItemDialog(title, item, usesPaymentFields);
         if (result.isEmpty()) {
             return;
         }
@@ -177,7 +180,7 @@ public class DictionaryController {
         }
     }
 
-    private Optional<DictionaryItem> showItemDialog(String title, DictionaryItem item, boolean includeAmount) {
+    private Optional<DictionaryItem> showItemDialog(String title, DictionaryItem item, boolean usesPaymentFields) {
         Dialog<DictionaryItem> dialog = new Dialog<>();
         dialog.setTitle(title);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -189,7 +192,9 @@ public class DictionaryController {
 
         TextField codeField = new TextField(item == null ? "" : safe(item.getCode()));
         TextField nameField = new TextField(item == null ? "" : safe(item.getName()));
-        TextField amountField = new TextField(item == null || item.getAmount() == null ? "" : String.valueOf(item.getAmount()));
+        ComboBox<String> directionBox = new ComboBox<>(FXCollections.observableArrayList("+", "-"));
+        directionBox.setValue(item == null || Util.isBlank(item.getDirection()) ? "+" : item.getDirection());
+        TextField amountField = new TextField(item == null || item.getDefaultAmount() == null ? "" : String.valueOf(item.getDefaultAmount()));
         TextField sortField = new TextField(item == null || item.getSortOrder() == null ? "" : String.valueOf(item.getSortOrder()));
         CheckBox enabledBox = new CheckBox();
         enabledBox.setSelected(item == null || item.isEnabled());
@@ -201,14 +206,15 @@ public class DictionaryController {
         form.setHgap(8);
         form.setVgap(8);
         boolean light = title.contains("燈種");
-        form.addRow(0, new Label(light ? "代碼" : includeAmount ? "分類" : "編號"), codeField);
-        form.addRow(1, new Label(light ? "燈種名稱" : includeAmount ? "款項名稱" : "內容"), nameField);
-        if (includeAmount) {
-            form.addRow(2, new Label("金額"), amountField);
+        form.addRow(0, new Label(light ? "代碼" : usesPaymentFields ? "分類" : "編號"), codeField);
+        form.addRow(1, new Label(light ? "燈種名稱" : usesPaymentFields ? "款項名稱" : "內容"), nameField);
+        if (usesPaymentFields) {
+            form.addRow(2, new Label("收(+)付(-)"), directionBox);
+            form.addRow(3, new Label("預設金額"), amountField);
         }
-        form.addRow(includeAmount ? 3 : 2, new Label("排序"), sortField);
-        form.addRow(includeAmount ? 4 : 3, new Label(light ? "顯示" : "啟用"), enabledBox);
-        form.addRow(includeAmount ? 5 : 4, new Label("說明"), descriptionField);
+        form.addRow(usesPaymentFields ? 4 : 2, new Label("排序"), sortField);
+        form.addRow(usesPaymentFields ? 5 : 3, new Label(light ? "顯示" : "啟用"), enabledBox);
+        form.addRow(usesPaymentFields ? 6 : 4, new Label("說明"), descriptionField);
         dialog.getDialogPane().setContent(form);
 
         Node okButton = dialog.getDialogPane().lookupButton(ButtonType.OK);
@@ -226,7 +232,10 @@ public class DictionaryController {
             DictionaryItem edited = item == null ? new DictionaryItem() : item;
             edited.setCode(codeField.getText());
             edited.setName(nameField.getText());
-            edited.setAmount(includeAmount ? Util.parseInteger(amountField.getText()) : 0);
+            Integer defaultAmount = usesPaymentFields ? Util.parseInteger(amountField.getText()) : 0;
+            edited.setDirection(usesPaymentFields ? directionBox.getValue() : "+");
+            edited.setAmount(defaultAmount);
+            edited.setDefaultAmount(defaultAmount);
             edited.setSortOrder(Util.parseInteger(sortField.getText()));
             edited.setEnabled(enabledBox.isSelected());
             edited.setDescription(descriptionField.getText());
@@ -267,8 +276,11 @@ public class DictionaryController {
 
     private void updateCategoryColumns(String type) {
         boolean lightOnly = SQLiteDictionaryRepository.TYPE_LIGHT.equals(type);
+        boolean paymentOnly = usesPaymentFields(type);
         categoryCodeColumn.setText(lightOnly ? "代碼" : "分類");
         categoryNameColumn.setText(lightOnly ? "燈種名稱" : "款項名稱");
+        categoryDirectionColumn.setVisible(paymentOnly || type.isBlank());
+        categoryDefaultAmountColumn.setVisible(paymentOnly || type.isBlank());
         categoryEnabledColumn.setVisible(lightOnly);
         categorySortColumn.setVisible(lightOnly);
     }
@@ -341,6 +353,10 @@ public class DictionaryController {
     private boolean includeAmount(String type) {
         return SQLiteDictionaryRepository.TYPE_DONATION_LIGHT.equals(type)
                 || SQLiteDictionaryRepository.TYPE_DONATION_GHOST.equals(type);
+    }
+
+    private boolean usesPaymentFields(String type) {
+        return SQLiteDictionaryRepository.TYPE_LIGHT.equals(type) || includeAmount(type);
     }
 
     private String dialogTitle(String type) {

@@ -52,6 +52,8 @@ public class SQLiteDictionaryRepository {
                         name TEXT NOT NULL,
                         description TEXT,
                         amount INTEGER DEFAULT 0,
+                        direction TEXT DEFAULT '+',
+                        default_amount INTEGER DEFAULT 0,
                         enabled INTEGER NOT NULL DEFAULT 1,
                         sort_order INTEGER,
                         source_table TEXT,
@@ -66,6 +68,8 @@ public class SQLiteDictionaryRepository {
                     )
                     """);
             addColumnIfMissing(connection, "dictionary_items", "parent_item_id", "INTEGER");
+            addColumnIfMissing(connection, "dictionary_items", "direction", "TEXT DEFAULT '+'");
+            addColumnIfMissing(connection, "dictionary_items", "default_amount", "INTEGER DEFAULT 0");
             statement.execute("""
                     CREATE TABLE IF NOT EXISTS dictionary_audits (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -100,7 +104,7 @@ public class SQLiteDictionaryRepository {
     public List<DictionaryItem> findEnabledItemsByType(String type) throws SQLException {
         createTable();
         String sql = """
-                SELECT i.id, c.code AS category_code, i.parent_item_id, i.code, i.name, i.description, i.amount, i.enabled, i.sort_order
+                SELECT i.id, c.code AS category_code, i.parent_item_id, i.code, i.name, i.description, i.amount, i.direction, i.default_amount, i.enabled, i.sort_order
                 FROM dictionary_items i
                 JOIN dictionary_categories c ON c.id = i.category_id
                 WHERE c.type = ?
@@ -124,7 +128,7 @@ public class SQLiteDictionaryRepository {
     public List<DictionaryItem> findAllItems() throws SQLException {
         createTable();
         String sql = """
-                SELECT i.id, c.code AS category_code, i.parent_item_id, i.code, i.name, i.description, i.amount, i.enabled, i.sort_order
+                SELECT i.id, c.code AS category_code, i.parent_item_id, i.code, i.name, i.description, i.amount, i.direction, i.default_amount, i.enabled, i.sort_order
                 FROM dictionary_items i
                 JOIN dictionary_categories c ON c.id = i.category_id
                 ORDER BY c.sort_order, COALESCE(i.sort_order, i.id), i.id
@@ -143,7 +147,7 @@ public class SQLiteDictionaryRepository {
     public List<DictionaryItem> findItemsByType(String type) throws SQLException {
         createTable();
         String sql = """
-                SELECT i.id, c.code AS category_code, i.parent_item_id, i.code, i.name, i.description, i.amount, i.enabled, i.sort_order
+                SELECT i.id, c.code AS category_code, i.parent_item_id, i.code, i.name, i.description, i.amount, i.direction, i.default_amount, i.enabled, i.sort_order
                 FROM dictionary_items i
                 JOIN dictionary_categories c ON c.id = i.category_id
                 WHERE c.type = ?
@@ -165,7 +169,7 @@ public class SQLiteDictionaryRepository {
     public List<DictionaryItem> findItemsByTypeAndParent(String type, Integer parentItemId) throws SQLException {
         createTable();
         String sql = """
-                SELECT i.id, c.code AS category_code, i.parent_item_id, i.code, i.name, i.description, i.amount, i.enabled, i.sort_order
+                SELECT i.id, c.code AS category_code, i.parent_item_id, i.code, i.name, i.description, i.amount, i.direction, i.default_amount, i.enabled, i.sort_order
                 FROM dictionary_items i
                 JOIN dictionary_categories c ON c.id = i.category_id
                 WHERE c.type = ?
@@ -191,8 +195,8 @@ public class SQLiteDictionaryRepository {
         createTable();
         int categoryId = findCategoryIdByType(type);
         String sql = """
-                INSERT INTO dictionary_items (category_id, parent_item_id, code, name, description, amount, enabled, sort_order, created_by, updated_by, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                INSERT INTO dictionary_items (category_id, parent_item_id, code, name, description, amount, direction, default_amount, enabled, sort_order, created_by, updated_by, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """;
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -202,10 +206,12 @@ public class SQLiteDictionaryRepository {
             statement.setString(4, item.getName());
             statement.setString(5, item.getDescription());
             statement.setObject(6, item.getAmount());
-            statement.setInt(7, item.isEnabled() ? 1 : 0);
-            statement.setObject(8, item.getSortOrder());
-            statement.setString(9, changedBy);
-            statement.setString(10, changedBy);
+            statement.setString(7, item.getDirection());
+            statement.setObject(8, item.getDefaultAmount());
+            statement.setInt(9, item.isEnabled() ? 1 : 0);
+            statement.setObject(10, item.getSortOrder());
+            statement.setString(11, changedBy);
+            statement.setString(12, changedBy);
             statement.executeUpdate();
             try (ResultSet keys = statement.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -222,7 +228,7 @@ public class SQLiteDictionaryRepository {
         DictionaryItem before = findItemById(item.getId());
         String sql = """
                 UPDATE dictionary_items
-                SET parent_item_id = ?, code = ?, name = ?, description = ?, amount = ?, enabled = ?, sort_order = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
+                SET parent_item_id = ?, code = ?, name = ?, description = ?, amount = ?, direction = ?, default_amount = ?, enabled = ?, sort_order = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
                 """;
         boolean updated;
@@ -233,10 +239,12 @@ public class SQLiteDictionaryRepository {
             statement.setString(3, item.getName());
             statement.setString(4, item.getDescription());
             statement.setObject(5, item.getAmount());
-            statement.setInt(6, item.isEnabled() ? 1 : 0);
-            statement.setObject(7, item.getSortOrder());
-            statement.setString(8, changedBy);
-            statement.setObject(9, item.getId());
+            statement.setString(6, item.getDirection());
+            statement.setObject(7, item.getDefaultAmount());
+            statement.setInt(8, item.isEnabled() ? 1 : 0);
+            statement.setObject(9, item.getSortOrder());
+            statement.setString(10, changedBy);
+            statement.setObject(11, item.getId());
             updated = statement.executeUpdate() > 0;
         }
         if (updated) {
@@ -251,7 +259,7 @@ public class SQLiteDictionaryRepository {
         }
         createTable();
         String sql = """
-                SELECT i.id, c.code AS category_code, i.parent_item_id, i.code, i.name, i.description, i.amount, i.enabled, i.sort_order
+                SELECT i.id, c.code AS category_code, i.parent_item_id, i.code, i.name, i.description, i.amount, i.direction, i.default_amount, i.enabled, i.sort_order
                 FROM dictionary_items i
                 JOIN dictionary_categories c ON c.id = i.category_id
                 WHERE i.id = ?
@@ -295,8 +303,8 @@ public class SQLiteDictionaryRepository {
         int categoryId = findCategoryIdByType(TYPE_LIGHT);
         String sql = """
                 INSERT OR IGNORE INTO dictionary_items
-                    (id, category_id, code, name, amount, enabled, sort_order, source_table, source_id, created_by, updated_by, updated_at)
-                SELECT id + ?, ?, code, name, 0, enabled, sort_order, 'light_types', id, 'system', 'system', CURRENT_TIMESTAMP
+                    (id, category_id, code, name, amount, direction, default_amount, enabled, sort_order, source_table, source_id, created_by, updated_by, updated_at)
+                SELECT id + ?, ?, code, name, 0, '+', 0, enabled, sort_order, 'light_types', id, 'system', 'system', CURRENT_TIMESTAMP
                 FROM light_types
                 """;
         try (Connection connection = databaseManager.getConnection();
@@ -322,8 +330,8 @@ public class SQLiteDictionaryRepository {
         int categoryId = findCategoryIdByType(TYPE_DONATION_LIGHT);
         String sql = """
                 INSERT OR IGNORE INTO dictionary_items
-                    (id, category_id, code, name, description, amount, enabled, sort_order, source_table, source_id, created_by, updated_by, updated_at)
-                SELECT id, ?, code, name, remark, amount, is_enabled, sort, 'donation_category', id, 'system', 'system', CURRENT_TIMESTAMP
+                    (id, category_id, code, name, description, amount, direction, default_amount, enabled, sort_order, source_table, source_id, created_by, updated_by, updated_at)
+                SELECT id, ?, code, name, remark, amount, '+', amount, is_enabled, sort, 'donation_category', id, 'system', 'system', CURRENT_TIMESTAMP
                 FROM donation_category
                 """;
         try (Connection connection = databaseManager.getConnection();
@@ -341,8 +349,8 @@ public class SQLiteDictionaryRepository {
         int categoryId = findCategoryIdByType(TYPE_LIGHT);
         String sql = """
                 INSERT OR IGNORE INTO dictionary_items
-                    (id, category_id, code, name, amount, enabled, sort_order, source_table, source_id, created_by, updated_by, updated_at)
-                VALUES (?, ?, ?, ?, 0, 1, ?, 'default', ?, 'system', 'system', CURRENT_TIMESTAMP)
+                    (id, category_id, code, name, amount, direction, default_amount, enabled, sort_order, source_table, source_id, created_by, updated_by, updated_at)
+                VALUES (?, ?, ?, ?, 0, '+', 0, 1, ?, 'default', ?, 'system', 'system', CURRENT_TIMESTAMP)
                 """;
         String[] names = {"安太歲", "光明燈", "虎爺燈", "媽祖燈", "媽祖內殿燈", "宮燈", "註生內殿燈", "福德內殿燈", "三界公燈"};
         try (Connection connection = databaseManager.getConnection();
@@ -390,6 +398,8 @@ public class SQLiteDictionaryRepository {
             DictionaryItem item = new DictionaryItem();
             item.setCode(String.format("%02d", i + 1));
             item.setName(names[i]);
+            item.setDirection("+");
+            item.setDefaultAmount(0);
             item.setEnabled(true);
             item.setSortOrder(i + 1);
             saveItem(type, item, "system");
@@ -467,6 +477,8 @@ public class SQLiteDictionaryRepository {
                 resultSet.getString("name"),
                 resultSet.getString("description"),
                 (Integer) resultSet.getObject("amount"),
+                resultSet.getString("direction"),
+                (Integer) resultSet.getObject("default_amount"),
                 resultSet.getInt("enabled") == 1,
                 (Integer) resultSet.getObject("sort_order"),
                 resultSet.getObject("parent_item_id") == null ? null : resultSet.getInt("parent_item_id")

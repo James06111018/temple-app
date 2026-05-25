@@ -320,7 +320,8 @@ public class LightController {
             donateTypeField.setOnAction(e -> {
                 DictionaryItem d = donateTypeField.getValue();
                 if (d != null) {
-                    amountField.setText(d.getAmount() == null ? "" : String.valueOf(d.getAmount()));
+                    Integer defaultAmount = d.getDefaultAmount() == null ? d.getAmount() : d.getDefaultAmount();
+                    amountField.setText(defaultAmount == null ? "" : String.valueOf(defaultAmount));
                 }
             });
             donateDateField.setConverter(new StringConverter<>() {
