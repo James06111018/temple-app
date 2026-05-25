@@ -15,6 +15,9 @@ public class SQLiteDictionaryRepository {
     public static final String TYPE_LIGHT = "LIGHT";
     public static final String TYPE_DONATION_LIGHT = "DONATION_LIGHT";
     public static final String TYPE_DONATION_GHOST = "DONATION_GHOST";
+    public static final String TYPE_DONATION_SUMMARY = "DONATION_SUMMARY";
+    public static final String TYPE_DELETE_REASON = "DELETE_REASON";
+    public static final String TYPE_SUPPLEMENT_REASON = "SUPPLEMENT_REASON";
     private static final int LIGHT_ID_OFFSET = 10000;
 
     private final SQLiteDatabaseManager databaseManager;
@@ -44,6 +47,7 @@ public class SQLiteDictionaryRepository {
                     CREATE TABLE IF NOT EXISTS dictionary_items (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         category_id INTEGER NOT NULL,
+                        parent_item_id INTEGER,
                         code TEXT,
                         name TEXT NOT NULL,
                         description TEXT,
@@ -57,9 +61,11 @@ public class SQLiteDictionaryRepository {
                         updated_by TEXT,
                         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
                         UNIQUE(category_id, code),
-                        FOREIGN KEY(category_id) REFERENCES dictionary_categories(id)
+                        FOREIGN KEY(category_id) REFERENCES dictionary_categories(id),
+                        FOREIGN KEY(parent_item_id) REFERENCES dictionary_items(id)
                     )
                     """);
+            addColumnIfMissing(connection, "dictionary_items", "parent_item_id", "INTEGER");
             statement.execute("""
                     CREATE TABLE IF NOT EXISTS dictionary_audits (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,6 +80,7 @@ public class SQLiteDictionaryRepository {
                     """);
             statement.execute("CREATE INDEX IF NOT EXISTS idx_dictionary_categories_type ON dictionary_categories(type)");
             statement.execute("CREATE INDEX IF NOT EXISTS idx_dictionary_items_category ON dictionary_items(category_id)");
+            statement.execute("CREATE INDEX IF NOT EXISTS idx_dictionary_items_parent ON dictionary_items(parent_item_id)");
         }
     }
 
@@ -82,14 +89,18 @@ public class SQLiteDictionaryRepository {
         seedCategory("LIGHT", "點燈", TYPE_LIGHT, 1);
         seedCategory("DONATION_LIGHT", "信眾點燈款項", TYPE_DONATION_LIGHT, 2);
         seedCategory("DONATION_GHOST", "中元普渡款項", TYPE_DONATION_GHOST, 3);
+        seedCategory("DONATION_SUMMARY", "摘要", TYPE_DONATION_SUMMARY, 4);
+        seedCategory("DELETE_REASON", "刪除原因", TYPE_DELETE_REASON, 5);
+        seedCategory("SUPPLEMENT_REASON", "補據原因", TYPE_SUPPLEMENT_REASON, 6);
         migrateLightTypes();
         migrateDonationCategories();
+        seedDefaultReasonItems();
     }
 
     public List<DictionaryItem> findEnabledItemsByType(String type) throws SQLException {
         createTable();
         String sql = """
-                SELECT i.id, c.code AS category_code, i.code, i.name, i.description, i.amount, i.enabled, i.sort_order
+                SELECT i.id, c.code AS category_code, i.parent_item_id, i.code, i.name, i.description, i.amount, i.enabled, i.sort_order
                 FROM dictionary_items i
                 JOIN dictionary_categories c ON c.id = i.category_id
                 WHERE c.type = ?
@@ -113,7 +124,7 @@ public class SQLiteDictionaryRepository {
     public List<DictionaryItem> findAllItems() throws SQLException {
         createTable();
         String sql = """
-                SELECT i.id, c.code AS category_code, i.code, i.name, i.description, i.amount, i.enabled, i.sort_order
+                SELECT i.id, c.code AS category_code, i.parent_item_id, i.code, i.name, i.description, i.amount, i.enabled, i.sort_order
                 FROM dictionary_items i
                 JOIN dictionary_categories c ON c.id = i.category_id
                 ORDER BY c.sort_order, COALESCE(i.sort_order, i.id), i.id
@@ -129,24 +140,72 @@ public class SQLiteDictionaryRepository {
         return items;
     }
 
+    public List<DictionaryItem> findItemsByType(String type) throws SQLException {
+        createTable();
+        String sql = """
+                SELECT i.id, c.code AS category_code, i.parent_item_id, i.code, i.name, i.description, i.amount, i.enabled, i.sort_order
+                FROM dictionary_items i
+                JOIN dictionary_categories c ON c.id = i.category_id
+                WHERE c.type = ?
+                ORDER BY COALESCE(i.sort_order, i.id), i.id
+                """;
+        List<DictionaryItem> items = new ArrayList<>();
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, type);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    items.add(mapItem(resultSet));
+                }
+            }
+        }
+        return items;
+    }
+
+    public List<DictionaryItem> findItemsByTypeAndParent(String type, Integer parentItemId) throws SQLException {
+        createTable();
+        String sql = """
+                SELECT i.id, c.code AS category_code, i.parent_item_id, i.code, i.name, i.description, i.amount, i.enabled, i.sort_order
+                FROM dictionary_items i
+                JOIN dictionary_categories c ON c.id = i.category_id
+                WHERE c.type = ?
+                  AND ((? IS NULL AND i.parent_item_id IS NULL) OR i.parent_item_id = ?)
+                ORDER BY COALESCE(i.sort_order, i.id), i.id
+                """;
+        List<DictionaryItem> items = new ArrayList<>();
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, type);
+            statement.setObject(2, parentItemId);
+            statement.setObject(3, parentItemId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    items.add(mapItem(resultSet));
+                }
+            }
+        }
+        return items;
+    }
+
     public DictionaryItem saveItem(String type, DictionaryItem item, String changedBy) throws SQLException {
         createTable();
         int categoryId = findCategoryIdByType(type);
         String sql = """
-                INSERT INTO dictionary_items (category_id, code, name, description, amount, enabled, sort_order, created_by, updated_by, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                INSERT INTO dictionary_items (category_id, parent_item_id, code, name, description, amount, enabled, sort_order, created_by, updated_by, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 """;
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setInt(1, categoryId);
-            statement.setString(2, item.getCode());
-            statement.setString(3, item.getName());
-            statement.setString(4, item.getDescription());
-            statement.setObject(5, item.getAmount());
-            statement.setInt(6, item.isEnabled() ? 1 : 0);
-            statement.setObject(7, item.getSortOrder());
-            statement.setString(8, changedBy);
+            statement.setObject(2, item.getParentItemId());
+            statement.setString(3, item.getCode());
+            statement.setString(4, item.getName());
+            statement.setString(5, item.getDescription());
+            statement.setObject(6, item.getAmount());
+            statement.setInt(7, item.isEnabled() ? 1 : 0);
+            statement.setObject(8, item.getSortOrder());
             statement.setString(9, changedBy);
+            statement.setString(10, changedBy);
             statement.executeUpdate();
             try (ResultSet keys = statement.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -160,28 +219,53 @@ public class SQLiteDictionaryRepository {
 
     public boolean updateItem(DictionaryItem item, String changedBy) throws SQLException {
         createTable();
+        DictionaryItem before = findItemById(item.getId());
         String sql = """
                 UPDATE dictionary_items
-                SET code = ?, name = ?, description = ?, amount = ?, enabled = ?, sort_order = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
+                SET parent_item_id = ?, code = ?, name = ?, description = ?, amount = ?, enabled = ?, sort_order = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
                 """;
         boolean updated;
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, item.getCode());
-            statement.setString(2, item.getName());
-            statement.setString(3, item.getDescription());
-            statement.setObject(4, item.getAmount());
-            statement.setInt(5, item.isEnabled() ? 1 : 0);
-            statement.setObject(6, item.getSortOrder());
-            statement.setString(7, changedBy);
-            statement.setObject(8, item.getId());
+            statement.setObject(1, item.getParentItemId());
+            statement.setString(2, item.getCode());
+            statement.setString(3, item.getName());
+            statement.setString(4, item.getDescription());
+            statement.setObject(5, item.getAmount());
+            statement.setInt(6, item.isEnabled() ? 1 : 0);
+            statement.setObject(7, item.getSortOrder());
+            statement.setString(8, changedBy);
+            statement.setObject(9, item.getId());
             updated = statement.executeUpdate() > 0;
         }
         if (updated) {
-            saveAudit("dictionary_items", item.getId(), "UPDATE", null, item.getName(), changedBy);
+            saveAudit("dictionary_items", item.getId(), "UPDATE", before == null ? null : before.toString(), item.toString(), changedBy);
         }
         return updated;
+    }
+
+    public DictionaryItem findItemById(Integer id) throws SQLException {
+        if (id == null) {
+            return null;
+        }
+        createTable();
+        String sql = """
+                SELECT i.id, c.code AS category_code, i.parent_item_id, i.code, i.name, i.description, i.amount, i.enabled, i.sort_order
+                FROM dictionary_items i
+                JOIN dictionary_categories c ON c.id = i.category_id
+                WHERE i.id = ?
+                """;
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, id);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return mapItem(resultSet);
+                }
+            }
+        }
+        return null;
     }
 
     public LightType toLightType(DictionaryItem item) {
@@ -293,6 +377,25 @@ public class SQLiteDictionaryRepository {
         }
     }
 
+    private void seedDefaultReasonItems() throws SQLException {
+        seedDefaultItems(TYPE_DELETE_REASON, new String[]{"類別做錯", "金額做錯", "姓名做錯", "日期做錯", "地址做錯", "分別做錯"});
+        seedDefaultItems(TYPE_SUPPLEMENT_REASON, new String[]{"正本遺失", "資料異動"});
+    }
+
+    private void seedDefaultItems(String type, String[] names) throws SQLException {
+        if (hasItems(type)) {
+            return;
+        }
+        for (int i = 0; i < names.length; i++) {
+            DictionaryItem item = new DictionaryItem();
+            item.setCode(String.format("%02d", i + 1));
+            item.setName(names[i]);
+            item.setEnabled(true);
+            item.setSortOrder(i + 1);
+            saveItem(type, item, "system");
+        }
+    }
+
     private int findCategoryIdByType(String type) throws SQLException {
         String sql = "SELECT id FROM dictionary_categories WHERE type = ?";
         try (Connection connection = databaseManager.getConnection();
@@ -315,6 +418,20 @@ public class SQLiteDictionaryRepository {
             try (ResultSet resultSet = statement.executeQuery()) {
                 return resultSet.next();
             }
+        }
+    }
+
+    private void addColumnIfMissing(Connection connection, String tableName, String columnName, String columnDefinition) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("PRAGMA table_info(" + tableName + ")");
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                if (columnName.equalsIgnoreCase(resultSet.getString("name"))) {
+                    return;
+                }
+            }
+        }
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnDefinition);
         }
     }
 
@@ -351,7 +468,8 @@ public class SQLiteDictionaryRepository {
                 resultSet.getString("description"),
                 (Integer) resultSet.getObject("amount"),
                 resultSet.getInt("enabled") == 1,
-                (Integer) resultSet.getObject("sort_order")
+                (Integer) resultSet.getObject("sort_order"),
+                resultSet.getObject("parent_item_id") == null ? null : resultSet.getInt("parent_item_id")
         );
     }
 }

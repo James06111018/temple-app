@@ -956,9 +956,15 @@ public class LightController {
         donorNoField.setDisable(!editable);
         lightNoField.setDisable(!editable);
         shouldPayField.setDisable(!editable);
-        amountKeypadButton.setDisable(!editable);
-        summaryPhraseButton.setDisable(!editable);
-        familyPhraseButton.setDisable(!editable);
+        setDisableIfPresent(amountKeypadButton, !editable);
+        setDisableIfPresent(summaryPhraseButton, !editable);
+        setDisableIfPresent(familyPhraseButton, !editable);
+    }
+
+    private void setDisableIfPresent(Button button, boolean disabled) {
+        if (button != null) {
+            button.setDisable(disabled);
+        }
     }
 
     @FXML

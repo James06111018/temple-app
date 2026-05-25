@@ -1,16 +1,21 @@
 package tw.org.il.dongsheng.templeapp;
 
-import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
+import javafx.scene.Node;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.scene.control.cell.CheckBoxTableCell;
+import javafx.scene.layout.GridPane;
+import javafx.stage.Window;
 import tw.org.il.dongsheng.templeapp.model.DictionaryItem;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDictionaryRepository;
@@ -19,18 +24,18 @@ import tw.org.il.dongsheng.templeapp.util.Util;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Optional;
 
 public class DictionaryController {
-    @FXML private ComboBox<TypeOption> typeBox;
-    @FXML private TableView<DictionaryItem> itemTable;
-    @FXML private TableColumn<DictionaryItem, String> codeColumn, nameColumn, amountColumn, sortColumn;
-    @FXML private TableColumn<DictionaryItem, Boolean> enabledColumn;
-    @FXML private TextField codeField, nameField, amountField, sortField;
-    @FXML private TextArea descriptionField;
-    @FXML private CheckBox enabledBox;
+    @FXML private ComboBox<TypeOption> paymentTypeBox;
+
+    @FXML private TableView<DictionaryItem> categoryTable, summaryTable, deleteReasonTable, supplementReasonTable;
+    @FXML private TableColumn<DictionaryItem, String> categoryCodeColumn, categoryNameColumn, categoryEnabledColumn, categorySortColumn;
+    @FXML private TableColumn<DictionaryItem, String> summaryCodeColumn, summaryNameColumn, summaryDescriptionColumn;
+    @FXML private TableColumn<DictionaryItem, String> deleteReasonCodeColumn, deleteReasonNameColumn;
+    @FXML private TableColumn<DictionaryItem, String> supplementReasonCodeColumn, supplementReasonNameColumn;
 
     private SQLiteDictionaryRepository repository;
-    private DictionaryItem selectedItem;
 
     @FXML
     public void initialize() {
@@ -41,82 +46,310 @@ public class DictionaryController {
             throw new RuntimeException(e);
         }
 
-        typeBox.setItems(FXCollections.observableArrayList(
-                new TypeOption(SQLiteDictionaryRepository.TYPE_LIGHT, "點燈"),
-                new TypeOption(SQLiteDictionaryRepository.TYPE_DONATION_LIGHT, "信眾點燈款項"),
-                new TypeOption(SQLiteDictionaryRepository.TYPE_DONATION_GHOST, "中元普渡款項")
+        paymentTypeBox.setItems(FXCollections.observableArrayList(
+                new TypeOption("", ""),
+                new TypeOption(SQLiteDictionaryRepository.TYPE_LIGHT, "燈別"),
+                new TypeOption(SQLiteDictionaryRepository.TYPE_DONATION_LIGHT, "信眾點燈"),
+                new TypeOption(SQLiteDictionaryRepository.TYPE_DONATION_GHOST, "中元普渡")
         ));
-        typeBox.getSelectionModel().selectFirst();
+        paymentTypeBox.getSelectionModel().selectFirst();
 
-        codeColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getCode()));
-        nameColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getName()));
-        amountColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getAmount() == null ? "" : String.valueOf(data.getValue().getAmount())));
-        sortColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getSortOrder() == null ? "" : String.valueOf(data.getValue().getSortOrder())));
-        enabledColumn.setCellValueFactory(data -> new SimpleBooleanProperty(data.getValue().isEnabled()));
-        enabledColumn.setCellFactory(CheckBoxTableCell.forTableColumn(enabledColumn));
+        setupColumns();
+        paymentTypeBox.valueProperty().addListener((obs, oldVal, newVal) -> reloadCategories());
+        categoryTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> reloadSummaries());
 
-        typeBox.valueProperty().addListener((obs, oldVal, newVal) -> reload());
-        itemTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> loadToForm(newVal));
-        reload();
+        reloadAll();
+    }
+
+    private void setupColumns() {
+        categoryCodeColumn.setCellValueFactory(data -> text(data.getValue().getCode()));
+        categoryNameColumn.setCellValueFactory(data -> text(data.getValue().getName()));
+        categoryEnabledColumn.setCellValueFactory(data -> text(data.getValue().isEnabled() ? "V" : ""));
+        categorySortColumn.setCellValueFactory(data -> text(data.getValue().getSortOrder() == null ? "" : String.valueOf(data.getValue().getSortOrder())));
+        summaryCodeColumn.setCellValueFactory(data -> text(data.getValue().getCode()));
+        summaryNameColumn.setCellValueFactory(data -> text(data.getValue().getName()));
+        summaryDescriptionColumn.setCellValueFactory(data -> text(data.getValue().getDescription()));
+        deleteReasonCodeColumn.setCellValueFactory(data -> text(data.getValue().getCode()));
+        deleteReasonNameColumn.setCellValueFactory(data -> text(data.getValue().getName()));
+        supplementReasonCodeColumn.setCellValueFactory(data -> text(data.getValue().getCode()));
+        supplementReasonNameColumn.setCellValueFactory(data -> text(data.getValue().getName()));
+    }
+
+    private SimpleStringProperty text(String value) {
+        return new SimpleStringProperty(value == null ? "" : value);
     }
 
     @FXML
-    private void onNew() {
-        selectedItem = null;
-        itemTable.getSelectionModel().clearSelection();
-        codeField.clear();
-        nameField.clear();
-        amountField.clear();
-        sortField.clear();
-        descriptionField.clear();
-        enabledBox.setSelected(true);
+    private void onNewCategory() {
+        TypeOption type = paymentTypeBox.getValue();
+        if (type == null || type.value().isBlank()) {
+            AlertDialog.showInfo("詞彙設定", "新增前請先選擇類型");
+            return;
+        }
+        editItem(dialogTitle(type.value()), type.value(), null, null, includeAmount(type.value()));
     }
 
     @FXML
-    private void onSave() {
-        TypeOption type = typeBox.getValue();
-        if (type == null) {
+    private void onEditCategory() {
+        DictionaryItem selected = categoryTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            AlertDialog.showInfo("詞彙設定", "請先選擇款項類別");
             return;
         }
-        if (Util.isBlank(nameField.getText())) {
-            AlertDialog.showWarning("詞彙設定", "請輸入名稱");
+        String type = typeByCategoryCode(selected.getCategoryCode());
+        editItem(dialogTitle(type), type, null, selected, includeAmount(type));
+    }
+
+    @FXML
+    private void onNewSummary() {
+        DictionaryItem category = categoryTable.getSelectionModel().getSelectedItem();
+        if (category == null) {
+            AlertDialog.showInfo("詞彙設定", "請先選擇款項類別");
+            return;
+        }
+        if (!includeAmount(typeByCategoryCode(category.getCategoryCode()))) {
+            AlertDialog.showInfo("詞彙設定", "燈別不需要設定摘要");
+            return;
+        }
+        editItem("摘要", SQLiteDictionaryRepository.TYPE_DONATION_SUMMARY, category.getId(), null, false);
+    }
+
+    @FXML
+    private void onEditSummary() {
+        DictionaryItem selected = summaryTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            AlertDialog.showInfo("詞彙設定", "請先選擇摘要");
+            return;
+        }
+        editItem("摘要", SQLiteDictionaryRepository.TYPE_DONATION_SUMMARY, selected.getParentItemId(), selected, false);
+    }
+
+    @FXML
+    private void onNewDeleteReason() {
+        editItem("刪除原因", SQLiteDictionaryRepository.TYPE_DELETE_REASON, null, null, false);
+    }
+
+    @FXML
+    private void onEditDeleteReason() {
+        DictionaryItem selected = deleteReasonTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            AlertDialog.showInfo("詞彙設定", "請先選擇刪除原因");
+            return;
+        }
+        editItem("刪除原因", SQLiteDictionaryRepository.TYPE_DELETE_REASON, null, selected, false);
+    }
+
+    @FXML
+    private void onNewSupplementReason() {
+        editItem("補據原因", SQLiteDictionaryRepository.TYPE_SUPPLEMENT_REASON, null, null, false);
+    }
+
+    @FXML
+    private void onEditSupplementReason() {
+        DictionaryItem selected = supplementReasonTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            AlertDialog.showInfo("詞彙設定", "請先選擇補據原因");
+            return;
+        }
+        editItem("補據原因", SQLiteDictionaryRepository.TYPE_SUPPLEMENT_REASON, null, selected, false);
+    }
+
+    private void editItem(String title, String type, Integer parentItemId, DictionaryItem item, boolean includeAmount) {
+        Optional<DictionaryItem> result = showItemDialog(title, item, includeAmount);
+        if (result.isEmpty()) {
             return;
         }
 
-        DictionaryItem item = selectedItem == null ? new DictionaryItem() : selectedItem;
-        item.setCode(codeField.getText());
-        item.setName(nameField.getText());
-        item.setAmount(Util.parseInteger(amountField.getText()));
-        item.setSortOrder(Util.parseInteger(sortField.getText()));
-        item.setDescription(descriptionField.getText());
-        item.setEnabled(enabledBox.isSelected());
+        DictionaryItem edited = result.get();
+        edited.setParentItemId(parentItemId);
 
         try {
-            if (item.getId() == null) {
-                repository.saveItem(type.value(), item, System.getProperty("user.name"));
+            if (edited.getId() == null) {
+                repository.saveItem(type, edited, System.getProperty("user.name"));
             } else {
-                repository.updateItem(item, System.getProperty("user.name"));
+                repository.updateItem(edited, System.getProperty("user.name"));
             }
-            reload();
+            reloadAll();
+            selectEditedItem(type, edited.getId(), parentItemId);
             AlertDialog.showInfo("詞彙設定", "儲存成功");
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private void reload() {
-        TypeOption type = typeBox.getValue();
-        if (type == null || repository == null) {
+    private Optional<DictionaryItem> showItemDialog(String title, DictionaryItem item, boolean includeAmount) {
+        Dialog<DictionaryItem> dialog = new Dialog<>();
+        dialog.setTitle(title);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        Window window = categoryTable.getScene() == null ? null : categoryTable.getScene().getWindow();
+        if (window != null) {
+            dialog.initOwner(window);
+        }
+
+        TextField codeField = new TextField(item == null ? "" : safe(item.getCode()));
+        TextField nameField = new TextField(item == null ? "" : safe(item.getName()));
+        TextField amountField = new TextField(item == null || item.getAmount() == null ? "" : String.valueOf(item.getAmount()));
+        TextField sortField = new TextField(item == null || item.getSortOrder() == null ? "" : String.valueOf(item.getSortOrder()));
+        CheckBox enabledBox = new CheckBox();
+        enabledBox.setSelected(item == null || item.isEnabled());
+        TextArea descriptionField = new TextArea(item == null ? "" : safe(item.getDescription()));
+        descriptionField.setPrefRowCount(3);
+
+        GridPane form = new GridPane();
+        form.setPadding(new Insets(12));
+        form.setHgap(8);
+        form.setVgap(8);
+        boolean light = title.contains("燈種");
+        form.addRow(0, new Label(light ? "代碼" : includeAmount ? "分類" : "編號"), codeField);
+        form.addRow(1, new Label(light ? "燈種名稱" : includeAmount ? "款項名稱" : "內容"), nameField);
+        if (includeAmount) {
+            form.addRow(2, new Label("金額"), amountField);
+        }
+        form.addRow(includeAmount ? 3 : 2, new Label("排序"), sortField);
+        form.addRow(includeAmount ? 4 : 3, new Label(light ? "顯示" : "啟用"), enabledBox);
+        form.addRow(includeAmount ? 5 : 4, new Label("說明"), descriptionField);
+        dialog.getDialogPane().setContent(form);
+
+        Node okButton = dialog.getDialogPane().lookupButton(ButtonType.OK);
+        okButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            if (Util.isBlank(nameField.getText())) {
+                AlertDialog.showWarning("詞彙設定", "請輸入內容");
+                event.consume();
+            }
+        });
+
+        dialog.setResultConverter(button -> {
+            if (button != ButtonType.OK) {
+                return null;
+            }
+            DictionaryItem edited = item == null ? new DictionaryItem() : item;
+            edited.setCode(codeField.getText());
+            edited.setName(nameField.getText());
+            edited.setAmount(includeAmount ? Util.parseInteger(amountField.getText()) : 0);
+            edited.setSortOrder(Util.parseInteger(sortField.getText()));
+            edited.setEnabled(enabledBox.isSelected());
+            edited.setDescription(descriptionField.getText());
+            return edited;
+        });
+
+        return dialog.showAndWait();
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value;
+    }
+
+    private void reloadAll() {
+        reloadCategories();
+        reloadReasons();
+    }
+
+    private void reloadCategories() {
+        TypeOption type = paymentTypeBox.getValue();
+        updateCategoryColumns(type == null ? "" : type.value());
+        if (type == null) {
+            categoryTable.getItems().clear();
+            summaryTable.getItems().clear();
             return;
         }
         try {
-            List<DictionaryItem> items = repository.findAllItems().stream()
-                    .filter(item -> type.value().equals(typeByCategoryCode(item.getCategoryCode())))
-                    .toList();
-            itemTable.setItems(FXCollections.observableArrayList(items));
+            categoryTable.setItems(FXCollections.observableArrayList(findCategoryItems(type.value())));
+            if (!categoryTable.getItems().isEmpty()) {
+                categoryTable.getSelectionModel().selectFirst();
+            } else {
+                summaryTable.getItems().clear();
+            }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private void updateCategoryColumns(String type) {
+        boolean lightOnly = SQLiteDictionaryRepository.TYPE_LIGHT.equals(type);
+        categoryCodeColumn.setText(lightOnly ? "代碼" : "分類");
+        categoryNameColumn.setText(lightOnly ? "燈種名稱" : "款項名稱");
+        categoryEnabledColumn.setVisible(lightOnly);
+        categorySortColumn.setVisible(lightOnly);
+    }
+
+    private List<DictionaryItem> findCategoryItems(String type) throws SQLException {
+        if (!type.isBlank()) {
+            return repository.findItemsByType(type);
+        }
+        return repository.findAllItems().stream()
+                .filter(item -> isCategoryType(typeByCategoryCode(item.getCategoryCode())))
+                .toList();
+    }
+
+    private void reloadSummaries() {
+        DictionaryItem category = categoryTable.getSelectionModel().getSelectedItem();
+        if (category == null || !includeAmount(typeByCategoryCode(category.getCategoryCode()))) {
+            summaryTable.getItems().clear();
+            return;
+        }
+        try {
+            summaryTable.setItems(FXCollections.observableArrayList(
+                    repository.findItemsByTypeAndParent(SQLiteDictionaryRepository.TYPE_DONATION_SUMMARY, category.getId())
+            ));
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void reloadReasons() {
+        try {
+            deleteReasonTable.setItems(FXCollections.observableArrayList(repository.findItemsByType(SQLiteDictionaryRepository.TYPE_DELETE_REASON)));
+            supplementReasonTable.setItems(FXCollections.observableArrayList(repository.findItemsByType(SQLiteDictionaryRepository.TYPE_SUPPLEMENT_REASON)));
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void selectEditedItem(String type, Integer id, Integer parentItemId) {
+        if (id == null) {
+            return;
+        }
+        TypeOption selectedType = paymentTypeBox.getValue();
+        if ((selectedType != null && selectedType.value().isBlank() && isCategoryType(type))
+                || (selectedType != null && type.equals(selectedType.value()))) {
+            selectById(categoryTable, id);
+        } else if (type.equals(SQLiteDictionaryRepository.TYPE_DONATION_SUMMARY)) {
+            selectById(categoryTable, parentItemId);
+            reloadSummaries();
+            selectById(summaryTable, id);
+        } else if (type.equals(SQLiteDictionaryRepository.TYPE_DELETE_REASON)) {
+            selectById(deleteReasonTable, id);
+        } else if (type.equals(SQLiteDictionaryRepository.TYPE_SUPPLEMENT_REASON)) {
+            selectById(supplementReasonTable, id);
+        }
+    }
+
+    private void selectById(TableView<DictionaryItem> table, Integer id) {
+        table.getItems().stream()
+                .filter(item -> id.equals(item.getId()))
+                .findFirst()
+                .ifPresent(item -> table.getSelectionModel().select(item));
+    }
+
+    private boolean isCategoryType(String type) {
+        return SQLiteDictionaryRepository.TYPE_LIGHT.equals(type)
+                || SQLiteDictionaryRepository.TYPE_DONATION_LIGHT.equals(type)
+                || SQLiteDictionaryRepository.TYPE_DONATION_GHOST.equals(type);
+    }
+
+    private boolean includeAmount(String type) {
+        return SQLiteDictionaryRepository.TYPE_DONATION_LIGHT.equals(type)
+                || SQLiteDictionaryRepository.TYPE_DONATION_GHOST.equals(type);
+    }
+
+    private String dialogTitle(String type) {
+        return switch (type) {
+            case SQLiteDictionaryRepository.TYPE_LIGHT -> "燈種管理";
+            case SQLiteDictionaryRepository.TYPE_DONATION_LIGHT -> "信眾點燈款項類別";
+            case SQLiteDictionaryRepository.TYPE_DONATION_GHOST -> "中元普渡款項類別";
+            default -> "款項類別";
+        };
     }
 
     private String typeByCategoryCode(String categoryCode) {
@@ -126,19 +359,6 @@ public class DictionaryController {
             case "DONATION_GHOST" -> SQLiteDictionaryRepository.TYPE_DONATION_GHOST;
             default -> "";
         };
-    }
-
-    private void loadToForm(DictionaryItem item) {
-        selectedItem = item;
-        if (item == null) {
-            return;
-        }
-        codeField.setText(item.getCode());
-        nameField.setText(item.getName());
-        amountField.setText(item.getAmount() == null ? "" : String.valueOf(item.getAmount()));
-        sortField.setText(item.getSortOrder() == null ? "" : String.valueOf(item.getSortOrder()));
-        descriptionField.setText(item.getDescription());
-        enabledBox.setSelected(item.isEnabled());
     }
 
     private record TypeOption(String value, String label) {

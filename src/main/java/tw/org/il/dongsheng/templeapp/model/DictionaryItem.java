@@ -9,11 +9,16 @@ public class DictionaryItem {
     private Integer amount;
     private boolean enabled;
     private Integer sortOrder;
+    private Integer parentItemId;
 
     public DictionaryItem() {
     }
 
     public DictionaryItem(Integer id, String categoryCode, String code, String name, String description, Integer amount, boolean enabled, Integer sortOrder) {
+        this(id, categoryCode, code, name, description, amount, enabled, sortOrder, null);
+    }
+
+    public DictionaryItem(Integer id, String categoryCode, String code, String name, String description, Integer amount, boolean enabled, Integer sortOrder, Integer parentItemId) {
         this.id = id;
         this.categoryCode = categoryCode;
         this.code = code;
@@ -22,6 +27,7 @@ public class DictionaryItem {
         this.amount = amount;
         this.enabled = enabled;
         this.sortOrder = sortOrder;
+        this.parentItemId = parentItemId;
     }
 
     public Integer getId() {
@@ -86,6 +92,14 @@ public class DictionaryItem {
 
     public void setSortOrder(Integer sortOrder) {
         this.sortOrder = sortOrder;
+    }
+
+    public Integer getParentItemId() {
+        return parentItemId;
+    }
+
+    public void setParentItemId(Integer parentItemId) {
+        this.parentItemId = parentItemId;
     }
 
     @Override
