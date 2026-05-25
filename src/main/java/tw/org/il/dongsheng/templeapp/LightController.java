@@ -1041,8 +1041,13 @@ public class LightController {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("household-light.fxml"));
         Parent root = loader.load();
         HouseholdLightController controller = loader.getController();
-        controller.setData(allMember, householdLightRepository, dictionaryRepository, getCurrentRocYear());
+        controller.setData(allMember, householdLightRepository, dictionaryRepository, donationService, getCurrentRocYear());
         showModal(root, "全戶點燈", 1220, 670);
+        try {
+            executeDonationSearch();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void openModal(String fxml, String title, double width, double height) throws IOException {

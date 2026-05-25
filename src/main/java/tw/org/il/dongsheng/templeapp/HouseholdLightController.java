@@ -11,19 +11,25 @@ import javafx.scene.Scene;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.CheckBoxTableCell;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import tw.org.il.dongsheng.templeapp.model.HouseholdLightRecord;
 import tw.org.il.dongsheng.templeapp.model.LightMember;
 import tw.org.il.dongsheng.templeapp.model.LightType;
+import tw.org.il.dongsheng.templeapp.model.DictionaryItem;
+import tw.org.il.dongsheng.templeapp.model.Donation;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDictionaryRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteHouseholdLightRepository;
+import tw.org.il.dongsheng.templeapp.service.DonationService;
 import tw.org.il.dongsheng.templeapp.util.AlertDialog;
+import tw.org.il.dongsheng.templeapp.util.PaginationBar;
 import tw.org.il.dongsheng.templeapp.util.Util;
 
 import java.sql.SQLException;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,25 +39,38 @@ import java.util.stream.Collectors;
 public class HouseholdLightController {
     @FXML private ComboBox<String> collectorBox;
     @FXML private TableView<HouseholdLightRow> householdTable;
+    @FXML private PaginationBar householdPageBar;
+    @FXML private TextField incenseAmountField;
 
     private SQLiteHouseholdLightRepository repository;
     private SQLiteDictionaryRepository dictionaryRepository;
+    private DonationService donationService;
     private List<LightType> lightTypes = new ArrayList<>();
     private List<LightMember> currentMembers = new ArrayList<>();
     private int rocYear;
 
     @FXML
     public void initialize() {
-        collectorBox.setItems(FXCollections.observableArrayList("", "林暐皓"));
-        collectorBox.getSelectionModel().select(1);
         householdTable.setEditable(true);
+        householdPageBar.setTotalCount(0);
+        householdPageBar.setOnAction(() -> selectTableRow(householdPageBar.getCurrentIndex()));
     }
 
-    public void setData(List<LightMember> members, SQLiteHouseholdLightRepository repository, SQLiteDictionaryRepository dictionaryRepository, int rocYear) {
+    public void setData(List<LightMember> members, SQLiteHouseholdLightRepository repository, SQLiteDictionaryRepository dictionaryRepository, DonationService donationService, int rocYear) {
         this.repository = repository;
         this.dictionaryRepository = dictionaryRepository;
+        this.donationService = donationService;
         this.rocYear = rocYear;
         this.currentMembers = new ArrayList<>(members);
+        collectorBox.setItems(FXCollections.observableArrayList(
+                members.stream()
+                        .map(LightMember::getName)
+                        .filter(name -> name != null && !name.isBlank())
+                        .toList()
+        ));
+        if (!collectorBox.getItems().isEmpty()) {
+            collectorBox.getSelectionModel().selectFirst();
+        }
         loadData(members);
     }
 
@@ -76,6 +95,8 @@ public class HouseholdLightController {
                             .map(member -> new HouseholdLightRow(member, lightTypes, recordMap, rocYear))
                             .toList()
             ));
+            householdPageBar.setTotalCount(householdTable.getItems().size());
+            selectTableRow(0);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -131,17 +152,41 @@ public class HouseholdLightController {
         return column;
     }
 
+    private void selectTableRow(int index) {
+        if (householdTable.getItems().isEmpty()) {
+            householdTable.getSelectionModel().clearSelection();
+            return;
+        }
+        int safeIndex = Math.max(0, Math.min(index, householdTable.getItems().size() - 1));
+        householdPageBar.setCurrentIndex(safeIndex);
+        householdTable.getSelectionModel().select(safeIndex);
+        householdTable.scrollTo(safeIndex);
+    }
+
     @FXML
     private void onPlaceholderAction() {
         if (repository == null) {
             return;
         }
+        Integer incenseAmount = Util.parseInteger(incenseAmountField.getText());
+        if (incenseAmount == null || incenseAmount <= 0) {
+            AlertDialog.showWarning("全戶點燈", "請輸入油香金額");
+            return;
+        }
+        LightMember representative = findRepresentative();
+        if (representative == null) {
+            AlertDialog.showWarning("全戶點燈", "請選擇收據代表人");
+            return;
+        }
+
         String changedBy = Util.emptyToDefault(collectorBox.getValue(), System.getProperty("user.name"));
         try {
+            boolean hasSelectedLight = false;
             for (HouseholdLightRow row : householdTable.getItems()) {
                 for (LightType lightType : lightTypes) {
                     boolean selected = row.lightProperty(lightType.getId()).get();
                     if (selected) {
+                        hasSelectedLight = true;
                         repository.saveRecord(new HouseholdLightRecord(
                                 null,
                                 row.member().getId(),
@@ -154,16 +199,55 @@ public class HouseholdLightController {
                                 changedBy,
                                 null
                         ), changedBy);
-                    } else {
-                        repository.deleteRecord(row.member().getId(), lightType.getId(), rocYear, changedBy);
                     }
                 }
             }
+            if (!hasSelectedLight) {
+                AlertDialog.showWarning("全戶點燈", "請至少勾選一個燈別");
+                return;
+            }
+            donationService.save(buildIncenseDonation(representative, incenseAmount, changedBy));
             loadData(currentMembers);
             AlertDialog.showInfo("全戶點燈", "儲存成功");
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private LightMember findRepresentative() {
+        String selectedName = collectorBox.getValue();
+        return currentMembers.stream()
+                .filter(member -> selectedName != null && selectedName.equals(member.getName()))
+                .findFirst()
+                .orElse(currentMembers.isEmpty() ? null : currentMembers.get(0));
+    }
+
+    private Donation buildIncenseDonation(LightMember representative, int incenseAmount, String changedBy) throws SQLException {
+        DictionaryItem incenseType = dictionaryRepository.findEnabledItemsByType(SQLiteDictionaryRepository.TYPE_DONATION_LIGHT).stream()
+                .filter(item -> "1".equals(item.getCode()) || "油香".equals(item.getName()))
+                .findFirst()
+                .orElseThrow(() -> new SQLException("找不到油香款項類別"));
+        return new Donation(
+                null,
+                representative.getId(),
+                null,
+                currentRocDate(),
+                null,
+                incenseAmount,
+                "全戶點燈",
+                "",
+                "",
+                "",
+                "",
+                incenseAmount,
+                String.valueOf(incenseType.getId()),
+                changedBy
+        );
+    }
+
+    private String currentRocDate() {
+        LocalDate today = LocalDate.now();
+        return String.format("%03d.%02d.%02d", today.getYear() - 1911, today.getMonthValue(), today.getDayOfMonth());
     }
 
     @FunctionalInterface

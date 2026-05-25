@@ -3,6 +3,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import tw.org.il.dongsheng.templeapp.util.PaginationBar?>
 
 <BorderPane prefWidth="1220" prefHeight="670"
             xmlns="http://javafx.com/javafx"
@@ -14,20 +15,13 @@
         <VBox spacing="12" style="-fx-padding: 16 12 12 12;">
             <TableView fx:id="householdTable" prefHeight="505" VBox.vgrow="ALWAYS" />
 
-            <HBox spacing="6" alignment="CENTER_LEFT">
-                <Button text="|◀" />
-                <Button text="◀" />
-                <TextField text="1" alignment="CENTER_RIGHT" prefWidth="62" />
-                <Label text="總筆數： 8" />
-                <Button text="▶" />
-                <Button text="▶|" />
-            </HBox>
+            <PaginationBar fx:id="householdPageBar" />
 
             <HBox spacing="12" alignment="CENTER_LEFT">
                 <Label text="收據代表人" />
                 <ComboBox fx:id="collectorBox" prefWidth="180" />
                 <Label text="油香" />
-                <TextField prefWidth="100" />
+                <TextField fx:id="incenseAmountField" prefWidth="100" />
                 <Button text="確定" styleClass="btn-orange" onAction="#onPlaceholderAction" />
                 <Region HBox.hgrow="ALWAYS" />
                 <Button text="燈種管理" styleClass="btn-purple" onAction="#onOpenLightTypeManagement" />
