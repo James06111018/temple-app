@@ -41,7 +41,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
 
 /**
  * 信眾點燈 / 中元普渡 共用頁面
@@ -215,6 +214,13 @@ public class LightController {
             if (newVal != null) {
                 setMemberData(newVal);
                 referenceMember = newVal;
+                try {
+                    executeDonationSearch();
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                clearDonationTable();
             }
         });
 
@@ -778,8 +784,6 @@ public class LightController {
             selectTableRow(memberTable, selectedIndex);
 
             memberTable.refresh();
-
-            executeDonationSearch();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -789,9 +793,14 @@ public class LightController {
         /**
          * 捐款資料
          */
-        List<Integer> memberIds = allMember.stream()
-                .map(LightMember::getId)
-                .collect(Collectors.toList());
+        LightMember selectedMember = memberTable.getSelectionModel().getSelectedItem();
+        if (selectedMember == null || selectedMember.getId() == null) {
+            clearDonationTable();
+            setDonationAvailable(false);
+            return;
+        }
+
+        List<Integer> memberIds = List.of(selectedMember.getId());
 
         int dTotal = donationService.getDonationCount(memberIds);
         List<Donation> donations = donationService.findByMemberIds(memberIds, Math.max(dTotal, 1), 0);
@@ -802,6 +811,12 @@ public class LightController {
         setDonationAvailable(true);
 
         donationTable.refresh();
+    }
+
+    private void clearDonationTable() {
+        donationTable.getItems().clear();
+        donationTable.getSelectionModel().clearSelection();
+        donationPageBar.setTotalCount(0);
     }
 
     private <T> void selectTableRow(TableView<T> tableView, int index) {
@@ -978,11 +993,16 @@ public class LightController {
         if (warnIfDonationEditing()) {
             return;
         }
+        if (!hasSavedMemberData()) {
+            AlertDialog.showWarning("信眾點燈", "請先查詢基本資料！");
+            return;
+        }
+
         FXMLLoader loader = new FXMLLoader(getClass().getResource("total-amount.fxml"));
         Parent root = loader.load();
         TotalAmountController controller = loader.getController();
         controller.setMemberId(idField.getText());
-        showModal(root, "總金額", 570, 300);
+        showModal(root, "總金額", 620, 300);
     }
 
     @FXML

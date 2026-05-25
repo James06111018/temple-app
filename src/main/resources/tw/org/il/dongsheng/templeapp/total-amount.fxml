@@ -4,14 +4,14 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane prefWidth="570" prefHeight="300"
+<BorderPane prefWidth="620" prefHeight="300"
             xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tw.org.il.dongsheng.templeapp.TotalAmountController"
             stylesheets="@style.css"
             style="-fx-background-color: #f0f0f0;">
     <center>
-        <GridPane hgap="8" vgap="14" style="-fx-padding: 40 28 24 60;">
+        <GridPane hgap="8" vgap="14" style="-fx-padding: 40 36 24 60;">
             <columnConstraints>
                 <ColumnConstraints halignment="RIGHT" minWidth="92" />
                 <ColumnConstraints minWidth="86" />
