@@ -8,19 +8,25 @@
 
     <MenuBar>
         <menus>
-            <Menu text="檔案(F)">
-                <MenuItem text="結束" onAction="#handleExit"/>
+            <Menu text="檔案(_F)" mnemonicParsing="true">
+<!--                <MenuItem text="行事曆" />-->
+<!--                <SeparatorMenuItem />-->
+<!--                <MenuItem text="暫時登出(_O)" mnemonicParsing="true" />-->
+<!--                <SeparatorMenuItem />-->
+                <MenuItem text="結束系統(_X)" mnemonicParsing="true" onAction="#handleExit"/>
             </Menu>
-            <Menu text="設定(S)">
-                <MenuItem text="系統設定"/>
-                <MenuItem text="印表機設定"/>
-                <MenuItem text="參數設定" onAction="#handleParameterSettings"/>
+            <Menu text="設定(_S)" mnemonicParsing="true">
+<!--                <MenuItem text="系統設定(_S)" mnemonicParsing="true"/>-->
+<!--                <SeparatorMenuItem />-->
+<!--                <MenuItem text="印表機設定(_P)" mnemonicParsing="true"/>-->
+<!--                <SeparatorMenuItem />-->
+                <MenuItem text="參數設定(_A)" mnemonicParsing="true" onAction="#handleParameterSettings"/>
             </Menu>
-            <Menu text="工具(T)">
-                <MenuItem text="詞彙設定" onAction="#handleDictionary" />
+            <Menu text="工具(_T)" mnemonicParsing="true">
+                <MenuItem text="詞彙設定(_D)" mnemonicParsing="true" onAction="#handleDictionary" />
             </Menu>
-            <Menu fx:id="menuWindow" text="視窗(W)"/>
-            <Menu text="關於(A)">
+            <Menu fx:id="menuWindow" text="視窗(_W)" mnemonicParsing="true"/>
+            <Menu text="關於(_A)" mnemonicParsing="true">
                 <MenuItem fx:id="menuItemAbout"/>
             </Menu>
         </menus>
