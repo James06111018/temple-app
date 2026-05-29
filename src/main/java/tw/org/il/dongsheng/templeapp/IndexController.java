@@ -295,8 +295,23 @@ public class IndexController {
     }
 
     @FXML
+    public void handleDataMerge() throws IOException {
+        showModal("資料合併", "data-merge.fxml");
+    }
+
+    @FXML
     public void handleMergeRecord() throws IOException {
         showModal("合併紀錄", "merge-record.fxml");
+    }
+
+    @FXML
+    public void handleCreateRecord() throws IOException {
+        showModal("建檔紀錄", "create-record.fxml");
+    }
+
+    @FXML
+    public void handleLoginRecord() throws IOException {
+        showModal("登入紀錄", "login-record.fxml");
     }
 
     @FXML

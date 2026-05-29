@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import tw.org.il.dongsheng.templeapp.util.PaginationBar?>
+
+<BorderPane prefWidth="860" prefHeight="520"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.LoginRecordController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
+    <center>
+        <VBox spacing="10" style="-fx-padding: 16 18 16 18;">
+            <HBox spacing="14" alignment="CENTER_LEFT">
+                <Label text="經辦人" />
+                <ComboBox prefWidth="150" />
+                <Label text="登入日期" />
+                <TextField text="115.05.14" prefWidth="92" />
+                <Label text="－" />
+                <TextField text="115.05.14" prefWidth="92" />
+                <Button text="查詢" styleClass="btn-purple" prefWidth="92" onAction="#onPlaceholderAction" />
+                <Button text="查詢未登出" styleClass="btn-action" prefWidth="132" onAction="#onPlaceholderAction" />
+            </HBox>
+
+            <TableView fx:id="loginRecordTable" prefHeight="390" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn text="" prefWidth="24" />
+                    <TableColumn text="登入日期" prefWidth="112" />
+                    <TableColumn text="登入時間" prefWidth="102" />
+                    <TableColumn text="電腦名稱" prefWidth="220" />
+                    <TableColumn text="經辦人" prefWidth="130" />
+                    <TableColumn text="登出日期" prefWidth="112" />
+                    <TableColumn text="登出時間" prefWidth="102" />
+                </columns>
+            </TableView>
+
+            <PaginationBar fx:id="loginRecordPageBar" />
+        </VBox>
+    </center>
+</BorderPane>

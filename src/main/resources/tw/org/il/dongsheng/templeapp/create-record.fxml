@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import tw.org.il.dongsheng.templeapp.util.PaginationBar?>
+
+<BorderPane prefWidth="1180" prefHeight="610"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.CreateRecordController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
+    <center>
+        <VBox spacing="10" style="-fx-padding: 16 18 16 18;">
+            <HBox spacing="18" alignment="CENTER_LEFT">
+                <Label text="電腦編號" />
+                <TextField prefWidth="90" />
+                <Button text="查詢" styleClass="btn-purple" prefWidth="78" onAction="#onPlaceholderAction" />
+                <Region prefWidth="48" />
+                <Label text="日期" />
+                <TextField text="115.05.14" prefWidth="92" />
+                <Label text="－" />
+                <TextField text="115.05.14" prefWidth="92" />
+                <Button text="查詢" styleClass="btn-purple" prefWidth="78" onAction="#onPlaceholderAction" />
+                <Region prefWidth="48" />
+                <Label text="姓名" />
+                <TextField prefWidth="155" />
+                <Button text="查詢" styleClass="btn-purple" prefWidth="78" onAction="#onPlaceholderAction" />
+            </HBox>
+
+            <TableView fx:id="createRecordTable" prefHeight="470" VBox.vgrow="ALWAYS">
+                <columnResizePolicy>
+                    <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY" />
+                </columnResizePolicy>
+                <columns>
+                    <TableColumn text="" prefWidth="24" />
+                    <TableColumn text="日期" prefWidth="92" />
+                    <TableColumn text="時間" prefWidth="76" />
+                    <TableColumn text="狀態" prefWidth="88" />
+                    <TableColumn text="經辦人" prefWidth="104" />
+                    <TableColumn text="電腦編號" prefWidth="96" />
+                    <TableColumn text="姓名" prefWidth="124" />
+                    <TableColumn text="國曆生日" prefWidth="104" />
+                    <TableColumn text="農曆生日" prefWidth="104" />
+                    <TableColumn text="生肖" prefWidth="64" />
+                    <TableColumn text="歲次" prefWidth="64" />
+                    <TableColumn text="時辰" prefWidth="64" />
+                    <TableColumn text="性別" prefWidth="64" />
+                    <TableColumn text="地址" prefWidth="380" />
+                    <TableColumn text="電話" prefWidth="154" />
+                    <TableColumn text="郵遞區號" prefWidth="104" />
+                    <TableColumn text="是否郵寄" prefWidth="104" />
+                    <TableColumn text="備註" prefWidth="104" />
+                    <TableColumn text="分類" prefWidth="104" />
+                    <TableColumn text="身分證號" prefWidth="120" />
+                    <TableColumn text="排序" prefWidth="70" />
+                </columns>
+            </TableView>
+
+            <PaginationBar fx:id="createRecordPageBar" />
+        </VBox>
+    </center>
+</BorderPane>

@@ -31,13 +31,13 @@
                 <SeparatorMenuItem />
                 <MenuItem text="結帳報表" onAction="#handleCheckoutReport" />
                 <SeparatorMenuItem />
-                <MenuItem text="資料合併" />
+                <MenuItem text="資料合併" onAction="#handleDataMerge" />
                 <SeparatorMenuItem />
                 <MenuItem text="合併紀錄" onAction="#handleMergeRecord" />
                 <SeparatorMenuItem />
-                <MenuItem text="建檔紀錄" />
+                <MenuItem text="建檔紀錄" onAction="#handleCreateRecord" />
                 <SeparatorMenuItem />
-                <MenuItem text="登入紀錄" />
+                <MenuItem text="登入紀錄" onAction="#handleLoginRecord" />
                 <SeparatorMenuItem />
                 <MenuItem text="總戶數" onAction="#handleHouseholdCount" />
             </Menu>

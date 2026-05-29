@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane prefWidth="860" prefHeight="620"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.DataMergeController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
+    <center>
+        <AnchorPane prefWidth="860" prefHeight="620">
+            <Label text="被合併者（合併完成後，這筆資料將被刪除並當作空號處理）"
+                   layoutX="18" layoutY="26"
+                   style="-fx-text-fill: blue; -fx-font-size: 22; -fx-font-weight: bold;" />
+
+            <Label text="電腦編號" layoutX="18" layoutY="82" />
+            <TextField prefWidth="92" layoutX="108" layoutY="76" />
+            <Button text="查詢" styleClass="btn-green" prefWidth="72" layoutX="214" layoutY="76" onAction="#onPlaceholderAction" />
+            <Button text="明細" styleClass="btn-action" prefWidth="72" layoutX="296" layoutY="76" onAction="#onPlaceholderAction" />
+
+            <Label text="姓名" layoutX="58" layoutY="124" />
+            <TextField prefWidth="265" layoutX="108" layoutY="118" />
+            <Label text="電話" layoutX="405" layoutY="124" />
+            <TextField prefWidth="380" layoutX="458" layoutY="118" />
+            <Label text="地址" layoutX="58" layoutY="164" />
+            <TextField prefWidth="730" layoutX="108" layoutY="158" />
+
+            <Label text="單筆序號" layoutX="18" layoutY="205" style="-fx-text-fill: blue;" />
+            <TextField prefWidth="108" layoutX="108" layoutY="199" />
+            <Label text="↓" layoutX="415" layoutY="199" style="-fx-text-fill: red; -fx-font-size: 28;" />
+
+            <Label text="合併到下列編號（請檢查資料是否完整正確）"
+                   layoutX="18" layoutY="254"
+                   style="-fx-text-fill: red; -fx-font-size: 22; -fx-font-weight: bold;" />
+
+            <Label text="電腦編號" layoutX="18" layoutY="316" />
+            <TextField prefWidth="92" layoutX="108" layoutY="310" />
+            <Button text="查詢" styleClass="btn-green" prefWidth="72" layoutX="214" layoutY="310" onAction="#onPlaceholderAction" />
+
+            <Label text="姓名" layoutX="58" layoutY="358" />
+            <TextField prefWidth="265" layoutX="108" layoutY="352" />
+            <Label text="電話" layoutX="405" layoutY="358" />
+            <TextField prefWidth="380" layoutX="458" layoutY="352" />
+            <Label text="地址" layoutX="58" layoutY="398" />
+            <TextField prefWidth="730" layoutX="108" layoutY="392" />
+
+            <Label text="合併原因" layoutX="18" layoutY="520" style="-fx-text-fill: red;" />
+            <TextField prefWidth="510" layoutX="108" layoutY="514" />
+            <Button text="開始合併" styleClass="btn-orange" prefWidth="184" prefHeight="42"
+                    layoutX="650" layoutY="508" onAction="#onPlaceholderAction" />
+        </AnchorPane>
+    </center>
+</BorderPane>
