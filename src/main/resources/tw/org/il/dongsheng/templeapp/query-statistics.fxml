@@ -17,9 +17,9 @@
             <CheckBox text="電腦編號" layoutX="34" layoutY="48" />
             <TextField prefWidth="80" layoutX="158" layoutY="42" />
 
-            <Button text="收入報表" styleClass="btn-pink" prefWidth="132" prefHeight="38" layoutX="255" layoutY="38" onAction="#onPlaceholderAction" />
-            <Button text="列印標籤" styleClass="btn-orange" prefWidth="132" prefHeight="38" layoutX="410" layoutY="38" onAction="#onPlaceholderAction" />
-            <Button text="捐款排行榜" styleClass="btn-purple" prefWidth="132" prefHeight="38" layoutX="650" layoutY="38" onAction="#onPlaceholderAction" />
+            <Button text="收入報表" styleClass="btn-pink" prefWidth="132" prefHeight="38" layoutX="255" layoutY="38" onAction="#onOpenIncomeReport" />
+            <Button text="列印標籤" styleClass="btn-orange" prefWidth="132" prefHeight="38" layoutX="410" layoutY="38" onAction="#onOpenPrintLabels" />
+            <Button text="捐款排行榜" styleClass="btn-purple" prefWidth="132" prefHeight="38" layoutX="650" layoutY="38" onAction="#onOpenDonationRanking" />
             <Label text="前" layoutX="805" layoutY="48" />
             <TextField text="100" prefWidth="46" layoutX="830" layoutY="42" />
             <Label text="名" layoutX="884" layoutY="48" />
@@ -61,8 +61,8 @@
                         <Label text="筆" GridPane.rowIndex="2" GridPane.columnIndex="2" />
                         <TextField GridPane.rowIndex="2" GridPane.columnIndex="3" />
                         <Label text="元" GridPane.rowIndex="2" GridPane.columnIndex="4" />
-                        <Button text="人數統計" styleClass="btn-purple" prefWidth="112" GridPane.rowIndex="3" GridPane.columnIndex="1" onAction="#onPlaceholderAction" />
-                        <Button text="捐款明細" styleClass="btn-purple" prefWidth="112" GridPane.rowIndex="3" GridPane.columnIndex="3" onAction="#onPlaceholderAction" />
+                        <Button text="人數統計" styleClass="btn-purple" prefWidth="112" GridPane.rowIndex="3" GridPane.columnIndex="1" onAction="#onOpenPeopleStatistics" />
+                        <Button text="捐款明細" styleClass="btn-purple" prefWidth="112" GridPane.rowIndex="3" GridPane.columnIndex="3" onAction="#onOpenDonationDetails" />
                     </GridPane>
                 </content>
             </TitledPane>

@@ -1,18 +1,24 @@
 package tw.org.il.dongsheng.templeapp;
 
 import javafx.collections.FXCollections;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.FXML;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ListView;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleGroup;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import tw.org.il.dongsheng.templeapp.model.DictionaryItem;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDictionaryRepository;
 import tw.org.il.dongsheng.templeapp.util.AlertDialog;
 
 import java.sql.SQLException;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -78,6 +84,41 @@ public class QueryStatisticsController {
     @FXML
     private void onPlaceholderAction() {
         AlertDialog.showInfo("查詢統計", "功能尚未實作");
+    }
+
+    @FXML
+    private void onOpenIncomeReport() throws IOException {
+        showModal("收入報表", "income-report.fxml");
+    }
+
+    @FXML
+    private void onOpenPrintLabels() throws IOException {
+        showModal("列印標籤", "print-labels.fxml");
+    }
+
+    @FXML
+    private void onOpenDonationRanking() throws IOException {
+        showModal("捐款累計金額最多前 100 名", "donation-ranking.fxml");
+    }
+
+    @FXML
+    private void onOpenPeopleStatistics() throws IOException {
+        showModal("人數統計", "people-statistics.fxml");
+    }
+
+    @FXML
+    private void onOpenDonationDetails() throws IOException {
+        showModal("捐款明細", "donation-details.fxml");
+    }
+
+    private void showModal(String title, String fxmlFile) throws IOException {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlFile));
+        Parent root = loader.load();
+        Stage stage = new Stage();
+        stage.setTitle(title);
+        stage.setScene(new Scene(root));
+        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.showAndWait();
     }
 
     private String currentRocDate() {

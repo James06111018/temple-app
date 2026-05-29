@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import tw.org.il.dongsheng.templeapp.util.PaginationBar?>
+
+<BorderPane prefWidth="780" prefHeight="620"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.DonationRankingController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
+    <center>
+        <VBox spacing="12" style="-fx-padding: 18 16 16 16;">
+            <TableView fx:id="rankingTable" prefHeight="500" VBox.vgrow="ALWAYS">
+                <columnResizePolicy>
+                    <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY" />
+                </columnResizePolicy>
+                <columns>
+                    <TableColumn text="" prefWidth="24" />
+                    <TableColumn text="名稱" prefWidth="320" />
+                    <TableColumn text="電腦編號" prefWidth="124" />
+                    <TableColumn text="捐款總金額" prefWidth="146" />
+                    <TableColumn text="總筆數" prefWidth="110" />
+                </columns>
+            </TableView>
+            <PaginationBar fx:id="rankingPageBar" />
+            <Button text="列印名冊" styleClass="btn-orange" prefWidth="128" prefHeight="40" />
+        </VBox>
+    </center>
+</BorderPane>

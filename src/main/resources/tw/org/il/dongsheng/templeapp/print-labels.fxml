@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane prefWidth="600" prefHeight="430"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.PrintLabelsController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
+    <fx:define>
+        <ToggleGroup fx:id="labelTargetGroup" />
+    </fx:define>
+    <center>
+        <AnchorPane prefWidth="600" prefHeight="430">
+            <RadioButton fx:id="memberIdRadio" text="電腦編號" toggleGroup="$labelTargetGroup" layoutX="42" layoutY="55" />
+            <TextField prefWidth="146" layoutX="160" layoutY="48" />
+            <Label text="(1-9999999)" layoutX="340" layoutY="55" />
+
+            <RadioButton text="單選編號" toggleGroup="$labelTargetGroup" layoutX="42" layoutY="105" />
+            <TextField prefWidth="275" layoutX="160" layoutY="98" />
+            <Label text="(1,3,5,100)" layoutX="470" layoutY="105" />
+
+            <Label text="報表種類" layoutX="42" layoutY="170" />
+            <ComboBox fx:id="reportTypeBox" prefWidth="226" layoutX="132" layoutY="164" />
+            <Button text="列印" styleClass="btn-purple" prefWidth="116" prefHeight="44" layoutX="380" layoutY="160" onAction="#onPlaceholderAction" />
+
+            <Label text="起始位置" layoutX="42" layoutY="213" />
+            <ComboBox fx:id="startPositionBox" prefWidth="78" layoutX="132" layoutY="207" />
+
+            <CheckBox text="依郵遞區號排序" layoutX="42" layoutY="270" style="-fx-text-fill: blue;" />
+            <CheckBox text="全部郵寄" layoutX="42" layoutY="315" style="-fx-text-fill: blue;" />
+            <CheckBox text="郵遞區號篩選" layoutX="42" layoutY="360" style="-fx-text-fill: blue;" />
+            <TextField prefWidth="48" layoutX="194" layoutY="354" />
+            <Label text="－" layoutX="252" layoutY="360" />
+            <TextField prefWidth="48" layoutX="270" layoutY="354" />
+        </AnchorPane>
+    </center>
+</BorderPane>
