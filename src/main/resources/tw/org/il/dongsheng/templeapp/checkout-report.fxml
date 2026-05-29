@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane prefWidth="270" prefHeight="490"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.CheckoutReportController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
+    <center>
+        <AnchorPane prefWidth="270" prefHeight="490">
+            <Pane layoutX="18" layoutY="18" prefWidth="234" prefHeight="460"
+                  style="-fx-border-color: #b0b0b0; -fx-border-width: 1;" />
+
+            <Label text="經辦人" layoutX="66" layoutY="48" />
+            <TextField prefWidth="74" layoutX="109" layoutY="42" />
+            <Button text="..." styleClass="btn-green" prefWidth="24" prefHeight="28"
+                    layoutX="190" layoutY="42" onAction="#onPlaceholderAction" />
+
+            <Label text="日期" layoutX="34" layoutY="88" />
+            <TextField text="115.05.14" prefWidth="78" layoutX="65" layoutY="82" />
+            <Label text="－" layoutX="145" layoutY="88" />
+            <TextField text="115.05.14" prefWidth="78" layoutX="160" layoutY="82" />
+
+            <Label text="起始收據編號" layoutX="34" layoutY="128" />
+            <TextField prefWidth="74" layoutX="116" layoutY="122" />
+
+            <Button text="明細表" styleClass="btn-action" prefWidth="94" prefHeight="28"
+                    layoutX="88" layoutY="156" onAction="#onPlaceholderAction" />
+            <Button text="全" styleClass="btn-action" prefWidth="35" prefHeight="28"
+                    layoutX="188" layoutY="156" onAction="#onPlaceholderAction" />
+            <Button text="分類表" styleClass="btn-action" prefWidth="94" prefHeight="28"
+                    layoutX="88" layoutY="196" onAction="#onPlaceholderAction" />
+            <Button text="統計表" styleClass="btn-purple" prefWidth="94" prefHeight="28"
+                    layoutX="88" layoutY="236" onAction="#onPlaceholderAction" />
+            <Button text="月報表" styleClass="btn-purple" prefWidth="94" prefHeight="28"
+                    layoutX="88" layoutY="276" onAction="#onPlaceholderAction" />
+            <Button text="補登款項" styleClass="btn-green" prefWidth="94" prefHeight="28"
+                    layoutX="88" layoutY="316" onAction="#onPlaceholderAction" />
+            <Button text="刪除紀錄" styleClass="btn-orange" prefWidth="94" prefHeight="28"
+                    layoutX="88" layoutY="356" onAction="#onPlaceholderAction" />
+            <Button text="修改紀錄" styleClass="btn-pink" prefWidth="94" prefHeight="28"
+                    layoutX="88" layoutY="396" onAction="#onPlaceholderAction" />
+            <Button text="補帳紀錄" styleClass="btn-action" prefWidth="94" prefHeight="28"
+                    layoutX="88" layoutY="436" onAction="#onPlaceholderAction" />
+        </AnchorPane>
+    </center>
+</BorderPane>

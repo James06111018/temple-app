@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane prefWidth="390" prefHeight="190"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.HouseholdCountController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
+    <center>
+        <GridPane hgap="14" vgap="20" style="-fx-padding: 44 0 0 86;">
+            <columnConstraints>
+                <ColumnConstraints halignment="RIGHT" minWidth="70" />
+                <ColumnConstraints minWidth="110" />
+            </columnConstraints>
+            <Label text="總戶數" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+            <TextField fx:id="householdCountField" editable="false" alignment="CENTER_RIGHT" prefWidth="110" GridPane.rowIndex="0" GridPane.columnIndex="1" />
+            <Label text="總人數" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+            <TextField fx:id="memberCountField" editable="false" alignment="CENTER_RIGHT" prefWidth="110" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+        </GridPane>
+    </center>
+</BorderPane>

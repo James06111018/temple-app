@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import tw.org.il.dongsheng.templeapp.util.PaginationBar?>
+
+<BorderPane prefWidth="1180" prefHeight="600"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.MergeRecordController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
+    <center>
+        <VBox spacing="10" style="-fx-padding: 16 18 16 18;">
+            <HBox spacing="14" alignment="CENTER_LEFT">
+                <Label text="被合併電腦編號" />
+                <TextField prefWidth="90" />
+                <Button text="查詢" styleClass="btn-purple" prefWidth="78" onAction="#onPlaceholderAction" />
+                <Label text="被合併姓名" />
+                <TextField prefWidth="140" />
+                <Button text="查詢" styleClass="btn-purple" prefWidth="78" onAction="#onPlaceholderAction" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Label text="日期" />
+                <TextField text="115.05.14" prefWidth="92" />
+                <Label text="－" />
+                <TextField text="115.05.14" prefWidth="92" />
+                <Button text="查詢" styleClass="btn-purple" prefWidth="78" onAction="#onPlaceholderAction" />
+            </HBox>
+
+            <TableView fx:id="mergeRecordTable" prefHeight="455" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn text="" prefWidth="24" />
+                    <TableColumn text="日期" prefWidth="90" />
+                    <TableColumn text="時間" prefWidth="90" />
+                    <TableColumn text="被合併編號" prefWidth="104" />
+                    <TableColumn text="被合併姓名" prefWidth="124" />
+                    <TableColumn text="被合併地址" prefWidth="310" />
+                    <TableColumn text="被合併電話" prefWidth="150" />
+                    <TableColumn text="電腦編號" prefWidth="104" />
+                    <TableColumn text="姓名" prefWidth="124" />
+                    <TableColumn text="地址" prefWidth="310" />
+                </columns>
+            </TableView>
+
+            <PaginationBar fx:id="mergeRecordPageBar" />
+        </VBox>
+    </center>
+</BorderPane>

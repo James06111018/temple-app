@@ -276,46 +276,41 @@ public class IndexController {
 
     @FXML
     public void handleDictionary() throws IOException {
-        FXMLLoader loader = new FXMLLoader(
-                getClass().getResource("dictionary.fxml")
-        );
-        Parent root = loader.load();
-
-        Stage stage = new Stage();
-        stage.setTitle("詞彙設定");
-        stage.setScene(new Scene(root));
-        stage.initModality(Modality.APPLICATION_MODAL);
-
-        stage.showAndWait();
+        showModal("詞彙設定", "dictionary.fxml");
     }
 
     @FXML
     public void handleParameterSettings() throws IOException {
-        FXMLLoader loader = new FXMLLoader(
-                getClass().getResource("parameter-settings.fxml")
-        );
-        Parent root = loader.load();
-
-        Stage stage = new Stage();
-        stage.setTitle("參數設定");
-        stage.setScene(new Scene(root));
-        stage.initModality(Modality.APPLICATION_MODAL);
-
-        stage.showAndWait();
+        showModal("參數設定", "parameter-settings.fxml");
     }
 
     @FXML
     public void handleQueryStatistics() throws IOException {
-        FXMLLoader loader = new FXMLLoader(
-                getClass().getResource("query-statistics.fxml")
-        );
-        Parent root = loader.load();
+        showModal("查詢統計", "query-statistics.fxml");
+    }
 
+    @FXML
+    public void handleCheckoutReport() throws IOException {
+        showModal("結帳報表", "checkout-report.fxml");
+    }
+
+    @FXML
+    public void handleMergeRecord() throws IOException {
+        showModal("合併紀錄", "merge-record.fxml");
+    }
+
+    @FXML
+    public void handleHouseholdCount() throws IOException {
+        showModal("總戶數", "household-count.fxml");
+    }
+
+    private void showModal(String title, String fxmlFile) throws IOException {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlFile));
+        Parent root = loader.load();
         Stage stage = new Stage();
-        stage.setTitle("查詢統計");
+        stage.setTitle(title);
         stage.setScene(new Scene(root));
         stage.initModality(Modality.APPLICATION_MODAL);
-
         stage.showAndWait();
     }
 

@@ -29,17 +29,17 @@
                 <SeparatorMenuItem />
                 <MenuItem text="詞彙設定" onAction="#handleDictionary" />
                 <SeparatorMenuItem />
-                <MenuItem text="結帳報表" />
+                <MenuItem text="結帳報表" onAction="#handleCheckoutReport" />
                 <SeparatorMenuItem />
                 <MenuItem text="資料合併" />
                 <SeparatorMenuItem />
-                <MenuItem text="合併紀錄" />
+                <MenuItem text="合併紀錄" onAction="#handleMergeRecord" />
                 <SeparatorMenuItem />
                 <MenuItem text="建檔紀錄" />
                 <SeparatorMenuItem />
                 <MenuItem text="登入紀錄" />
                 <SeparatorMenuItem />
-                <MenuItem text="總戶數" />
+                <MenuItem text="總戶數" onAction="#handleHouseholdCount" />
             </Menu>
             <Menu fx:id="menuWindow" text="視窗(_W)" mnemonicParsing="true"/>
             <Menu text="關於(_A)" mnemonicParsing="true">
