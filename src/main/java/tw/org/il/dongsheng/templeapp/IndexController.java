@@ -304,6 +304,21 @@ public class IndexController {
         stage.showAndWait();
     }
 
+    @FXML
+    public void handleQueryStatistics() throws IOException {
+        FXMLLoader loader = new FXMLLoader(
+                getClass().getResource("query-statistics.fxml")
+        );
+        Parent root = loader.load();
+
+        Stage stage = new Stage();
+        stage.setTitle("查詢統計");
+        stage.setScene(new Scene(root));
+        stage.initModality(Modality.APPLICATION_MODAL);
+
+        stage.showAndWait();
+    }
+
     private static class OpenPage {
         String id;
         String title;

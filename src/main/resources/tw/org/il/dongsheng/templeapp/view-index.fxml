@@ -23,7 +23,23 @@
                 <MenuItem text="參數設定(_A)" mnemonicParsing="true" onAction="#handleParameterSettings"/>
             </Menu>
             <Menu text="工具(_T)" mnemonicParsing="true">
-                <MenuItem text="詞彙設定(_D)" mnemonicParsing="true" onAction="#handleDictionary" />
+                <MenuItem text="查詢統計" onAction="#handleQueryStatistics" />
+                <SeparatorMenuItem />
+                <MenuItem text="空號查詢" />
+                <SeparatorMenuItem />
+                <MenuItem text="詞彙設定" onAction="#handleDictionary" />
+                <SeparatorMenuItem />
+                <MenuItem text="結帳報表" />
+                <SeparatorMenuItem />
+                <MenuItem text="資料合併" />
+                <SeparatorMenuItem />
+                <MenuItem text="合併紀錄" />
+                <SeparatorMenuItem />
+                <MenuItem text="建檔紀錄" />
+                <SeparatorMenuItem />
+                <MenuItem text="登入紀錄" />
+                <SeparatorMenuItem />
+                <MenuItem text="總戶數" />
             </Menu>
             <Menu fx:id="menuWindow" text="視窗(_W)" mnemonicParsing="true"/>
             <Menu text="關於(_A)" mnemonicParsing="true">
