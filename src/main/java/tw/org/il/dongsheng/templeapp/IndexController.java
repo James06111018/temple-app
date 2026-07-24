@@ -290,6 +290,11 @@ public class IndexController {
     }
 
     @FXML
+    public void handleEmptyNumberQuery() throws IOException {
+        showModal("空號查詢", "empty-number-query.fxml");
+    }
+
+    @FXML
     public void handleCheckoutReport() throws IOException {
         showModal("結帳報表", "checkout-report.fxml");
     }

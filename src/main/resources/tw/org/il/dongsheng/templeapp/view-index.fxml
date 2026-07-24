@@ -25,7 +25,7 @@
             <Menu text="工具(_T)" mnemonicParsing="true">
                 <MenuItem text="查詢統計" onAction="#handleQueryStatistics" />
                 <SeparatorMenuItem />
-                <MenuItem text="空號查詢" />
+                <MenuItem text="空號查詢" onAction="#handleEmptyNumberQuery" />
                 <SeparatorMenuItem />
                 <MenuItem text="詞彙設定" onAction="#handleDictionary" />
                 <SeparatorMenuItem />

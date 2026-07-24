@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import tw.org.il.dongsheng.templeapp.util.PaginationBar?>
+
+<BorderPane prefWidth="740" prefHeight="610"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.EmptyNumberQueryController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
+    <center>
+        <AnchorPane prefWidth="740" prefHeight="610">
+            <Label text="已刪除的電腦編號，系統會自動遞補"
+                   layoutX="34" layoutY="26" />
+            <Label text="姓名空白的電腦編號"
+                   layoutX="392" layoutY="26"
+                   style="-fx-text-fill: #bb3333;" />
+
+            <TableView fx:id="deletedNumberTable" layoutX="32" layoutY="60" prefWidth="306" prefHeight="500">
+                <columns>
+                    <TableColumn text="電腦編號 △" prefWidth="300" />
+                </columns>
+            </TableView>
+            <PaginationBar fx:id="deletedNumberPageBar" layoutX="32" layoutY="560" prefWidth="306" />
+
+            <TableView fx:id="blankNameNumberTable" layoutX="392" layoutY="60" prefWidth="306" prefHeight="390">
+                <columns>
+                    <TableColumn text="" prefWidth="24" />
+                    <TableColumn text="電腦編號 △" prefWidth="254" />
+                </columns>
+            </TableView>
+            <PaginationBar fx:id="blankNameNumberPageBar" layoutX="392" layoutY="450" prefWidth="306" />
+
+            <Label text="若要全部刪除上述的電腦編號，前台"
+                   layoutX="390" layoutY="504"
+                   style="-fx-text-fill: blue;" />
+            <Label text="必須登出，限在伺服器上執行。"
+                   layoutX="390" layoutY="526"
+                   style="-fx-text-fill: blue;" />
+            <Button text="查看上線資訊" styleClass="btn-purple" prefWidth="136" prefHeight="42"
+                    layoutX="392" layoutY="554" onAction="#onOpenLoginRecord" />
+            <Button text="姓名空白全部刪除" styleClass="btn-action" prefWidth="166" prefHeight="42"
+                    layoutX="536" layoutY="554" onAction="#onPlaceholderAction" />
+        </AnchorPane>
+    </center>
+</BorderPane>
