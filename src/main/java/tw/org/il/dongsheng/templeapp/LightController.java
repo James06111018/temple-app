@@ -67,7 +67,7 @@ public class LightController {
             , otherNoteField, donorNoField, lightNoField, shouldPayField;
     @FXML private DatePicker donateDateField;
 
-    @FXML private Button generateIdButton, saveButton, btnContact, btnWord, btnToggle;
+    @FXML private Button generateIdButton, saveButton, btnWord, btnToggle; //btnContact
     @FXML private HBox donationButtonBox;
     @FXML private Button donationPrimaryButton, donationSecondaryButton, donationDeleteButton, donationSupplementButton;
     @FXML private Button amountKeypadButton, summaryPhraseButton, familyPhraseButton;
@@ -168,7 +168,7 @@ public class LightController {
             }
         });
 
-        showTooltip(btnContact, "連結往來寺廟");
+//        showTooltip(btnContact, "連結往來寺廟");
         showTooltip(btnWord, "造字資訊");
 
         // 讓分割線不接受滑鼠事件
