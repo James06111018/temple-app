@@ -41,6 +41,15 @@
                 <SeparatorMenuItem />
                 <MenuItem text="總戶數" onAction="#handleHouseholdCount" />
             </Menu>
+            <Menu fx:id="menuSystemAdmin" text="系統管理(_M)" mnemonicParsing="true">
+                <MenuItem fx:id="menuItemUserManagement" text="使用者管理" onAction="#handleUserManagement" />
+                <SeparatorMenuItem />
+                <MenuItem fx:id="menuItemRoleManagement" text="角色管理" onAction="#handleRoleManagement" />
+                <SeparatorMenuItem />
+                <MenuItem fx:id="menuItemFunctionManagement" text="功能管理" onAction="#handleFunctionManagement" />
+                <SeparatorMenuItem />
+                <MenuItem fx:id="menuItemUserAudit" text="使用者異動紀錄" onAction="#handleUserAudit" />
+            </Menu>
             <Menu fx:id="menuWindow" text="視窗(_W)" mnemonicParsing="true"/>
             <Menu text="關於(_A)" mnemonicParsing="true">
                 <MenuItem fx:id="menuItemAbout"/>

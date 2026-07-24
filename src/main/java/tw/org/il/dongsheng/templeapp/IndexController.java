@@ -23,6 +23,9 @@ public class IndexController {
     @FXML private TabPane mainTabPane;
     @FXML private AnchorPane contentArea;
     @FXML private Menu menuWindow;
+    @FXML private Menu menuSystemAdmin;
+    @FXML private MenuItem menuItemUserManagement, menuItemRoleManagement, menuItemFunctionManagement,
+            menuItemUserAudit;
     @FXML MenuItem menuItemAbout;
 
     private final Map<String, OpenPage> openPages = new java.util.LinkedHashMap<>();
@@ -50,6 +53,7 @@ public class IndexController {
         clearSelectedTab();
 
         menuItemAbout.setText("版本 (v" + AppConfig.getVersion() + ")");
+        configureSystemAdminMenu();
     }
 
     private void loadPageByTab(Tab tab) {
@@ -322,6 +326,34 @@ public class IndexController {
     @FXML
     public void handleHouseholdCount() throws IOException {
         showModal("總戶數", "household-count.fxml");
+    }
+
+    @FXML
+    public void handleUserManagement() throws IOException {
+        showModal("使用者管理", "user-management.fxml");
+    }
+
+    @FXML
+    public void handleRoleManagement() throws IOException {
+        showModal("角色管理", "role-management.fxml");
+    }
+
+    @FXML
+    public void handleFunctionManagement() throws IOException {
+        showModal("功能管理", "function-management.fxml");
+    }
+
+    @FXML
+    public void handleUserAudit() throws IOException {
+        showModal("使用者異動紀錄", "user-audit.fxml");
+    }
+
+    private void configureSystemAdminMenu() {
+        menuSystemAdmin.setVisible(AuthSession.canManageSystem());
+        menuItemUserManagement.setVisible(AuthSession.hasFunction("USER_MANAGEMENT"));
+        menuItemUserAudit.setVisible(AuthSession.hasFunction("USER_AUDIT_QUERY"));
+        menuItemRoleManagement.setVisible(AuthSession.isAdmin() && AuthSession.hasFunction("ROLE_MANAGEMENT"));
+        menuItemFunctionManagement.setVisible(AuthSession.isAdmin() && AuthSession.hasFunction("FUNCTION_MANAGEMENT"));
     }
 
     private void showModal(String title, String fxmlFile) throws IOException {

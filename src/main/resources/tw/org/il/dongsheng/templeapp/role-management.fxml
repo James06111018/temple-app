@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane prefWidth="820" prefHeight="560"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.RoleManagementController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
+    <center>
+        <HBox spacing="14" style="-fx-padding: 16;">
+            <VBox spacing="10" HBox.hgrow="ALWAYS">
+                <HBox spacing="8">
+                    <Button text="新增" styleClass="btn-purple" onAction="#onNew" />
+                    <Button text="儲存" styleClass="btn-save-active" onAction="#onSave" />
+                </HBox>
+                <TableView fx:id="roleTable" prefWidth="300" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="roleCodeColumn" text="角色代碼" prefWidth="120" />
+                        <TableColumn fx:id="roleNameColumn" text="角色名稱" prefWidth="160" />
+                    </columns>
+                </TableView>
+            </VBox>
+            <VBox spacing="10" prefWidth="430">
+                <GridPane hgap="8" vgap="8">
+                    <Label text="角色代碼" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+                    <TextField fx:id="roleCodeField" GridPane.rowIndex="0" GridPane.columnIndex="1" />
+                    <Label text="角色名稱" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+                    <TextField fx:id="roleNameField" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+                </GridPane>
+                <TableView fx:id="functionTable" editable="true" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="selectedColumn" text="啟用" prefWidth="70" />
+                        <TableColumn fx:id="functionCodeColumn" text="功能代碼" prefWidth="150" />
+                        <TableColumn fx:id="functionNameColumn" text="功能名稱" prefWidth="190" />
+                    </columns>
+                </TableView>
+            </VBox>
+        </HBox>
+    </center>
+</BorderPane>

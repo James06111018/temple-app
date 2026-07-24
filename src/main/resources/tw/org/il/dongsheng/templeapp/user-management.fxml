@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane prefWidth="820" prefHeight="560"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.UserManagementController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
+    <center>
+        <HBox spacing="14" style="-fx-padding: 16;">
+            <VBox spacing="10" HBox.hgrow="ALWAYS">
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="查詢" />
+                    <TextField fx:id="keywordField" prefWidth="180" onAction="#onSearch" />
+                    <Button text="查詢" styleClass="btn-purple" onAction="#onSearch" />
+                    <Button text="新增" styleClass="btn-purple" onAction="#onNew" />
+                </HBox>
+                <TableView fx:id="userTable" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="idColumn" text="編號" prefWidth="60" />
+                        <TableColumn fx:id="usernameColumn" text="帳號" prefWidth="120" />
+                        <TableColumn fx:id="displayNameColumn" text="名稱" prefWidth="140" />
+                        <TableColumn fx:id="roleColumn" text="權限" prefWidth="100" />
+                        <TableColumn fx:id="enabledColumn" text="啟用" prefWidth="70" />
+                    </columns>
+                </TableView>
+            </VBox>
+            <GridPane hgap="8" vgap="12" prefWidth="280">
+                <columnConstraints>
+                    <ColumnConstraints halignment="RIGHT" minWidth="70" />
+                    <ColumnConstraints minWidth="170" />
+                </columnConstraints>
+                <Label text="編號" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+                <TextField fx:id="idField" editable="false" GridPane.rowIndex="0" GridPane.columnIndex="1" />
+                <Label text="帳號" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+                <TextField fx:id="usernameField" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+                <Label text="名稱" GridPane.rowIndex="2" GridPane.columnIndex="0" />
+                <TextField fx:id="displayNameField" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+                <Label text="密碼" GridPane.rowIndex="3" GridPane.columnIndex="0" />
+                <PasswordField fx:id="passwordField" promptText="修改時空白代表不變" GridPane.rowIndex="3" GridPane.columnIndex="1" />
+                <Label text="權限" GridPane.rowIndex="4" GridPane.columnIndex="0" />
+                <ComboBox fx:id="roleBox" prefWidth="170" GridPane.rowIndex="4" GridPane.columnIndex="1" />
+                <Label text="啟用" GridPane.rowIndex="5" GridPane.columnIndex="0" />
+                <CheckBox fx:id="enabledBox" GridPane.rowIndex="5" GridPane.columnIndex="1" />
+                <Button text="儲存" styleClass="btn-save-active" prefWidth="120" onAction="#onSave" GridPane.rowIndex="6" GridPane.columnIndex="1" />
+            </GridPane>
+        </HBox>
+    </center>
+</BorderPane>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane prefWidth="700" prefHeight="520"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.FunctionManagementController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
+    <center>
+        <HBox spacing="14" style="-fx-padding: 16;">
+            <VBox spacing="10" HBox.hgrow="ALWAYS">
+                <HBox spacing="8">
+                    <Button text="新增" styleClass="btn-purple" onAction="#onNew" />
+                    <Button text="儲存" styleClass="btn-save-active" onAction="#onSave" />
+                </HBox>
+                <TableView fx:id="functionTable" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="functionCodeColumn" text="功能代碼" prefWidth="160" />
+                        <TableColumn fx:id="functionNameColumn" text="功能名稱" prefWidth="220" />
+                        <TableColumn fx:id="enabledColumn" text="啟用" prefWidth="70" />
+                    </columns>
+                </TableView>
+            </VBox>
+            <GridPane hgap="8" vgap="12" prefWidth="230">
+                <Label text="功能代碼" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+                <TextField fx:id="functionCodeField" GridPane.rowIndex="0" GridPane.columnIndex="1" />
+                <Label text="功能名稱" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+                <TextField fx:id="functionNameField" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+                <Label text="啟用" GridPane.rowIndex="2" GridPane.columnIndex="0" />
+                <CheckBox fx:id="enabledBox" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+            </GridPane>
+        </HBox>
+    </center>
+</BorderPane>

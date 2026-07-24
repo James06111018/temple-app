@@ -14,24 +14,24 @@
         <VBox spacing="10" style="-fx-padding: 16 18 16 18;">
             <HBox spacing="14" alignment="CENTER_LEFT">
                 <Label text="經辦人" />
-                <ComboBox prefWidth="150" />
+                <ComboBox fx:id="operatorBox" prefWidth="150" />
                 <Label text="登入日期" />
                 <TextField text="115.05.14" prefWidth="92" />
                 <Label text="－" />
                 <TextField text="115.05.14" prefWidth="92" />
-                <Button text="查詢" styleClass="btn-purple" prefWidth="92" onAction="#onPlaceholderAction" />
+                <Button text="查詢" styleClass="btn-purple" prefWidth="92" onAction="#onSearch" />
                 <Button text="查詢未登出" styleClass="btn-action" prefWidth="132" onAction="#onPlaceholderAction" />
             </HBox>
 
             <TableView fx:id="loginRecordTable" prefHeight="390" VBox.vgrow="ALWAYS">
                 <columns>
                     <TableColumn text="" prefWidth="24" />
-                    <TableColumn text="登入日期" prefWidth="112" />
-                    <TableColumn text="登入時間" prefWidth="102" />
-                    <TableColumn text="電腦名稱" prefWidth="220" />
-                    <TableColumn text="經辦人" prefWidth="130" />
-                    <TableColumn text="登出日期" prefWidth="112" />
-                    <TableColumn text="登出時間" prefWidth="102" />
+                    <TableColumn fx:id="loginDateColumn" text="登入日期" prefWidth="112" />
+                    <TableColumn fx:id="loginTimeColumn" text="登入時間" prefWidth="102" />
+                    <TableColumn fx:id="computerNameColumn" text="電腦名稱" prefWidth="220" />
+                    <TableColumn fx:id="operatorColumn" text="經辦人" prefWidth="130" />
+                    <TableColumn fx:id="logoutDateColumn" text="登出日期" prefWidth="112" />
+                    <TableColumn fx:id="logoutTimeColumn" text="登出時間" prefWidth="102" />
                 </columns>
             </TableView>
 

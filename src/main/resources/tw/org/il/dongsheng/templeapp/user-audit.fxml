@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import tw.org.il.dongsheng.templeapp.util.PaginationBar?>
+
+<BorderPane prefWidth="860" prefHeight="520"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.UserAuditController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
+    <center>
+        <VBox spacing="10" style="-fx-padding: 16;">
+            <HBox>
+                <Button text="查詢" styleClass="btn-purple" onAction="#onSearch" />
+            </HBox>
+            <TableView fx:id="auditTable" VBox.vgrow="ALWAYS">
+                <columnResizePolicy>
+                    <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY" />
+                </columnResizePolicy>
+                <columns>
+                    <TableColumn fx:id="idColumn" text="編號" prefWidth="70" />
+                    <TableColumn fx:id="userIdColumn" text="使用者編號" prefWidth="100" />
+                    <TableColumn fx:id="actionColumn" text="動作" prefWidth="90" />
+                    <TableColumn fx:id="changedByColumn" text="異動人" prefWidth="120" />
+                    <TableColumn fx:id="changedAtColumn" text="異動時間" prefWidth="160" />
+                    <TableColumn fx:id="snapshotColumn" text="內容" prefWidth="360" />
+                </columns>
+            </TableView>
+            <PaginationBar fx:id="auditPageBar" />
+        </VBox>
+    </center>
+</BorderPane>
