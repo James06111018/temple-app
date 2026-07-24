@@ -16,6 +16,8 @@ public interface LightMemberRepository {
 
     boolean deleteById(int id) throws SQLException;
 
+    LightMember reserveBlankMember() throws SQLException;
+
     Optional<LightMember> findById(int id) throws SQLException;
 
     Optional<LightMember> findByName(String name) throws SQLException;
@@ -25,6 +27,10 @@ public interface LightMemberRepository {
     List<LightMember> findByAddress(String keyword, int limit, int offset) throws SQLException;
     int getMemberCount(String keyword) throws SQLException;
     List<LightMember> findAll() throws SQLException;
+
+    List<Integer> findDeletedIds() throws SQLException;
+
+    List<Integer> findBlankNameIds() throws SQLException;
 
     int getNextId() throws SQLException;
 }

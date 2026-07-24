@@ -20,7 +20,7 @@
 
             <TableView fx:id="deletedNumberTable" layoutX="32" layoutY="60" prefWidth="306" prefHeight="500">
                 <columns>
-                    <TableColumn text="電腦編號 △" prefWidth="300" />
+                    <TableColumn fx:id="deletedNumberColumn" text="電腦編號 △" prefWidth="300" />
                 </columns>
             </TableView>
             <PaginationBar fx:id="deletedNumberPageBar" layoutX="32" layoutY="560" prefWidth="306" />
@@ -28,7 +28,7 @@
             <TableView fx:id="blankNameNumberTable" layoutX="392" layoutY="60" prefWidth="306" prefHeight="390">
                 <columns>
                     <TableColumn text="" prefWidth="24" />
-                    <TableColumn text="電腦編號 △" prefWidth="254" />
+                    <TableColumn fx:id="blankNameNumberColumn" text="電腦編號 △" prefWidth="254" />
                 </columns>
             </TableView>
             <PaginationBar fx:id="blankNameNumberPageBar" layoutX="392" layoutY="450" prefWidth="306" />

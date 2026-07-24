@@ -122,6 +122,25 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
     }
 
     @Override
+    public LightMember reserveBlankMember() throws SQLException {
+        String sql = "INSERT INTO " + TABLE_NAME + " DEFAULT VALUES";
+        LightMember member = new LightMember();
+
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            statement.executeUpdate();
+
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    member.setId(generatedKeys.getInt(1));
+                }
+            }
+        }
+        saveAudit(member.getId(), "RESERVE", "LOGIN", "reserved blank member id=" + member.getId());
+        return member;
+    }
+
+    @Override
     public Optional<LightMember> findById(int id) throws SQLException {
         String sql = "SELECT * FROM " + TABLE_NAME + " WHERE id = ?";
 
@@ -243,6 +262,66 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
         }
 
         return members;
+    }
+
+    @Override
+    public List<Integer> findDeletedIds() throws SQLException {
+        List<Integer> existingIds = new ArrayList<>();
+        String sql = "SELECT id FROM " + TABLE_NAME + " ORDER BY id";
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                existingIds.add(resultSet.getInt("id"));
+            }
+        }
+
+        List<Integer> deletedIds = new ArrayList<>();
+        int expected = 1;
+        for (Integer id : existingIds) {
+            while (expected < id) {
+                deletedIds.add(expected++);
+            }
+            expected = id + 1;
+        }
+        return deletedIds;
+    }
+
+    @Override
+    public List<Integer> findBlankNameIds() throws SQLException {
+        String sql = "SELECT id FROM " + TABLE_NAME + """
+                 WHERE COALESCE(TRIM(name), '') = ''
+                   AND COALESCE(TRIM(phone), '') = ''
+                   AND COALESCE(TRIM(city), '') = ''
+                   AND COALESCE(TRIM(dist), '') = ''
+                   AND COALESCE(TRIM(address), '') = ''
+                   AND COALESCE(TRIM(zip_code), '') = ''
+                   AND COALESCE(TRIM(birth_date), '') = ''
+                   AND COALESCE(TRIM(lunar_birth_date), '') = ''
+                   AND age IS NULL
+                   AND COALESCE(TRIM(zodiac), '') = ''
+                   AND COALESCE(TRIM(zodiac_year), '') = ''
+                   AND COALESCE(TRIM(birth_time), '') = ''
+                   AND COALESCE(TRIM(note), '') = ''
+                   AND COALESCE(TRIM(contact_person), '') = ''
+                   AND COALESCE(TRIM(id_number), '') = ''
+                   AND sort_order IS NULL
+                   AND ding IS NULL
+                   AND kou IS NULL
+                   AND COALESCE(TRIM(is_mail), '') = ''
+                   AND COALESCE(TRIM(gender), '') = ''
+                 ORDER BY id
+                """;
+        List<Integer> ids = new ArrayList<>();
+
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                ids.add(resultSet.getInt("id"));
+            }
+        }
+        return ids;
     }
 
     @Override

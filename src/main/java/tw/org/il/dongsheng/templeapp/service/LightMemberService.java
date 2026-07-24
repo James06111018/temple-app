@@ -19,6 +19,10 @@ public class LightMemberService {
         return repo.getNextId();
     }
 
+    public LightMember reserveBlankMember() throws SQLException {
+        return repo.reserveBlankMember();
+    }
+
     public Optional<LightMember> findByName(String name) throws SQLException {
         return repo.findByName(name);
     }
@@ -47,5 +51,13 @@ public class LightMemberService {
 
     public void update(LightMember member) throws SQLException {
         repo.update(member);
+    }
+
+    public List<Integer> findDeletedIds() throws SQLException {
+        return repo.findDeletedIds();
+    }
+
+    public List<Integer> findBlankNameIds() throws SQLException {
+        return repo.findBlankNameIds();
     }
 }

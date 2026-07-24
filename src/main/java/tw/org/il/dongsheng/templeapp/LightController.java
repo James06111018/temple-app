@@ -364,8 +364,8 @@ public class LightController {
         }
 
         try {
-            int nextId = lightService.getNextId();
-            String result = Util.stringFormat(nextId);
+            LightMember reservedMember = lightService.reserveBlankMember();
+            String result = Util.stringFormat(reservedMember.getId());
 
             LightMember previousMember = referenceMember;
             boolean useReference = false;
@@ -758,7 +758,9 @@ public class LightController {
         String name = nameField.getText();
         String phone = phoneField.getText();
         try {
-            List<LightMember> matches = lightService.search(id, name, phone);
+            List<LightMember> matches = lightService.search(id, name, phone).stream()
+                    .filter(member -> !isBlankReservedMember(member))
+                    .toList();
             if (matches.isEmpty()) {
                 memberTable.getItems().clear();
                 memberPageBar.setTotalCount(0);
@@ -789,6 +791,30 @@ public class LightController {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private boolean isBlankReservedMember(LightMember member) {
+        return member != null
+                && Util.isBlank(member.getName())
+                && Util.isBlank(member.getPhone())
+                && Util.isBlank(member.getCity())
+                && Util.isBlank(member.getDist())
+                && Util.isBlank(member.getAddress())
+                && Util.isBlank(member.getZipCode())
+                && Util.isBlank(member.getBirthDate())
+                && Util.isBlank(member.getLunarBirthDate())
+                && member.getAge() == null
+                && Util.isBlank(member.getZodiac())
+                && Util.isBlank(member.getZodiacYear())
+                && Util.isBlank(member.getBirthTime())
+                && Util.isBlank(member.getNote())
+                && Util.isBlank(member.getContactPerson())
+                && Util.isBlank(member.getIdNumber())
+                && member.getSortOrder() == null
+                && member.getDing() == null
+                && member.getKou() == null
+                && Util.isBlank(member.getIsMail())
+                && Util.isBlank(member.getGender());
     }
 
     private void executeDonationSearch() throws SQLException {
