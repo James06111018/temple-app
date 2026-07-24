@@ -9,6 +9,9 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
 import javafx.stage.Modality;
@@ -22,10 +25,17 @@ public class IndexController {
     @FXML private ResourceBundle resources;
     @FXML private TabPane mainTabPane;
     @FXML private AnchorPane contentArea;
+    @FXML private Menu menuFile;
+    @FXML private Menu menuSettings;
+    @FXML private Menu menuTools;
     @FXML private Menu menuWindow;
     @FXML private Menu menuSystemAdmin;
-    @FXML private MenuItem menuItemUserManagement, menuItemRoleManagement, menuItemFunctionManagement,
-            menuItemUserAudit;
+    @FXML private Menu menuAbout;
+    @FXML private MenuItem menuItemExit;
+    @FXML private CheckMenuItem menuItemParameterSettings, menuItemQueryStatistics, menuItemEmptyNumberQuery, menuItemDictionary,
+            menuItemCheckoutReport, menuItemDataMerge, menuItemMergeRecord, menuItemCreateRecord,
+            menuItemLoginRecord, menuItemHouseholdCount, menuItemUserManagement, menuItemRoleManagement,
+            menuItemFunctionManagement, menuItemUserAudit;
     @FXML MenuItem menuItemAbout;
 
     private final Map<String, OpenPage> openPages = new java.util.LinkedHashMap<>();
@@ -54,6 +64,34 @@ public class IndexController {
 
         menuItemAbout.setText("版本 (v" + AppConfig.getVersion() + ")");
         configureSystemAdminMenu();
+        registerMenuShortcuts();
+    }
+
+    private void registerMenuShortcuts() {
+        mainTabPane.sceneProperty().addListener((obs, oldScene, scene) -> {
+            if (scene != null) {
+                scene.getAccelerators().put(new KeyCodeCombination(KeyCode.F, KeyCombination.SHORTCUT_DOWN), () -> menuFile.show());
+                scene.getAccelerators().put(new KeyCodeCombination(KeyCode.S, KeyCombination.SHORTCUT_DOWN), () -> menuSettings.show());
+                scene.getAccelerators().put(new KeyCodeCombination(KeyCode.T, KeyCombination.SHORTCUT_DOWN), () -> menuTools.show());
+                scene.getAccelerators().put(new KeyCodeCombination(KeyCode.W, KeyCombination.SHORTCUT_DOWN), () -> menuWindow.show());
+                scene.getAccelerators().put(new KeyCodeCombination(KeyCode.A, KeyCombination.SHORTCUT_DOWN), () -> menuAbout.show());
+                scene.getAccelerators().put(new KeyCodeCombination(KeyCode.C, KeyCombination.SHORTCUT_DOWN), this::openParameterSettingsByShortcut);
+                scene.getAccelerators().put(new KeyCodeCombination(KeyCode.M, KeyCombination.SHORTCUT_DOWN), () -> {
+                    if (menuSystemAdmin.isVisible()) {
+                        menuSystemAdmin.show();
+                    }
+                });
+                scene.getAccelerators().put(new KeyCodeCombination(KeyCode.Q, KeyCombination.SHORTCUT_DOWN), this::handleExit);
+            }
+        });
+    }
+
+    private void openParameterSettingsByShortcut() {
+        try {
+            handleParameterSettings();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void loadPageByTab(Tab tab) {
@@ -280,72 +318,72 @@ public class IndexController {
 
     @FXML
     public void handleDictionary() throws IOException {
-        showModal("詞彙設定", "dictionary.fxml");
+        showCheckedModal(menuItemDictionary, "詞彙設定", "dictionary.fxml");
     }
 
     @FXML
     public void handleParameterSettings() throws IOException {
-        showModal("參數設定", "parameter-settings.fxml");
+        showCheckedModal(menuItemParameterSettings, "參數設定", "parameter-settings.fxml");
     }
 
     @FXML
     public void handleQueryStatistics() throws IOException {
-        showModal("查詢統計", "query-statistics.fxml");
+        showCheckedModal(menuItemQueryStatistics, "查詢統計", "query-statistics.fxml");
     }
 
     @FXML
     public void handleEmptyNumberQuery() throws IOException {
-        showModal("空號查詢", "empty-number-query.fxml");
+        showCheckedModal(menuItemEmptyNumberQuery, "空號查詢", "empty-number-query.fxml");
     }
 
     @FXML
     public void handleCheckoutReport() throws IOException {
-        showModal("結帳報表", "checkout-report.fxml");
+        showCheckedModal(menuItemCheckoutReport, "結帳報表", "checkout-report.fxml");
     }
 
     @FXML
     public void handleDataMerge() throws IOException {
-        showModal("資料合併", "data-merge.fxml");
+        showCheckedModal(menuItemDataMerge, "資料合併", "data-merge.fxml");
     }
 
     @FXML
     public void handleMergeRecord() throws IOException {
-        showModal("合併紀錄", "merge-record.fxml");
+        showCheckedModal(menuItemMergeRecord, "合併紀錄", "merge-record.fxml");
     }
 
     @FXML
     public void handleCreateRecord() throws IOException {
-        showModal("建檔紀錄", "create-record.fxml");
+        showCheckedModal(menuItemCreateRecord, "建檔紀錄", "create-record.fxml");
     }
 
     @FXML
     public void handleLoginRecord() throws IOException {
-        showModal("登入紀錄", "login-record.fxml");
+        showCheckedModal(menuItemLoginRecord, "登入紀錄", "login-record.fxml");
     }
 
     @FXML
     public void handleHouseholdCount() throws IOException {
-        showModal("總戶數", "household-count.fxml");
+        showCheckedModal(menuItemHouseholdCount, "總戶數", "household-count.fxml");
     }
 
     @FXML
     public void handleUserManagement() throws IOException {
-        showModal("使用者管理", "user-management.fxml");
+        showCheckedModal(menuItemUserManagement, "使用者管理", "user-management.fxml");
     }
 
     @FXML
     public void handleRoleManagement() throws IOException {
-        showModal("角色管理", "role-management.fxml");
+        showCheckedModal(menuItemRoleManagement, "角色管理", "role-management.fxml");
     }
 
     @FXML
     public void handleFunctionManagement() throws IOException {
-        showModal("功能管理", "function-management.fxml");
+        showCheckedModal(menuItemFunctionManagement, "功能管理", "function-management.fxml");
     }
 
     @FXML
     public void handleUserAudit() throws IOException {
-        showModal("使用者異動紀錄", "user-audit.fxml");
+        showCheckedModal(menuItemUserAudit, "使用者異動紀錄", "user-audit.fxml");
     }
 
     private void configureSystemAdminMenu() {
@@ -364,6 +402,15 @@ public class IndexController {
         stage.setScene(new Scene(root));
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.showAndWait();
+    }
+
+    private void showCheckedModal(CheckMenuItem item, String title, String fxmlFile) throws IOException {
+        item.setSelected(true);
+        try {
+            showModal(title, fxmlFile);
+        } finally {
+            item.setSelected(false);
+        }
     }
 
     private static class OpenPage {

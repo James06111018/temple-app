@@ -8,50 +8,50 @@
 
     <MenuBar>
         <menus>
-            <Menu text="檔案(_F)" mnemonicParsing="true">
+            <Menu fx:id="menuFile" text="檔案(_F)" mnemonicParsing="true">
 <!--                <MenuItem text="行事曆" />-->
 <!--                <SeparatorMenuItem />-->
 <!--                <MenuItem text="暫時登出(_O)" mnemonicParsing="true" />-->
 <!--                <SeparatorMenuItem />-->
-                <MenuItem text="結束系統(_X)" mnemonicParsing="true" onAction="#handleExit"/>
+                <MenuItem fx:id="menuItemExit" text="結束系統(_X)" mnemonicParsing="true" onAction="#handleExit" />
             </Menu>
-            <Menu text="設定(_S)" mnemonicParsing="true">
+            <Menu fx:id="menuSettings" text="設定(_S)" mnemonicParsing="true">
 <!--                <MenuItem text="系統設定(_S)" mnemonicParsing="true"/>-->
 <!--                <SeparatorMenuItem />-->
 <!--                <MenuItem text="印表機設定(_P)" mnemonicParsing="true"/>-->
 <!--                <SeparatorMenuItem />-->
-                <MenuItem text="參數設定(_A)" mnemonicParsing="true" onAction="#handleParameterSettings"/>
+                <CheckMenuItem fx:id="menuItemParameterSettings" text="參數設定(_C)" mnemonicParsing="true" onAction="#handleParameterSettings"/>
             </Menu>
-            <Menu text="工具(_T)" mnemonicParsing="true">
-                <MenuItem text="查詢統計" onAction="#handleQueryStatistics" />
+            <Menu fx:id="menuTools" text="工具(_T)" mnemonicParsing="true">
+                <CheckMenuItem fx:id="menuItemQueryStatistics" text="查詢統計" onAction="#handleQueryStatistics" />
                 <SeparatorMenuItem />
-                <MenuItem text="空號查詢" onAction="#handleEmptyNumberQuery" />
+                <CheckMenuItem fx:id="menuItemEmptyNumberQuery" text="空號查詢" onAction="#handleEmptyNumberQuery" />
                 <SeparatorMenuItem />
-                <MenuItem text="詞彙設定" onAction="#handleDictionary" />
+                <CheckMenuItem fx:id="menuItemDictionary" text="詞彙設定" onAction="#handleDictionary" />
                 <SeparatorMenuItem />
-                <MenuItem text="結帳報表" onAction="#handleCheckoutReport" />
+                <CheckMenuItem fx:id="menuItemCheckoutReport" text="結帳報表" onAction="#handleCheckoutReport" />
                 <SeparatorMenuItem />
-                <MenuItem text="資料合併" onAction="#handleDataMerge" />
+                <CheckMenuItem fx:id="menuItemDataMerge" text="資料合併" onAction="#handleDataMerge" />
                 <SeparatorMenuItem />
-                <MenuItem text="合併紀錄" onAction="#handleMergeRecord" />
+                <CheckMenuItem fx:id="menuItemMergeRecord" text="合併紀錄" onAction="#handleMergeRecord" />
                 <SeparatorMenuItem />
-                <MenuItem text="建檔紀錄" onAction="#handleCreateRecord" />
+                <CheckMenuItem fx:id="menuItemCreateRecord" text="建檔紀錄" onAction="#handleCreateRecord" />
                 <SeparatorMenuItem />
-                <MenuItem text="登入紀錄" onAction="#handleLoginRecord" />
+                <CheckMenuItem fx:id="menuItemLoginRecord" text="登入紀錄" onAction="#handleLoginRecord" />
                 <SeparatorMenuItem />
-                <MenuItem text="總戶數" onAction="#handleHouseholdCount" />
+                <CheckMenuItem fx:id="menuItemHouseholdCount" text="總戶數" onAction="#handleHouseholdCount" />
             </Menu>
             <Menu fx:id="menuSystemAdmin" text="系統管理(_M)" mnemonicParsing="true">
-                <MenuItem fx:id="menuItemUserManagement" text="使用者管理" onAction="#handleUserManagement" />
+                <CheckMenuItem fx:id="menuItemUserManagement" text="使用者管理" onAction="#handleUserManagement" />
                 <SeparatorMenuItem />
-                <MenuItem fx:id="menuItemRoleManagement" text="角色管理" onAction="#handleRoleManagement" />
+                <CheckMenuItem fx:id="menuItemRoleManagement" text="角色管理" onAction="#handleRoleManagement" />
                 <SeparatorMenuItem />
-                <MenuItem fx:id="menuItemFunctionManagement" text="功能管理" onAction="#handleFunctionManagement" />
+                <CheckMenuItem fx:id="menuItemFunctionManagement" text="功能管理" onAction="#handleFunctionManagement" />
                 <SeparatorMenuItem />
-                <MenuItem fx:id="menuItemUserAudit" text="使用者異動紀錄" onAction="#handleUserAudit" />
+                <CheckMenuItem fx:id="menuItemUserAudit" text="使用者異動紀錄" onAction="#handleUserAudit" />
             </Menu>
             <Menu fx:id="menuWindow" text="視窗(_W)" mnemonicParsing="true"/>
-            <Menu text="關於(_A)" mnemonicParsing="true">
+            <Menu fx:id="menuAbout" text="關於(_A)" mnemonicParsing="true">
                 <MenuItem fx:id="menuItemAbout"/>
             </Menu>
         </menus>
