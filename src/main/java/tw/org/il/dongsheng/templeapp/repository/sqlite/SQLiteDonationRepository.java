@@ -1,5 +1,6 @@
 package tw.org.il.dongsheng.templeapp.repository.sqlite;
 
+import tw.org.il.dongsheng.templeapp.AuthSession;
 import tw.org.il.dongsheng.templeapp.model.Donation;
 import tw.org.il.dongsheng.templeapp.repository.DonationRepository;
 
@@ -40,6 +41,7 @@ public class SQLiteDonationRepository implements DonationRepository {
                 "should_pay INTEGER," +
                 "donate_type TEXT," +
                 "creator TEXT," +
+                "is_deleted INTEGER NOT NULL DEFAULT 0," +
                 "FOREIGN KEY(member_id) REFERENCES light_members(id) ON DELETE CASCADE" +
                 ")";
 
@@ -48,6 +50,8 @@ public class SQLiteDonationRepository implements DonationRepository {
 //            statement.execute(dropSql);
             statement.execute("PRAGMA foreign_keys = ON");
             statement.execute(sql);
+            addColumnIfMissing(connection, "is_deleted", "INTEGER NOT NULL DEFAULT 0");
+            statement.execute("CREATE INDEX IF NOT EXISTS idx_donations_is_deleted ON donations(is_deleted)");
             statement.execute("""
                     CREATE TABLE IF NOT EXISTS donation_audits (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,7 +84,8 @@ public class SQLiteDonationRepository implements DonationRepository {
                 }
             }
         }
-        saveAudit(donation.getId(), donation.getMemberId(), "CREATE", donation.getCreator(), donation.toString());
+        saveAudit(donation.getId(), donation.getMemberId(), "CREATE",
+                AuthSession.getCurrentOperatorName(), donation.toString());
 
         return donation;
     }
@@ -94,7 +99,7 @@ public class SQLiteDonationRepository implements DonationRepository {
         String sql = "UPDATE " + TABLE_NAME + " SET " +
                 "member_id = ?, receipt_no = ?, donate_date = ?, extra_no = ?, amount = ?, summary = ?, donate_note = ?, other_note = ?, donor_no = ?, " +
                 "light_no = ?, should_pay = ?, donate_type = ?, creator = ? " +
-                "WHERE id = ?";
+                "WHERE id = ? AND COALESCE(is_deleted, 0) = 0";
 
         Optional<Donation> before = findById(donation.getId());
         try (Connection connection = databaseManager.getConnection();
@@ -104,7 +109,8 @@ public class SQLiteDonationRepository implements DonationRepository {
             statement.setObject(14, donation.getId());
             boolean updated = statement.executeUpdate() > 0;
             if (updated) {
-                saveAudit(donation.getId(), donation.getMemberId(), "UPDATE", donation.getCreator(),
+                saveAudit(donation.getId(), donation.getMemberId(), "UPDATE",
+                        AuthSession.getCurrentOperatorName(),
                         "before=" + before.map(Donation::toString).orElse("") + "\nafter=" + donation);
             }
             return updated;
@@ -113,18 +119,31 @@ public class SQLiteDonationRepository implements DonationRepository {
 
     @Override
     public boolean deleteById(int id) throws SQLException {
-        String sql = "DELETE FROM " + TABLE_NAME + " WHERE id = ?";
+        Optional<Donation> before = findById(id);
+        String sql = "UPDATE " + TABLE_NAME +
+                " SET is_deleted = 1 WHERE id = ? AND COALESCE(is_deleted, 0) = 0";
 
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, id);
-            return statement.executeUpdate() > 0;
+            boolean deleted = statement.executeUpdate() > 0;
+            if (deleted) {
+                saveAudit(
+                        id,
+                        before.map(Donation::getMemberId).orElse(null),
+                        "DELETE",
+                        AuthSession.getCurrentOperatorName(),
+                        before.map(Donation::toString).orElse("")
+                );
+            }
+            return deleted;
         }
     }
 
     @Override
     public Optional<Donation> findById(int id) throws SQLException {
-        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE id = ?";
+        String sql = "SELECT * FROM " + TABLE_NAME +
+                " WHERE id = ? AND COALESCE(is_deleted, 0) = 0";
 
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -142,7 +161,8 @@ public class SQLiteDonationRepository implements DonationRepository {
 
     @Override
     public List<Donation> findByMemberId(int memberId) throws SQLException {
-        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE member_id = ? ORDER BY donate_date DESC, id DESC";
+        String sql = "SELECT * FROM " + TABLE_NAME +
+                " WHERE member_id = ? AND COALESCE(is_deleted, 0) = 0 ORDER BY donate_date DESC, id DESC";
         List<Donation> donations = new ArrayList<>();
 
         try (Connection connection = databaseManager.getConnection();
@@ -172,7 +192,7 @@ public class SQLiteDonationRepository implements DonationRepository {
 
         // 2. 組合 SQL
         String sql = "SELECT * FROM " + TABLE_NAME +
-                " WHERE member_id IN (" + placeholders + ") " +
+                " WHERE member_id IN (" + placeholders + ") AND COALESCE(is_deleted, 0) = 0 " +
                 "ORDER BY donate_date DESC, id DESC " +
                 "LIMIT ? OFFSET ?";
 
@@ -208,7 +228,7 @@ public class SQLiteDonationRepository implements DonationRepository {
 
         // 2. 組合 SQL
         String sql = "SELECT COUNT(1) FROM " + TABLE_NAME +
-                " WHERE member_id IN (" + placeholders + ")";
+                " WHERE member_id IN (" + placeholders + ") AND COALESCE(is_deleted, 0) = 0";
 
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -229,7 +249,8 @@ public class SQLiteDonationRepository implements DonationRepository {
 
     @Override
     public List<Donation> findAll() throws SQLException {
-        String sql = "SELECT * FROM " + TABLE_NAME + " ORDER BY donate_date DESC, id DESC";
+        String sql = "SELECT * FROM " + TABLE_NAME +
+                " WHERE COALESCE(is_deleted, 0) = 0 ORDER BY donate_date DESC, id DESC";
         List<Donation> donations = new ArrayList<>();
 
         try (Connection connection = databaseManager.getConnection();
@@ -272,6 +293,24 @@ public class SQLiteDonationRepository implements DonationRepository {
             statement.setString(4, changedBy);
             statement.setString(5, snapshot);
             statement.executeUpdate();
+        }
+    }
+
+    private void addColumnIfMissing(Connection connection, String columnName, String definition) throws SQLException {
+        boolean exists = false;
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("PRAGMA table_info(" + TABLE_NAME + ")")) {
+            while (resultSet.next()) {
+                if (columnName.equalsIgnoreCase(resultSet.getString("name"))) {
+                    exists = true;
+                    break;
+                }
+            }
+        }
+        if (!exists) {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + columnName + " " + definition);
+            }
         }
     }
 

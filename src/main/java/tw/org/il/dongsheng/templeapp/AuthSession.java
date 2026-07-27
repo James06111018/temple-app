@@ -44,4 +44,14 @@ public final class AuthSession {
     public static boolean canManageSystem() {
         return hasFunction("SYSTEM_ADMIN");
     }
+
+    public static String getCurrentOperatorName() {
+        if (currentUser != null) {
+            String operatorName = currentUser.toString();
+            if (operatorName != null && !operatorName.isBlank()) {
+                return operatorName;
+            }
+        }
+        return System.getProperty("user.name", "");
+    }
 }

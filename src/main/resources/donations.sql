@@ -13,5 +13,6 @@ CREATE TABLE IF NOT EXISTS donations (
     should_pay INTEGER,
     donate_type TEXT,
     creator TEXT,
-    FOREIGN KEY(member_id) REFERENCES members(id) ON DELETE CASCADE
+    is_deleted INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY(member_id) REFERENCES light_members(id) ON DELETE CASCADE
 );

@@ -86,7 +86,7 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
                 }
             }
         }
-        saveAudit(member.getId(), "CREATE", "LOGIN", member.toString());
+        saveAudit(member.getId(), "CREATE", AuthSession.getCurrentOperatorName(), member.toString());
 
         return member;
     }
@@ -110,7 +110,8 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
             statement.setObject(21, member.getId());
             boolean updated = statement.executeUpdate() > 0;
             if (updated) {
-                saveAudit(member.getId(), "UPDATE", "LOGIN", "before=" + before.map(LightMember::toString).orElse("") + "\nafter=" + member);
+                saveAudit(member.getId(), "UPDATE", AuthSession.getCurrentOperatorName(),
+                        "before=" + before.map(LightMember::toString).orElse("") + "\nafter=" + member);
             }
             return updated;
         }
@@ -126,7 +127,8 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
             statement.setInt(1, id);
             boolean deleted = statement.executeUpdate() > 0;
             if (deleted) {
-                saveAudit(id, "DELETE", currentOperator(), before.map(LightMember::toString).orElse(""));
+                saveAudit(id, "DELETE", AuthSession.getCurrentOperatorName(),
+                        before.map(LightMember::toString).orElse(""));
             }
             return deleted;
         }
@@ -147,7 +149,8 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
                 }
             }
         }
-        saveAudit(member.getId(), "RESERVE", "LOGIN", "reserved blank member id=" + member.getId());
+        saveAudit(member.getId(), "RESERVE", AuthSession.getCurrentOperatorName(),
+                "reserved blank member id=" + member.getId());
         return member;
     }
 
@@ -413,12 +416,6 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
                 statement.execute("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + columnName + " " + definition);
             }
         }
-    }
-
-    private String currentOperator() {
-        return AuthSession.getCurrentUser() == null
-                ? System.getProperty("user.name")
-                : AuthSession.getCurrentUser().getUsername();
     }
 
     private LightMember mapRow(ResultSet resultSet) throws SQLException {

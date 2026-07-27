@@ -33,4 +33,8 @@ public class DonationService {
     public void update(Donation donation) throws SQLException {
         repo.update(donation);
     }
+
+    public boolean deleteById(int id) throws SQLException {
+        return repo.deleteById(id);
+    }
 }

@@ -72,7 +72,7 @@ public class ParameterSettingsController {
 
     private void save(String group, Map<String, String> values) {
         try {
-            repository.saveGroup(group, values, System.getProperty("user.name"));
+            repository.saveGroup(group, values, AuthSession.getCurrentOperatorName());
             AlertDialog.showInfo("參數設定", "儲存成功");
         } catch (SQLException e) {
             throw new RuntimeException(e);

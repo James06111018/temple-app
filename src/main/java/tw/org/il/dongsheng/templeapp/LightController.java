@@ -702,6 +702,40 @@ public class LightController {
         setDonationMode(DonationMode.BROWSE);
     }
 
+    @FXML
+    public void onDonationDelete() {
+        if (donationMode != DonationMode.BROWSE) {
+            warnIfDonationEditing();
+            return;
+        }
+
+        Donation selectedDonation = donationTable.getSelectionModel().getSelectedItem();
+        if (selectedDonation == null || selectedDonation.getId() == null) {
+            AlertDialog.showWarning("信眾點燈", "請先選擇要刪除的捐款資料");
+            return;
+        }
+
+        String receiptText = Util.isBlank(selectedDonation.getReceiptNo())
+                ? "這筆捐款資料"
+                : "收據編號 " + selectedDonation.getReceiptNo();
+        if (!AlertDialog.showConfirm("刪除捐款", "確定要刪除" + receiptText + "？")) {
+            return;
+        }
+
+        try {
+            if (!donationService.deleteById(selectedDonation.getId())) {
+                AlertDialog.showWarning("信眾點燈", "找不到可刪除的捐款資料");
+                return;
+            }
+            clearForm(donateInputGrid);
+            clearDonationErrors();
+            executeDonationSearch();
+            AlertDialog.showInfo("信眾點燈", "刪除捐款資料成功");
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void onDonationAdd() {
         boolean hasId = true;
         String id = idField.getText();
@@ -725,7 +759,6 @@ public class LightController {
             return;
         }
 
-        // TODO 新增 creator登入的姓名
         Donation donation = new Donation(
                 null,
                 Util.parseInteger(Util.stringReplaceZero(id)),
@@ -740,7 +773,7 @@ public class LightController {
                 lightNoField.getText(),
                 Util.parseInteger(shouldPayField.getText()),
                 String.valueOf(donateTypeField.getValue().getId()),
-                "LOGIN"
+                AuthSession.getCurrentOperatorName()
         );
 
         try {

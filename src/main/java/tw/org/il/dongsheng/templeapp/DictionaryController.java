@@ -168,9 +168,9 @@ public class DictionaryController {
 
         try {
             if (edited.getId() == null) {
-                repository.saveItem(type, edited, System.getProperty("user.name"));
+                repository.saveItem(type, edited, AuthSession.getCurrentOperatorName());
             } else {
-                repository.updateItem(edited, System.getProperty("user.name"));
+                repository.updateItem(edited, AuthSession.getCurrentOperatorName());
             }
             reloadAll();
             selectEditedItem(type, edited.getId(), parentItemId);

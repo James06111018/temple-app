@@ -246,7 +246,7 @@
                         <HBox fx:id="donationButtonBox" spacing="5" style="-fx-padding: 10 0 0 0;" GridPane.rowIndex="11" GridPane.columnIndex="0" GridPane.columnSpan="4">
                             <Button fx:id="donationPrimaryButton" prefWidth="60" maxWidth="Infinity" text="新增" styleClass="btn-purple" onAction="#onDonationAddMode"/>
                             <Button fx:id="donationSecondaryButton" prefWidth="60" maxWidth="Infinity" text="修改" styleClass="btn-purple" onAction="#onDonationEditMode"/>
-                            <Button fx:id="donationDeleteButton" prefWidth="60" maxWidth="Infinity" text="刪除" styleClass="btn-purple"/>
+                            <Button fx:id="donationDeleteButton" prefWidth="60" maxWidth="Infinity" text="刪除" styleClass="btn-purple" onAction="#onDonationDelete"/>
                             <Button fx:id="donationSupplementButton" prefWidth="60" maxWidth="Infinity" text="補據" styleClass="btn-purple"/>
                         </HBox>
                     </GridPane>

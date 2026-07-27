@@ -67,9 +67,9 @@ public class LightTypeManagementController {
 
         try {
             if (type.getId() == null) {
-                repository.saveItem(SQLiteDictionaryRepository.TYPE_LIGHT, type, System.getProperty("user.name"));
+                repository.saveItem(SQLiteDictionaryRepository.TYPE_LIGHT, type, AuthSession.getCurrentOperatorName());
             } else {
-                repository.updateItem(type, System.getProperty("user.name"));
+                repository.updateItem(type, AuthSession.getCurrentOperatorName());
             }
             reload();
             AlertDialog.showInfo("燈種管理", "儲存成功");

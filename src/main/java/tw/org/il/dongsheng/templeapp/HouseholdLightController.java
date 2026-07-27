@@ -179,7 +179,7 @@ public class HouseholdLightController {
             return;
         }
 
-        String changedBy = Util.emptyToDefault(collectorBox.getValue(), System.getProperty("user.name"));
+        String changedBy = AuthSession.getCurrentOperatorName();
         try {
             boolean hasSelectedLight = false;
             for (HouseholdLightRow row : householdTable.getItems()) {
