@@ -16,13 +16,13 @@
             <ToolBar style="-fx-background-color: #f0f0f0;">
                 <Button fx:id="generateIdButton" styleClass="btn-action" text="新增電腦編號" onAction="#onGenerateId" />
                 <Button fx:id="saveButton" styleClass="btn-purple" text="存檔" onAction="#onSave" />
-                <Button fx:id="delButton" styleClass="btn-purple" text="刪除" onAction="#onBlockedDuringDonation" />
+                <Button fx:id="delButton" styleClass="btn-purple" text="刪除" onAction="#onDeleteMember" />
                 <Button fx:id="searchButton" styleClass="btn-purple" text="查詢" onAction="#onSearch"/>
                 <Button fx:id="clearButton" styleClass="btn-purple" text="欄位淨空" onAction="#onClearField"/>
                 <Button fx:id="totalAmountButton" styleClass="btn-purple" text="總金額" onAction="#onOpenTotalAmount" />
                 <Separator orientation="VERTICAL" />
-                <Button fx:id="prevButton" styleClass="btn-yellow" text="上筆" onAction="#onBlockedDuringDonation" />
-                <Button fx:id="nextButton" styleClass="btn-yellow" text="下筆" onAction="#onBlockedDuringDonation" />
+                <Button fx:id="prevButton" styleClass="btn-yellow" text="上筆" onAction="#onPreviousMember" />
+                <Button fx:id="nextButton" styleClass="btn-yellow" text="下筆" onAction="#onNextMember" />
                 <Button fx:id="allLightButton" styleClass="btn-highlight" text="全戶點燈" onAction="#onOpenHouseholdLight" />
                 <Button fx:id="manageButton" styleClass="btn-pink" text="管理" onAction="#onOpenLightDataManagement"/>
             </ToolBar>
@@ -56,7 +56,7 @@
 
                     <Label text="性別" GridPane.columnIndex="4" GridPane.rowIndex="0" />
                     <HBox spacing="2" GridPane.columnIndex="5" GridPane.rowIndex="0">
-                        <ComboBox fx:id="genderBox" prefWidth="60">
+                        <ComboBox fx:id="genderBox" prefWidth="84" minWidth="84">
                             <items>
                                 <FXCollections fx:factory="observableArrayList">
                                     <String fx:value="男" />

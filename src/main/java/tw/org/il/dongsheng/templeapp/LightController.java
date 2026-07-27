@@ -67,7 +67,7 @@ public class LightController {
             , otherNoteField, donorNoField, lightNoField, shouldPayField;
     @FXML private DatePicker donateDateField;
 
-    @FXML private Button generateIdButton, saveButton, btnWord, btnToggle; //btnContact
+    @FXML private Button generateIdButton, saveButton, delButton, prevButton, nextButton, btnWord, btnToggle; //btnContact
     @FXML private HBox donationButtonBox;
     @FXML private Button donationPrimaryButton, donationSecondaryButton, donationDeleteButton, donationSupplementButton;
     @FXML private Button amountKeypadButton, summaryPhraseButton, familyPhraseButton;
@@ -213,6 +213,7 @@ public class LightController {
 
         memberTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
+                memberPageBar.setCurrentIndex(memberTable.getSelectionModel().getSelectedIndex());
                 setMemberData(newVal);
                 referenceMember = newVal;
                 try {
@@ -223,10 +224,12 @@ public class LightController {
             } else {
                 clearDonationTable();
             }
+            updateMemberNavigationButtons();
         });
 
         memberPageBar.setTotalCount(0);
         memberPageBar.setOnAction(() -> selectTableRow(memberTable, memberPageBar.getCurrentIndex()));
+        updateMemberNavigationButtons();
 
         // 設定每個欄位對應 Donation 類別的屬性名稱 (變數名)
         colReceiptNo.setCellValueFactory(new PropertyValueFactory<>("receiptNo"));
@@ -407,6 +410,7 @@ public class LightController {
         if (warnIfDonationEditing()) {
             return;
         }
+        clearAllErrors();
 
         String id = idField.getText();
         String name = nameField.getText();
@@ -417,6 +421,52 @@ public class LightController {
         }
 
         executeMemberSearch();
+    }
+
+    @FXML
+    public void onDeleteMember() {
+        if (warnIfDonationEditing()) {
+            return;
+        }
+
+        LightMember selectedMember = memberTable.getSelectionModel().getSelectedItem();
+        Integer memberId = selectedMember == null
+                ? Util.parseInteger(Util.trimLeadingZeros(idField.getText()))
+                : selectedMember.getId();
+        if (memberId == null) {
+            AlertDialog.showWarning("信眾點燈", "請先選擇要刪除的信眾資料");
+            return;
+        }
+
+        String memberName = selectedMember == null ? nameField.getText() : selectedMember.getName();
+        if (!AlertDialog.showConfirm(
+                "刪除信眾",
+                "確定要刪除電腦編號 " + Util.stringFormat(memberId) +
+                        (Util.isBlank(memberName) ? "" : "（" + memberName + "）") + "？"
+        )) {
+            return;
+        }
+
+        try {
+            if (!lightService.deleteById(memberId)) {
+                AlertDialog.showWarning("信眾點燈", "找不到可刪除的信眾資料");
+                return;
+            }
+            AlertDialog.showInfo("信眾點燈", "刪除信眾成功");
+            onClearField();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @FXML
+    public void onPreviousMember() {
+        moveMemberSelection(-1);
+    }
+
+    @FXML
+    public void onNextMember() {
+        moveMemberSelection(1);
     }
 
     @FXML
@@ -770,7 +820,12 @@ public class LightController {
                 return;
             }
 
-            LightMember member = matches.get(0);
+            LightMember member = matches.size() == 1 ? matches.get(0) : showMemberSelection(matches);
+            if (member == null) {
+                clearSearchResultPreservingCriteria(id, name, phone);
+                AlertDialog.showInfo("信眾點燈", "尚未選擇信眾資料，本次查詢已取消");
+                return;
+            }
             referenceMember = member;
             setMemberData(member);
             setAddMode(false);
@@ -778,18 +833,75 @@ public class LightController {
             // 查到資料後，再以地址帶出同戶家屬(含查詢的人)與捐款資料
             allMember.clear();
             String keyword = member.getAddress();
-            int total = lightService.getMemberCount(keyword);
-            allMember = lightService.findAllHouse(keyword, Math.max(total, 1), 0);
+            int total;
+            if (Util.isBlank(keyword)) {
+                allMember = new ArrayList<>(List.of(member));
+                total = 1;
+            } else {
+                total = lightService.getMemberCount(keyword);
+                allMember = lightService.findAllHouse(keyword, Math.max(total, 1), 0);
+            }
 
             memberTable.setItems(Util.toObservableList(allMember));
             memberPageBar.setTotalCount(total);
-            int selectedIndex = Math.max(0, allMember.indexOf(member));
+            int selectedIndex = findMemberIndex(member.getId());
             memberPageBar.setCurrentIndex(selectedIndex);
             selectTableRow(memberTable, selectedIndex);
 
             memberTable.refresh();
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private void clearSearchResultPreservingCriteria(String id, String name, String phone) {
+        clearForm(memberInputGrid);
+        clearForm(donateInputGrid);
+        clearAllErrors();
+        clearDonationErrors();
+
+        idField.setText(id);
+        nameField.setText(name);
+        phoneField.setText(phone);
+
+        allMember.clear();
+        referenceMember = null;
+        memberTable.getItems().clear();
+        memberTable.getSelectionModel().clearSelection();
+        memberPageBar.setTotalCount(0);
+        donationTable.getItems().clear();
+        donationTable.getSelectionModel().clearSelection();
+        donationPageBar.setTotalCount(0);
+        setAddMode(false);
+        setDonationMode(DonationMode.BROWSE);
+        setDonationAvailable(false);
+    }
+
+    private int findMemberIndex(Integer memberId) {
+        for (int index = 0; index < allMember.size(); index++) {
+            if (Objects.equals(memberId, allMember.get(index).getId())) {
+                return index;
+            }
+        }
+        return 0;
+    }
+
+    private LightMember showMemberSelection(List<LightMember> matches) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("member-selection.fxml"));
+            Parent root = loader.load();
+            MemberSelectionController controller = loader.getController();
+            controller.setMembers(matches);
+
+            Stage stage = new Stage();
+            stage.setTitle("選擇信眾");
+            stage.setScene(new Scene(root));
+            stage.initOwner(memberTable.getScene().getWindow());
+            stage.initModality(Modality.WINDOW_MODAL);
+            stage.showAndWait();
+            return controller.getSelectedMember();
+        } catch (IOException e) {
+            throw new RuntimeException("無法載入信眾選擇頁面", e);
         }
     }
 
@@ -850,12 +962,41 @@ public class LightController {
     private <T> void selectTableRow(TableView<T> tableView, int index) {
         if (tableView.getItems().isEmpty()) {
             tableView.getSelectionModel().clearSelection();
+            if (tableView == memberTable) {
+                updateMemberNavigationButtons();
+            }
             return;
         }
 
         int safeIndex = Math.max(0, Math.min(index, tableView.getItems().size() - 1));
         tableView.getSelectionModel().select(safeIndex);
         tableView.scrollTo(safeIndex);
+        if (tableView == memberTable) {
+            memberPageBar.setCurrentIndex(safeIndex);
+            updateMemberNavigationButtons();
+        }
+    }
+
+    private void moveMemberSelection(int offset) {
+        if (warnIfDonationEditing() || memberTable.getItems().isEmpty()) {
+            return;
+        }
+
+        int currentIndex = memberTable.getSelectionModel().getSelectedIndex();
+        if (currentIndex < 0) {
+            currentIndex = memberPageBar.getCurrentIndex();
+        }
+        selectTableRow(memberTable, currentIndex + offset);
+    }
+
+    private void updateMemberNavigationButtons() {
+        if (prevButton == null || nextButton == null) {
+            return;
+        }
+        int selectedIndex = memberTable.getSelectionModel().getSelectedIndex();
+        boolean empty = memberTable.getItems().isEmpty();
+        prevButton.setDisable(empty || selectedIndex <= 0);
+        nextButton.setDisable(empty || selectedIndex < 0 || selectedIndex >= memberTable.getItems().size() - 1);
     }
 
     // 設置上方信眾資料

@@ -53,6 +53,10 @@ public class LightMemberService {
         repo.update(member);
     }
 
+    public boolean deleteById(int id) throws SQLException {
+        return repo.deleteById(id);
+    }
+
     public List<Integer> findDeletedIds() throws SQLException {
         return repo.findDeletedIds();
     }

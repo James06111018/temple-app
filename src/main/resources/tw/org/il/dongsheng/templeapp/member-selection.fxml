@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.BorderPane?>
+
+<BorderPane prefWidth="960" prefHeight="420"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="tw.org.il.dongsheng.templeapp.MemberSelectionController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0; -fx-padding: 12;">
+    <center>
+        <TableView fx:id="memberSelectionTable" styleClass="my-table">
+            <columnResizePolicy>
+                <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY" />
+            </columnResizePolicy>
+            <columns>
+                <TableColumn fx:id="idColumn" text="電腦編號" prefWidth="100" />
+                <TableColumn fx:id="nameColumn" text="姓名" prefWidth="140" />
+                <TableColumn fx:id="genderColumn" text="性別" prefWidth="70" />
+                <TableColumn fx:id="birthDateColumn" text="國曆生日" prefWidth="110" />
+                <TableColumn fx:id="phoneColumn" text="電話" prefWidth="150" />
+                <TableColumn fx:id="zipCodeColumn" text="郵遞區號" prefWidth="90" />
+                <TableColumn fx:id="addressColumn" text="地址" prefWidth="360" />
+            </columns>
+        </TableView>
+    </center>
+</BorderPane>

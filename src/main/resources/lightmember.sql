@@ -19,5 +19,6 @@ CREATE TABLE IF NOT EXISTS light_members (
     ding INTEGER,
     kou INTEGER,
     is_mail TEXT,
-    gender TEXT
+    gender TEXT,
+    is_deleted INTEGER NOT NULL DEFAULT 0
 );

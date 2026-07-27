@@ -1,5 +1,6 @@
 package tw.org.il.dongsheng.templeapp.repository.sqlite;
 
+import tw.org.il.dongsheng.templeapp.AuthSession;
 import tw.org.il.dongsheng.templeapp.model.LightMember;
 import tw.org.il.dongsheng.templeapp.repository.LightMemberRepository;
 import tw.org.il.dongsheng.templeapp.util.Util;
@@ -8,6 +9,8 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 public class SQLiteLightMemberRepository implements LightMemberRepository {
     private static final String TABLE_NAME = "light_members";
@@ -42,13 +45,16 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
                 "ding INTEGER," +
                 "kou INTEGER," +
                 "is_mail TEXT," +
-                "gender TEXT" +
+                "gender TEXT," +
+                "is_deleted INTEGER NOT NULL DEFAULT 0" +
                 ")";
 
         try (Connection connection = databaseManager.getConnection();
              Statement statement = connection.createStatement()) {
 //            statement.execute(dropSql);
             statement.execute(sql);
+            addColumnIfMissing(connection, "is_deleted", "INTEGER NOT NULL DEFAULT 0");
+            statement.execute("CREATE INDEX IF NOT EXISTS idx_light_members_is_deleted ON light_members(is_deleted)");
             statement.execute("""
                     CREATE TABLE IF NOT EXISTS light_member_audits (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,7 +101,7 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
                 "name = ?, phone = ?, city = ?, dist = ?, address = ?, zip_code = ?, birth_date = ?, lunar_birth_date = ?, age = ?, " +
                 "zodiac = ?, zodiac_year = ?, birth_time = ?, note = ?, contact_person = ?, id_number = ?, sort_order = ?, " +
                 "ding = ?, kou = ?, is_mail = ?, gender = ? " +
-                "WHERE id = ?";
+                "WHERE id = ? AND COALESCE(is_deleted, 0) = 0";
 
         Optional<LightMember> before = findById(member.getId());
         try (Connection connection = databaseManager.getConnection();
@@ -112,12 +118,17 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
 
     @Override
     public boolean deleteById(int id) throws SQLException {
-        String sql = "DELETE FROM " + TABLE_NAME + " WHERE id = ?";
+        Optional<LightMember> before = findById(id);
+        String sql = "UPDATE " + TABLE_NAME + " SET is_deleted = 1 WHERE id = ? AND COALESCE(is_deleted, 0) = 0";
 
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, id);
-            return statement.executeUpdate() > 0;
+            boolean deleted = statement.executeUpdate() > 0;
+            if (deleted) {
+                saveAudit(id, "DELETE", currentOperator(), before.map(LightMember::toString).orElse(""));
+            }
+            return deleted;
         }
     }
 
@@ -142,7 +153,7 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
 
     @Override
     public Optional<LightMember> findById(int id) throws SQLException {
-        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE id = ?";
+        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE id = ? AND COALESCE(is_deleted, 0) = 0";
 
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -160,7 +171,7 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
 
     @Override
     public Optional<LightMember> findByName(String name) throws SQLException {
-        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE name = ?";
+        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE name = ? AND COALESCE(is_deleted, 0) = 0";
 
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -177,7 +188,9 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
 
     @Override
     public List<LightMember> search(String id, String name, String phone) throws SQLException {
-        StringBuilder sql = new StringBuilder("SELECT * FROM " + TABLE_NAME + " WHERE 1 = 1");
+        StringBuilder sql = new StringBuilder(
+                "SELECT * FROM " + TABLE_NAME + " WHERE COALESCE(is_deleted, 0) = 0"
+        );
         List<String> params = new ArrayList<>();
 
         if (!Util.isBlank(id)) {
@@ -214,7 +227,8 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
 
     @Override
     public List<LightMember> findByAddress(String keyword, int limit, int offset) throws SQLException {
-        String sql = "SELECT * FROM " + TABLE_NAME + " WHERE address = ? ORDER BY id DESC LIMIT ? OFFSET ?";
+        String sql = "SELECT * FROM " + TABLE_NAME +
+                " WHERE address = ? AND COALESCE(is_deleted, 0) = 0 ORDER BY id DESC LIMIT ? OFFSET ?";
         List<LightMember> members = new ArrayList<>();
 
         try (Connection connection = databaseManager.getConnection();
@@ -235,7 +249,8 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
 
     @Override
     public int getMemberCount(String keyword) throws SQLException {
-        String sql = "SELECT COUNT(1) AS count FROM " + TABLE_NAME + " WHERE address = ?";
+        String sql = "SELECT COUNT(1) AS count FROM " + TABLE_NAME +
+                " WHERE address = ? AND COALESCE(is_deleted, 0) = 0";
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, keyword);
@@ -250,7 +265,8 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
 
     @Override
     public List<LightMember> findAll() throws SQLException {
-        String sql = "SELECT * FROM " + TABLE_NAME + " ORDER BY sort_order ASC, id ASC";
+        String sql = "SELECT * FROM " + TABLE_NAME +
+                " WHERE COALESCE(is_deleted, 0) = 0 ORDER BY sort_order ASC, id ASC";
         List<LightMember> members = new ArrayList<>();
 
         try (Connection connection = databaseManager.getConnection();
@@ -267,16 +283,20 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
     @Override
     public List<Integer> findDeletedIds() throws SQLException {
         List<Integer> existingIds = new ArrayList<>();
-        String sql = "SELECT id FROM " + TABLE_NAME + " ORDER BY id";
+        Set<Integer> deletedIds = new TreeSet<>();
+        String sql = "SELECT id, COALESCE(is_deleted, 0) AS is_deleted FROM " + TABLE_NAME + " ORDER BY id";
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
             while (resultSet.next()) {
-                existingIds.add(resultSet.getInt("id"));
+                int id = resultSet.getInt("id");
+                existingIds.add(id);
+                if (resultSet.getInt("is_deleted") == 1) {
+                    deletedIds.add(id);
+                }
             }
         }
 
-        List<Integer> deletedIds = new ArrayList<>();
         int expected = 1;
         for (Integer id : existingIds) {
             while (expected < id) {
@@ -284,13 +304,14 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
             }
             expected = id + 1;
         }
-        return deletedIds;
+        return new ArrayList<>(deletedIds);
     }
 
     @Override
     public List<Integer> findBlankNameIds() throws SQLException {
         String sql = "SELECT id FROM " + TABLE_NAME + """
-                 WHERE COALESCE(TRIM(name), '') = ''
+                 WHERE COALESCE(is_deleted, 0) = 0
+                   AND COALESCE(TRIM(name), '') = ''
                    AND COALESCE(TRIM(phone), '') = ''
                    AND COALESCE(TRIM(city), '') = ''
                    AND COALESCE(TRIM(dist), '') = ''
@@ -374,6 +395,30 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
             statement.setString(4, snapshot);
             statement.executeUpdate();
         }
+    }
+
+    private void addColumnIfMissing(Connection connection, String columnName, String definition) throws SQLException {
+        boolean exists = false;
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("PRAGMA table_info(" + TABLE_NAME + ")")) {
+            while (resultSet.next()) {
+                if (columnName.equalsIgnoreCase(resultSet.getString("name"))) {
+                    exists = true;
+                    break;
+                }
+            }
+        }
+        if (!exists) {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + columnName + " " + definition);
+            }
+        }
+    }
+
+    private String currentOperator() {
+        return AuthSession.getCurrentUser() == null
+                ? System.getProperty("user.name")
+                : AuthSession.getCurrentUser().getUsername();
     }
 
     private LightMember mapRow(ResultSet resultSet) throws SQLException {
