@@ -11,106 +11,110 @@
             stylesheets="@style.css"
             style="-fx-background-color: #f0f0f0;">
     <center>
-        <HBox spacing="18" style="-fx-padding: 18 20 18 18;">
-            <VBox spacing="12" HBox.hgrow="ALWAYS">
-                <TabPane tabClosingPolicy="UNAVAILABLE" prefHeight="44">
-                    <tabs>
-                        <Tab text="安太歲" />
-                        <Tab text="點燈" />
-                        <Tab text="編號" />
-                        <Tab text="備用" />
-                    </tabs>
-                </TabPane>
-
+        <VBox style="-fx-padding: 18 20 18 18;">
+            <TabPane fx:id="managementTabs" tabClosingPolicy="UNAVAILABLE" prefHeight="44">
+                <tabs>
+                    <Tab fx:id="taiSuiTab" text="安太歲" />
+                    <Tab fx:id="lightTab" text="點燈" />
+                    <Tab fx:id="numberTab" text="編號" />
+                    <Tab fx:id="spareTab" text="備用" />
+                </tabs>
+            </TabPane>
+            <HBox fx:id="managementWorkspace" spacing="18" VBox.vgrow="ALWAYS"
+                  style="-fx-padding: 12 0 0 0;">
+                <VBox spacing="12" HBox.hgrow="ALWAYS">
                 <HBox spacing="8" alignment="CENTER_LEFT">
-                    <Label text="燈別" />
+                    <Label fx:id="filterTypeLabel" text="燈別" />
                     <ComboBox fx:id="filterTypeBox" prefWidth="80" />
-                    <Label text="查詢燈號" />
-                    <TextField prefWidth="110" />
-                    <Button text="Go" styleClass="btn-green" onAction="#onPlaceholderAction" />
+                    <Label fx:id="queryNumberLabel" text="查詢燈號" />
+                    <TextField fx:id="queryNumberField" prefWidth="110" onAction="#onSearch" />
+                    <Button text="Go" styleClass="btn-green" onAction="#onSearch" />
                     <Label text="狀態" />
                     <ComboBox fx:id="statusBox" prefWidth="130" />
-                    <Button text="已刪除轉未使用" styleClass="btn-purple" onAction="#onPlaceholderAction" />
+                    <Button text="已刪除轉未使用" styleClass="btn-purple" onAction="#onRestoreDeleted" />
                     <Button text="單筆" styleClass="btn-action" onAction="#onPlaceholderAction" />
                 </HBox>
 
-                <TableView prefHeight="345" VBox.vgrow="ALWAYS">
+                <TableView fx:id="recordTable" prefHeight="325" VBox.vgrow="ALWAYS">
                     <columns>
                         <TableColumn text="" prefWidth="28" />
-                        <TableColumn text="燈號 △" prefWidth="150" />
-                        <TableColumn text="電腦編號" prefWidth="190" />
-                        <TableColumn text="主事者" prefWidth="255" />
-                        <TableColumn text="狀態" prefWidth="160" />
+                        <TableColumn fx:id="recordNumberColumn" text="燈號" prefWidth="150" />
+                        <TableColumn fx:id="memberIdColumn" text="電腦編號" prefWidth="190" />
+                        <TableColumn fx:id="principalNameColumn" text="主事者" prefWidth="255" />
+                        <TableColumn fx:id="statusColumn" text="狀態" prefWidth="160" />
                         <TableColumn text="" prefWidth="38" />
                     </columns>
                 </TableView>
+                <Label fx:id="recordCountLabel" text="總筆數：0" />
 
                 <HBox spacing="18" alignment="CENTER_LEFT">
                     <VBox prefWidth="595" style="-fx-border-color: #999;">
-                        <Label text="燈號管理" alignment="CENTER" maxWidth="Infinity"
+                        <Label fx:id="managementTitleLabel" text="燈號管理" alignment="CENTER" maxWidth="Infinity"
                                style="-fx-background-color: #008b8b; -fx-text-fill: white; -fx-padding: 4;" />
                         <HBox spacing="8" alignment="CENTER_LEFT" style="-fx-background-color: #ffff66; -fx-padding: 18 10;">
-                            <Label text="燈別" />
-                            <TextField prefWidth="46" />
-                            <Label text="燈號" />
-                            <TextField prefWidth="72" />
+                            <Label fx:id="editTypeLabel" text="燈別" />
+                            <TextField fx:id="editTypeField" prefWidth="46" editable="false" />
+                            <Label fx:id="editNumberLabel" text="燈號" />
+                            <TextField fx:id="startNumberField" prefWidth="72" />
                             <Label text="-" />
-                            <TextField prefWidth="72" />
+                            <TextField fx:id="endNumberField" prefWidth="72" />
                             <Region HBox.hgrow="ALWAYS" />
-                            <Button text="新增" styleClass="btn-purple" prefWidth="82" onAction="#onPlaceholderAction" />
-                            <Button text="刪除" styleClass="btn-purple" prefWidth="82" onAction="#onPlaceholderAction" />
-                            <Button text="4" styleClass="btn-action" prefWidth="38" onAction="#onPlaceholderAction" />
-                            <Button text="40" styleClass="btn-action" prefWidth="42" onAction="#onPlaceholderAction" />
+                            <Button text="新增" styleClass="btn-purple" prefWidth="82" onAction="#onAdd" />
+                            <Button text="刪除" styleClass="btn-purple" prefWidth="82" onAction="#onDelete" />
+                            <Button text="4" styleClass="btn-action" prefWidth="38" onAction="#onDeleteEndingFour" />
+                            <Button text="40" styleClass="btn-action" prefWidth="42" onAction="#onDeleteContainingFour" />
                         </HBox>
                     </VBox>
-                    <Button text="太歲年度清檔" styleClass="btn-pink" prefWidth="138" prefHeight="58" onAction="#onPlaceholderAction" />
+                    <Button fx:id="annualClearButton" text="太歲年度清檔" styleClass="btn-pink"
+                            prefWidth="138" prefHeight="58" onAction="#onPlaceholderAction" />
                 </HBox>
-            </VBox>
+                </VBox>
 
-            <VBox spacing="18" prefWidth="310">
-                <TitledPane text="安太歲" expanded="true" collapsible="false">
-                    <VBox spacing="14" style="-fx-padding: 12 18 18 18;">
-                        <HBox spacing="8" alignment="CENTER_LEFT">
-                            <RadioButton selected="true" />
-                            <Label text="燈別" />
-                            <ComboBox fx:id="taiSuiTypeBox" prefWidth="58" />
-                            <TextField prefWidth="70" />
-                            <Label text="-" />
-                            <TextField prefWidth="70" />
-                        </HBox>
-                        <HBox spacing="8" alignment="CENTER_LEFT">
-                            <RadioButton />
-                            <Label text="日期" />
-                            <TextField prefWidth="86" />
-                            <Label text="-" />
-                            <TextField prefWidth="86" />
-                        </HBox>
-                        <Button text="安太歲名條" styleClass="btn-purple" prefWidth="150" onAction="#onPlaceholderAction" />
-                        <Button text="安太歲疏文" styleClass="btn-purple" prefWidth="150" onAction="#onPlaceholderAction" />
-                    </VBox>
-                </TitledPane>
-                <TitledPane text="點燈" expanded="true" collapsible="false">
-                    <VBox spacing="14" style="-fx-padding: 12 18 18 18;">
-                        <HBox spacing="8" alignment="CENTER_LEFT">
-                            <RadioButton selected="true" />
-                            <Label text="燈別" />
-                            <ComboBox fx:id="lightTypeBox" prefWidth="58" />
-                            <TextField prefWidth="70" />
-                            <Label text="-" />
-                            <TextField prefWidth="70" />
-                        </HBox>
-                        <HBox spacing="8" alignment="CENTER_LEFT">
-                            <RadioButton />
-                            <Label text="日期" />
-                            <TextField prefWidth="86" />
-                            <Label text="-" />
-                            <TextField prefWidth="86" />
-                        </HBox>
-                        <Button text="點燈名條" styleClass="btn-purple" prefWidth="150" onAction="#onPlaceholderAction" />
-                        <Button text="點燈疏文" styleClass="btn-purple" prefWidth="150" onAction="#onPlaceholderAction" />
-                    </VBox>
-                </TitledPane>
-            </VBox>
-        </HBox>
+                <VBox spacing="18" prefWidth="310">
+                    <TitledPane text="安太歲" expanded="true" collapsible="false">
+                        <VBox spacing="14" style="-fx-padding: 12 18 18 18;">
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <RadioButton selected="true" />
+                                <Label text="燈別" />
+                                <ComboBox fx:id="taiSuiTypeBox" prefWidth="58" />
+                                <TextField prefWidth="70" />
+                                <Label text="-" />
+                                <TextField prefWidth="70" />
+                            </HBox>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <RadioButton />
+                                <Label text="日期" />
+                                <TextField prefWidth="86" />
+                                <Label text="-" />
+                                <TextField prefWidth="86" />
+                            </HBox>
+                            <Button text="安太歲名條" styleClass="btn-purple" prefWidth="150" onAction="#onPlaceholderAction" />
+                            <Button text="安太歲疏文" styleClass="btn-purple" prefWidth="150" onAction="#onPlaceholderAction" />
+                        </VBox>
+                    </TitledPane>
+                    <TitledPane text="點燈" expanded="true" collapsible="false">
+                        <VBox spacing="14" style="-fx-padding: 12 18 18 18;">
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <RadioButton selected="true" />
+                                <Label text="燈別" />
+                                <ComboBox fx:id="lightTypeBox" prefWidth="58" />
+                                <TextField prefWidth="70" />
+                                <Label text="-" />
+                                <TextField prefWidth="70" />
+                            </HBox>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <RadioButton />
+                                <Label text="日期" />
+                                <TextField prefWidth="86" />
+                                <Label text="-" />
+                                <TextField prefWidth="86" />
+                            </HBox>
+                            <Button text="點燈名條" styleClass="btn-purple" prefWidth="150" onAction="#onPlaceholderAction" />
+                            <Button text="點燈疏文" styleClass="btn-purple" prefWidth="150" onAction="#onPlaceholderAction" />
+                        </VBox>
+                    </TitledPane>
+                </VBox>
+            </HBox>
+        </VBox>
     </center>
 </BorderPane>
