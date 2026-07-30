@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane prefWidth="1120" prefHeight="700"
+            xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="tw.org.il.dongsheng.templeapp.MemberContactUpdateController"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f0f0f0;">
+    <padding>
+        <Insets top="14" right="14" bottom="14" left="14"/>
+    </padding>
+
+    <center>
+        <SplitPane dividerPositions="0.82">
+            <items>
+                <TableView fx:id="memberTable">
+                    <columnResizePolicy>
+                        <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY"/>
+                    </columnResizePolicy>
+                    <columns>
+                        <TableColumn fx:id="idColumn" text="電腦編號" prefWidth="100"/>
+                        <TableColumn fx:id="nameColumn" text="姓名" prefWidth="150"/>
+                        <TableColumn fx:id="birthDateColumn" text="國曆生日" prefWidth="115"/>
+                        <TableColumn fx:id="lunarBirthDateColumn" text="農曆生日" prefWidth="115"/>
+                        <TableColumn fx:id="ageColumn" text="年齡" prefWidth="70"/>
+                        <TableColumn fx:id="zodiacColumn" text="生肖" prefWidth="85"/>
+                        <TableColumn fx:id="birthTimeColumn" text="時辰" prefWidth="85"/>
+                        <TableColumn fx:id="genderColumn" text="性別" prefWidth="70"/>
+                    </columns>
+                </TableView>
+                <VBox spacing="8" style="-fx-padding: 4;">
+                    <Label fx:id="selectedCountLabel" text="0 人"
+                           style="-fx-font-size: 17px; -fx-text-fill: #2547c7;"/>
+                    <Label text="已選取信眾"/>
+                    <ListView fx:id="selectedMemberList" VBox.vgrow="ALWAYS"/>
+                </VBox>
+            </items>
+        </SplitPane>
+    </center>
+
+    <bottom>
+        <GridPane hgap="10" vgap="14" style="-fx-padding: 18 0 0 0;">
+            <columnConstraints>
+                <ColumnConstraints minWidth="90" halignment="RIGHT"/>
+                <ColumnConstraints minWidth="300" hgrow="ALWAYS"/>
+                <ColumnConstraints minWidth="90" halignment="RIGHT"/>
+                <ColumnConstraints minWidth="85"/>
+                <ColumnConstraints minWidth="420" hgrow="ALWAYS"/>
+            </columnConstraints>
+
+            <Label text="原電話" style="-fx-text-fill: #2547c7;"
+                   GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+            <TextField fx:id="originalPhoneField" editable="false"
+                       GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+            <Label text="原地址" style="-fx-text-fill: #2547c7;"
+                   GridPane.columnIndex="2" GridPane.rowIndex="0"/>
+            <TextField fx:id="originalZipCodeField" editable="false"
+                       GridPane.columnIndex="3" GridPane.rowIndex="0"/>
+            <TextField fx:id="originalAddressField" editable="false"
+                       GridPane.columnIndex="4" GridPane.rowIndex="0"/>
+
+            <Label text="新電話" style="-fx-text-fill: #d82020;"
+                   GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+            <TextField fx:id="newPhoneField"
+                       GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+            <Label text="新地址" style="-fx-text-fill: #d82020;"
+                   GridPane.columnIndex="2" GridPane.rowIndex="1"/>
+            <TextField fx:id="newZipCodeField" promptText="郵遞區號"
+                       GridPane.columnIndex="3" GridPane.rowIndex="1"/>
+            <TextField fx:id="newAddressField" promptText="地址"
+                       GridPane.columnIndex="4" GridPane.rowIndex="1"/>
+
+            <Button text="確定" prefWidth="200" styleClass="btn-purple"
+                    onAction="#onConfirm"
+                    GridPane.columnIndex="1" GridPane.columnSpan="4" GridPane.rowIndex="2"/>
+        </GridPane>
+    </bottom>
+</BorderPane>

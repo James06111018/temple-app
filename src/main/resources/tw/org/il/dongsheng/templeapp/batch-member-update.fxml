@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="18" prefWidth="900" prefHeight="540"
+      xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="tw.org.il.dongsheng.templeapp.BatchMemberUpdateController"
+      stylesheets="@style.css"
+      style="-fx-background-color: #f0f0f0;">
+    <padding>
+        <Insets top="20" right="25" bottom="20" left="25"/>
+    </padding>
+
+    <Label fx:id="memberCountLabel" text="目前查詢共 0 筆信眾資料"
+           style="-fx-font-size: 15px; -fx-text-fill: #2547c7;"/>
+
+    <TitledPane text="整批修改電話" collapsible="false" VBox.vgrow="ALWAYS">
+        <content>
+            <GridPane hgap="12" vgap="18" style="-fx-padding: 28;">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="90" halignment="RIGHT"/>
+                    <ColumnConstraints minWidth="520" hgrow="ALWAYS"/>
+                </columnConstraints>
+                <Label text="原電話" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                <TextField fx:id="originalPhoneField" editable="false"
+                           GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                <Label text="新電話" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                <TextField fx:id="newPhoneField" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                <Button text="確定" prefWidth="130" styleClass="btn-purple"
+                        onAction="#onUpdatePhone"
+                        GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+            </GridPane>
+        </content>
+    </TitledPane>
+
+    <TitledPane text="整批修改郵遞區號及地址" collapsible="false" VBox.vgrow="ALWAYS">
+        <content>
+            <GridPane hgap="12" vgap="18" style="-fx-padding: 28;">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="90" halignment="RIGHT"/>
+                    <ColumnConstraints minWidth="90"/>
+                    <ColumnConstraints minWidth="430" hgrow="ALWAYS"/>
+                </columnConstraints>
+                <Label text="原地址" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                <TextField fx:id="originalZipCodeField" editable="false"
+                           GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                <TextField fx:id="originalAddressField" editable="false"
+                           GridPane.columnIndex="2" GridPane.rowIndex="0"/>
+                <Label text="新地址" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                <TextField fx:id="newZipCodeField" promptText="郵遞區號"
+                           GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                <TextField fx:id="newAddressField" promptText="地址"
+                           GridPane.columnIndex="2" GridPane.rowIndex="1"/>
+                <Button text="確定" prefWidth="130" styleClass="btn-purple"
+                        onAction="#onUpdateAddress"
+                        GridPane.columnIndex="1" GridPane.columnSpan="2" GridPane.rowIndex="2"/>
+            </GridPane>
+        </content>
+    </TitledPane>
+</VBox>

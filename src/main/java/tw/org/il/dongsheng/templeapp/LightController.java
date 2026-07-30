@@ -22,6 +22,7 @@ import javafx.util.StringConverter;
 import tw.org.il.dongsheng.templeapp.model.DictionaryItem;
 import tw.org.il.dongsheng.templeapp.model.Donation;
 import tw.org.il.dongsheng.templeapp.model.LightMember;
+import tw.org.il.dongsheng.templeapp.model.MemberBatchUpdateRequest;
 import tw.org.il.dongsheng.templeapp.repository.DonationRepository;
 import tw.org.il.dongsheng.templeapp.repository.LightMemberRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteAddressRepository;
@@ -665,6 +666,40 @@ public class LightController {
         stage.initModality(Modality.APPLICATION_MODAL);
 
         stage.showAndWait();
+    }
+
+    @FXML
+    public void onOpenBatchMemberUpdate() throws IOException {
+        if (!canOpenBatchMemberUpdate()) {
+            return;
+        }
+
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("batch-member-update.fxml"));
+        Parent root = loader.load();
+        BatchMemberUpdateController controller = loader.getController();
+        controller.setData(
+                currentQueriedMembers(),
+                currentReferenceMember(),
+                this::applyMemberBatchUpdate
+        );
+        showOwnedModal(root, "整批修改", 900, 540);
+    }
+
+    @FXML
+    public void onOpenSelectedMemberUpdate() throws IOException {
+        if (!canOpenBatchMemberUpdate()) {
+            return;
+        }
+
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("member-contact-update.fxml"));
+        Parent root = loader.load();
+        MemberContactUpdateController controller = loader.getController();
+        controller.setData(
+                currentQueriedMembers(),
+                currentReferenceMember(),
+                this::applyMemberBatchUpdate
+        );
+        showOwnedModal(root, "家屬資訊", 1120, 700);
     }
 
     @FXML
@@ -1450,6 +1485,93 @@ public class LightController {
         stage.setScene(new Scene(root, width, height));
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.showAndWait();
+    }
+
+    private void showOwnedModal(Parent root, String title, double width, double height) {
+        Stage stage = new Stage();
+        stage.setTitle(title);
+        stage.setScene(new Scene(root, width, height));
+        if (memberTable.getScene() != null) {
+            stage.initOwner(memberTable.getScene().getWindow());
+            stage.initModality(Modality.WINDOW_MODAL);
+        } else {
+            stage.initModality(Modality.APPLICATION_MODAL);
+        }
+        stage.showAndWait();
+    }
+
+    private boolean canOpenBatchMemberUpdate() {
+        if (warnIfDonationEditing()) {
+            return false;
+        }
+        if (!hasSavedMemberData() || currentQueriedMembers().isEmpty()) {
+            AlertDialog.showWarning("信眾點燈", "請先查詢基本資料！");
+            return false;
+        }
+        return true;
+    }
+
+    private List<LightMember> currentQueriedMembers() {
+        return memberTable.getItems().stream()
+                .filter(member -> member != null && member.getId() != null)
+                .toList();
+    }
+
+    private LightMember currentReferenceMember() {
+        LightMember selectedMember = memberTable.getSelectionModel().getSelectedItem();
+        if (selectedMember != null) {
+            return selectedMember;
+        }
+        if (referenceMember != null) {
+            return referenceMember;
+        }
+        List<LightMember> members = currentQueriedMembers();
+        return members.isEmpty() ? null : members.get(0);
+    }
+
+    private boolean applyMemberBatchUpdate(MemberBatchUpdateRequest request) {
+        try {
+            int updatedCount = lightService.batchUpdateContact(request);
+            if (updatedCount == 0) {
+                AlertDialog.showWarning("批次修改", "找不到可修改的信眾資料");
+                return false;
+            }
+
+            Set<Integer> updatedIds = new HashSet<>(request.memberIds());
+            for (LightMember member : allMember) {
+                if (!updatedIds.contains(member.getId())) {
+                    continue;
+                }
+                if (request.updatePhone()) {
+                    member.setPhone(request.phone());
+                }
+                if (request.updateAddress()) {
+                    member.setZipCode(request.zipCode());
+                    member.setAddress(request.address());
+                }
+            }
+
+            memberTable.refresh();
+            LightMember selectedMember = memberTable.getSelectionModel().getSelectedItem();
+            if (selectedMember != null && updatedIds.contains(selectedMember.getId())) {
+                setMemberData(selectedMember);
+            }
+            if (referenceMember != null && updatedIds.contains(referenceMember.getId())) {
+                if (request.updatePhone()) {
+                    referenceMember.setPhone(request.phone());
+                }
+                if (request.updateAddress()) {
+                    referenceMember.setZipCode(request.zipCode());
+                    referenceMember.setAddress(request.address());
+                }
+            }
+
+            AlertDialog.showInfo("批次修改", "已批次修改 " + updatedCount + " 筆信眾資料");
+            return true;
+        } catch (SQLException e) {
+            AlertDialog.showError("批次修改", "批次修改失敗：" + e.getMessage());
+            return false;
+        }
     }
 
     private boolean hasSavedMemberData() {

@@ -1,6 +1,7 @@
 package tw.org.il.dongsheng.templeapp.service;
 
 import tw.org.il.dongsheng.templeapp.model.LightMember;
+import tw.org.il.dongsheng.templeapp.model.MemberBatchUpdateRequest;
 import tw.org.il.dongsheng.templeapp.repository.LightMemberRepository;
 
 import java.sql.SQLException;
@@ -55,6 +56,10 @@ public class LightMemberService {
 
     public boolean deleteById(int id) throws SQLException {
         return repo.deleteById(id);
+    }
+
+    public int batchUpdateContact(MemberBatchUpdateRequest request) throws SQLException {
+        return repo.batchUpdateContact(request);
     }
 
     public List<Integer> findDeletedIds() throws SQLException {

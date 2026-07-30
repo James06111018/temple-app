@@ -2,6 +2,7 @@ package tw.org.il.dongsheng.templeapp.repository.sqlite;
 
 import tw.org.il.dongsheng.templeapp.AuthSession;
 import tw.org.il.dongsheng.templeapp.model.LightMember;
+import tw.org.il.dongsheng.templeapp.model.MemberBatchUpdateRequest;
 import tw.org.il.dongsheng.templeapp.repository.LightMemberRepository;
 import tw.org.il.dongsheng.templeapp.util.Util;
 
@@ -9,6 +10,8 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -131,6 +134,75 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
                         before.map(LightMember::toString).orElse(""));
             }
             return deleted;
+        }
+    }
+
+    @Override
+    public int batchUpdateContact(MemberBatchUpdateRequest request) throws SQLException {
+        if (request == null || request.memberIds().isEmpty()
+                || (!request.updatePhone() && !request.updateAddress())) {
+            return 0;
+        }
+
+        List<Integer> memberIds = request.memberIds().stream()
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+        if (memberIds.isEmpty()) {
+            return 0;
+        }
+
+        String assignments;
+        if (request.updatePhone() && request.updateAddress()) {
+            assignments = "phone = ?, zip_code = ?, address = ?";
+        } else if (request.updatePhone()) {
+            assignments = "phone = ?";
+        } else {
+            assignments = "zip_code = ?, address = ?";
+        }
+        String updateSql = "UPDATE " + TABLE_NAME + " SET " + assignments
+                + " WHERE id = ? AND COALESCE(is_deleted, 0) = 0";
+
+        try (Connection connection = databaseManager.getConnection()) {
+            boolean originalAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try {
+                Map<Integer, LightMember> beforeMembers = findByIds(connection, memberIds);
+                int updatedCount = 0;
+                try (PreparedStatement statement = connection.prepareStatement(updateSql)) {
+                    for (Integer memberId : memberIds) {
+                        LightMember before = beforeMembers.get(memberId);
+                        if (before == null) {
+                            continue;
+                        }
+
+                        int parameterIndex = 1;
+                        if (request.updatePhone()) {
+                            statement.setString(parameterIndex++, request.phone());
+                        }
+                        if (request.updateAddress()) {
+                            statement.setString(parameterIndex++, request.zipCode());
+                            statement.setString(parameterIndex++, request.address());
+                        }
+                        statement.setInt(parameterIndex, memberId);
+
+                        if (statement.executeUpdate() > 0) {
+                            LightMember after = copyWithBatchContact(before, request);
+                            saveAudit(connection, memberId, "批次修改",
+                                    AuthSession.getCurrentOperatorName(),
+                                    "before=" + before + "\nafter=" + after);
+                            updatedCount++;
+                        }
+                    }
+                }
+                connection.commit();
+                return updatedCount;
+            } catch (SQLException | RuntimeException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(originalAutoCommit);
+            }
         }
     }
 
@@ -386,18 +458,62 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
     }
 
     private void saveAudit(Integer memberId, String action, String changedBy, String snapshot) throws SQLException {
+        try (Connection connection = databaseManager.getConnection()) {
+            saveAudit(connection, memberId, action, changedBy, snapshot);
+        }
+    }
+
+    private void saveAudit(Connection connection, Integer memberId, String action,
+                           String changedBy, String snapshot) throws SQLException {
         String sql = """
-                INSERT INTO light_member_audits (member_id, action, changed_by, snapshot)
-                VALUES (?, ?, ?, ?)
-                """;
-        try (Connection connection = databaseManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+                    INSERT INTO light_member_audits (member_id, action, changed_by, snapshot)
+                    VALUES (?, ?, ?, ?)
+                    """;
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setObject(1, memberId);
             statement.setString(2, action);
             statement.setString(3, changedBy);
             statement.setString(4, snapshot);
             statement.executeUpdate();
         }
+    }
+
+    private Map<Integer, LightMember> findByIds(Connection connection, List<Integer> memberIds)
+            throws SQLException {
+        String placeholders = String.join(",", java.util.Collections.nCopies(memberIds.size(), "?"));
+        String sql = "SELECT * FROM " + TABLE_NAME
+                + " WHERE id IN (" + placeholders + ") AND COALESCE(is_deleted, 0) = 0";
+        Map<Integer, LightMember> members = new LinkedHashMap<>();
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            for (int i = 0; i < memberIds.size(); i++) {
+                statement.setInt(i + 1, memberIds.get(i));
+            }
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    LightMember member = mapRow(resultSet);
+                    members.put(member.getId(), member);
+                }
+            }
+        }
+        return members;
+    }
+
+    private LightMember copyWithBatchContact(LightMember source, MemberBatchUpdateRequest request) {
+        LightMember copy = new LightMember(
+                source.getId(), source.getName(), source.getPhone(), source.getCity(), source.getDist(),
+                source.getAddress(), source.getZipCode(), source.getBirthDate(), source.getLunarBirthDate(),
+                source.getAge(), source.getZodiac(), source.getZodiacYear(), source.getBirthTime(),
+                source.getNote(), source.getContactPerson(), source.getIdNumber(), source.getSortOrder(),
+                source.getDing(), source.getKou(), source.getIsMail(), source.getGender()
+        );
+        if (request.updatePhone()) {
+            copy.setPhone(request.phone());
+        }
+        if (request.updateAddress()) {
+            copy.setZipCode(request.zipCode());
+            copy.setAddress(request.address());
+        }
+        return copy;
     }
 
     private void addColumnIfMissing(Connection connection, String columnName, String definition) throws SQLException {

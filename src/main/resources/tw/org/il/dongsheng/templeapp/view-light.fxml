@@ -88,8 +88,10 @@
                         <Label text="地址" />
                         <TextField fx:id="addressField" HBox.hgrow="ALWAYS" prefWidth="200" />
                         <Button text="路" style="-fx-font-size: 10;" styleClass="btn-green" onAction="#onOpenAddressPicker" />
-                        <Button text="改" style="-fx-font-size: 10;" styleClass="btn-orange"/>
-                        <Button text="單" style="-fx-font-size: 10;" styleClass="btn-purple"/>
+                        <Button text="改" style="-fx-font-size: 10;" styleClass="btn-orange"
+                                onAction="#onOpenBatchMemberUpdate"/>
+                        <Button text="單" style="-fx-font-size: 10;" styleClass="btn-purple"
+                                onAction="#onOpenSelectedMemberUpdate"/>
 
                         <Label text="是否郵寄" />
                         <ComboBox fx:id="mailBox" prefWidth="60">

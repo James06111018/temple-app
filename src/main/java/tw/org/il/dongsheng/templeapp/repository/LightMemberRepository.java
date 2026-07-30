@@ -1,6 +1,7 @@
 package tw.org.il.dongsheng.templeapp.repository;
 
 import tw.org.il.dongsheng.templeapp.model.LightMember;
+import tw.org.il.dongsheng.templeapp.model.MemberBatchUpdateRequest;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -15,6 +16,8 @@ public interface LightMemberRepository {
     boolean update(LightMember member) throws SQLException;
 
     boolean deleteById(int id) throws SQLException;
+
+    int batchUpdateContact(MemberBatchUpdateRequest request) throws SQLException;
 
     LightMember reserveBlankMember() throws SQLException;
 
