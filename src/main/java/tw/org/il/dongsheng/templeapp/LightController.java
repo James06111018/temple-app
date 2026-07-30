@@ -1264,7 +1264,11 @@ public class LightController {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("total-amount.fxml"));
         Parent root = loader.load();
         TotalAmountController controller = loader.getController();
-        controller.setSummary(idField.getText(), donations, categoryMap);
+        LightMember totalMember = allMember.stream()
+                .filter(member -> Objects.equals(member.getId(), memberId))
+                .findFirst()
+                .orElse(memberTable.getSelectionModel().getSelectedItem());
+        controller.setSummary(totalMember, donations, categoryMap);
         showModal(root, "總金額", 620, 300);
     }
 
