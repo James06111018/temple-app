@@ -6,6 +6,7 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -14,6 +15,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
@@ -32,7 +34,9 @@ import tw.org.il.dongsheng.templeapp.service.DonationService;
 import tw.org.il.dongsheng.templeapp.service.LightMemberService;
 import tw.org.il.dongsheng.templeapp.util.AlertDialog;
 import tw.org.il.dongsheng.templeapp.util.AreaUtil;
+import tw.org.il.dongsheng.templeapp.util.LightReportBuilder;
 import tw.org.il.dongsheng.templeapp.util.PaginationBar;
+import tw.org.il.dongsheng.templeapp.util.PrintPreview;
 import tw.org.il.dongsheng.templeapp.util.Util;
 
 import java.io.IOException;
@@ -1251,6 +1255,189 @@ public class LightController {
         }
     }
 
+    @FXML
+    public void onPrintRoster() {
+        if (!canOpenMemberReport()) {
+            return;
+        }
+        List<LightMember> members = new ArrayList<>(memberTable.getItems());
+        LightMember contactMember = findReportContactMember(members);
+        PrintPreview.show(
+                memberTable.getScene().getWindow(),
+                "香客全戶明細表",
+                LightReportBuilder.buildRosterPages(
+                        members,
+                        contactMember == null ? "" : contactMember.getPhone(),
+                        contactMember == null ? "" : contactMember.getAddress()
+                )
+        );
+    }
+
+    @FXML
+    public void onPrintDonationDetails() {
+        if (!canOpenMemberReport()) {
+            return;
+        }
+
+        Optional<DonationDateCriteria> criteriaResult = showDonationDateDialog();
+        if (criteriaResult.isEmpty()) {
+            return;
+        }
+
+        List<LightMember> members = new ArrayList<>(memberTable.getItems());
+        List<Integer> memberIds = members.stream()
+                .map(LightMember::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        try {
+            int total = donationService.getDonationCount(memberIds);
+            List<Donation> donations = donationService
+                    .findByMemberIds(memberIds, Math.max(total, 1), 0)
+                    .stream()
+                    .filter(donation -> categoryMap.containsKey(donation.getDonateType()))
+                    .filter(donation -> criteriaResult.get().matches(donation.getDonateDate()))
+                    .sorted(Comparator
+                            .comparing((Donation donation) -> parseStoredDonationDate(donation.getDonateDate()),
+                                    Comparator.nullsLast(Comparator.naturalOrder()))
+                            .thenComparing(Donation::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+                    .toList();
+            if (donations.isEmpty()) {
+                AlertDialog.showInfo("信眾點燈", "查無明細資料");
+                return;
+            }
+
+            Map<Integer, LightMember> membersById = new LinkedHashMap<>();
+            for (LightMember member : members) {
+                membersById.put(member.getId(), member);
+            }
+            LightMember contactMember = findReportContactMember(members);
+            PrintPreview.show(
+                    memberTable.getScene().getWindow(),
+                    "捐款明細表",
+                    LightReportBuilder.buildDonationDetailPages(
+                            donations,
+                            membersById,
+                            categoryMap,
+                            contactMember == null ? "" : contactMember.getPhone(),
+                            contactMember == null ? "" : contactMember.getAddress()
+                    )
+            );
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @FXML
+    public void onShowArrears() {
+        if (!canOpenMemberReport()) {
+            return;
+        }
+        AlertDialog.showInfo("欠繳資料", "目前沒有欠繳資料");
+    }
+
+    private boolean canOpenMemberReport() {
+        if (warnIfDonationEditing()) {
+            return false;
+        }
+        if (!hasSavedMemberData()) {
+            AlertDialog.showWarning("信眾點燈", "請先查詢基本資料！");
+            return false;
+        }
+        return true;
+    }
+
+    private LightMember findReportContactMember(List<LightMember> members) {
+        LightMember selected = memberTable.getSelectionModel().getSelectedItem();
+        if (selected != null && (!Util.isBlank(selected.getPhone()) || !Util.isBlank(selected.getAddress()))) {
+            return selected;
+        }
+        return members.stream()
+                .filter(member -> !Util.isBlank(member.getPhone()) || !Util.isBlank(member.getAddress()))
+                .findFirst()
+                .orElse(selected);
+    }
+
+    private Optional<DonationDateCriteria> showDonationDateDialog() {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("提示");
+        dialog.setHeaderText(null);
+        if (memberTable.getScene() != null) {
+            dialog.initOwner(memberTable.getScene().getWindow());
+        }
+
+        ButtonType confirmButton = new ButtonType("確定", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelButton = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+        dialog.getDialogPane().getButtonTypes().addAll(confirmButton, cancelButton);
+
+        Label instruction = new Label(
+                "請輸入日期\n" +
+                "若要查詢當年明細，請輸入年份，例如 100\n" +
+                "若要查詢全部資料，請輸入 0"
+        );
+        TextField dateField = new TextField(currentRocDate());
+        VBox content = new VBox(14, instruction, dateField);
+        content.setPadding(new Insets(12));
+        content.setPrefWidth(520);
+        dialog.getDialogPane().setContent(content);
+
+        Node confirmNode = dialog.getDialogPane().lookupButton(confirmButton);
+        confirmNode.addEventFilter(ActionEvent.ACTION, event -> {
+            if (parseDonationDateCriteria(dateField.getText()) == null) {
+                AlertDialog.showWarning("提示", "日期格式不正確，請輸入民國日期、年份或 0");
+                event.consume();
+            }
+        });
+        dialog.setResultConverter(button -> button == confirmButton ? dateField.getText() : null);
+        Platform.runLater(dateField::selectAll);
+
+        return dialog.showAndWait().map(this::parseDonationDateCriteria);
+    }
+
+    private DonationDateCriteria parseDonationDateCriteria(String input) {
+        String value = input == null ? "" : input.trim();
+        if ("0".equals(value)) {
+            return DonationDateCriteria.allRecords();
+        }
+        if (value.matches("\\d{1,4}")) {
+            int year = Integer.parseInt(value);
+            int gregorianYear = year < 1912 ? year + 1911 : year;
+            return gregorianYear >= 1912 && gregorianYear <= 3000
+                    ? DonationDateCriteria.forYear(gregorianYear)
+                    : null;
+        }
+
+        LocalDate date = parseStoredDonationDate(value);
+        return date == null ? null : DonationDateCriteria.exactDate(date);
+    }
+
+    private LocalDate parseStoredDonationDate(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String[] parts = value.trim().replace('/', '.').replace('-', '.').split("\\.");
+        if (parts.length != 3) {
+            return null;
+        }
+        try {
+            int year = Integer.parseInt(parts[0]);
+            int month = Integer.parseInt(parts[1]);
+            int day = Integer.parseInt(parts[2]);
+            return LocalDate.of(year < 1912 ? year + 1911 : year, month, day);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private String currentRocDate() {
+        LocalDate today = LocalDate.now();
+        return String.format(
+                "%03d.%02d.%02d",
+                today.getYear() - 1911,
+                today.getMonthValue(),
+                today.getDayOfMonth()
+        );
+    }
+
     private void openModal(String fxml, String title, double width, double height) throws IOException {
         FXMLLoader loader = new FXMLLoader(getClass().getResource(fxml));
         Parent root = loader.load();
@@ -1279,6 +1466,49 @@ public class LightController {
 
     private int getCurrentRocYear() {
         return LocalDate.now().getYear() - 1911;
+    }
+
+    private record DonationDateCriteria(boolean all, Integer year, LocalDate date) {
+        static DonationDateCriteria allRecords() {
+            return new DonationDateCriteria(true, null, null);
+        }
+
+        static DonationDateCriteria forYear(int year) {
+            return new DonationDateCriteria(false, year, null);
+        }
+
+        static DonationDateCriteria exactDate(LocalDate date) {
+            return new DonationDateCriteria(false, null, date);
+        }
+
+        boolean matches(String donationDate) {
+            if (all) {
+                return true;
+            }
+            LocalDate parsedDate = parse(donationDate);
+            if (parsedDate == null) {
+                return false;
+            }
+            return date != null ? date.equals(parsedDate) : Objects.equals(year, parsedDate.getYear());
+        }
+
+        private static LocalDate parse(String value) {
+            if (value == null || value.isBlank()) {
+                return null;
+            }
+            String[] parts = value.trim().replace('/', '.').replace('-', '.').split("\\.");
+            if (parts.length != 3) {
+                return null;
+            }
+            try {
+                int parsedYear = Integer.parseInt(parts[0]);
+                int month = Integer.parseInt(parts[1]);
+                int day = Integer.parseInt(parts[2]);
+                return LocalDate.of(parsedYear < 1912 ? parsedYear + 1911 : parsedYear, month, day);
+            } catch (RuntimeException ignored) {
+                return null;
+            }
+        }
     }
 
     private enum DonationMode {

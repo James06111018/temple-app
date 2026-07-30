@@ -64,9 +64,9 @@
                                 </FXCollections>
                             </items>
                         </ComboBox>
-                        <Button text="名冊" style="-fx-font-size: 10;" styleClass="btn-blue"/>
-                        <Button text="明細" style="-fx-font-size: 10;" styleClass="btn-blue"/>
-                        <Button text="欠繳" style="-fx-font-size: 10;" styleClass="btn-blue"/>
+                        <Button text="名冊" style="-fx-font-size: 10;" styleClass="btn-blue" onAction="#onPrintRoster"/>
+                        <Button text="明細" style="-fx-font-size: 10;" styleClass="btn-blue" onAction="#onPrintDonationDetails"/>
+                        <Button text="欠繳" style="-fx-font-size: 10;" styleClass="btn-blue" onAction="#onShowArrears"/>
                     </HBox>
 
                     <Label text="電話" GridPane.columnIndex="0" GridPane.rowIndex="1" />
