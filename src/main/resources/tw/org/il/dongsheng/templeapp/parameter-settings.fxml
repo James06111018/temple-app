@@ -1,62 +1,88 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane prefWidth="560" prefHeight="340"
+<BorderPane prefWidth="620" prefHeight="500"
+            minWidth="580" minHeight="470"
             xmlns="http://javafx.com/javafx"
-            xmlns:fx="http://javafx.com/fxml"
+            xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="tw.org.il.dongsheng.templeapp.ParameterSettingsController"
             stylesheets="@style.css"
             style="-fx-background-color: #f0f0f0;">
+    <padding>
+        <Insets top="18" right="18" bottom="18" left="18"/>
+    </padding>
+
     <center>
-        <VBox spacing="16" style="-fx-padding: 16;">
-            <TitledPane text="設定資料" collapsible="false" animated="false">
-                <GridPane hgap="8" vgap="8">
-                    <columnConstraints>
-                        <ColumnConstraints halignment="RIGHT" minWidth="120" />
-                        <ColumnConstraints minWidth="140" />
-                        <ColumnConstraints halignment="CENTER" minWidth="24" />
-                        <ColumnConstraints minWidth="140" />
-                        <ColumnConstraints minWidth="120" />
-                    </columnConstraints>
-                    <Label text="主任委員" GridPane.rowIndex="0" GridPane.columnIndex="0" />
-                    <TextField fx:id="directorField" GridPane.rowIndex="0" GridPane.columnIndex="1" GridPane.columnSpan="4" />
-                    <Label text="提前作業加歲期間" GridPane.rowIndex="1" GridPane.columnIndex="0" />
-                    <TextField fx:id="ageStartField" GridPane.rowIndex="1" GridPane.columnIndex="1" />
-                    <Label text="-" GridPane.rowIndex="1" GridPane.columnIndex="2" />
-                    <TextField fx:id="ageEndField" GridPane.rowIndex="1" GridPane.columnIndex="3" />
-                    <Label text="允許變更款項期限" GridPane.rowIndex="2" GridPane.columnIndex="0" />
-                    <TextField fx:id="changeDeadlineField" GridPane.rowIndex="2" GridPane.columnIndex="1" GridPane.columnSpan="4" />
-                    <CheckBox fx:id="allowEditDonationBox" text="允許修改款項紀錄" GridPane.rowIndex="3" GridPane.columnIndex="1" GridPane.columnSpan="4" />
-                    <CheckBox fx:id="allowDeleteSingleBox" text="允許刪除單筆項目" GridPane.rowIndex="4" GridPane.columnIndex="1" GridPane.columnSpan="4" />
-                    <Button text="儲存設定" prefWidth="110" styleClass="btn-purple" onAction="#onSaveGeneral" GridPane.rowIndex="5" GridPane.columnIndex="4" />
-                </GridPane>
+        <VBox spacing="14">
+            <TitledPane text="設定資料" collapsible="false" animated="false"
+                        styleClass="parameter-group" VBox.vgrow="ALWAYS">
+                <content>
+                    <GridPane hgap="10" vgap="12" style="-fx-padding: 22 24 20 24;">
+                        <columnConstraints>
+                            <ColumnConstraints halignment="RIGHT" minWidth="145"/>
+                            <ColumnConstraints minWidth="125" hgrow="ALWAYS"/>
+                            <ColumnConstraints halignment="CENTER" minWidth="22"/>
+                            <ColumnConstraints minWidth="125" hgrow="ALWAYS"/>
+                        </columnConstraints>
+
+                        <Label text="主任委員" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                        <TextField fx:id="directorField"
+                                   GridPane.columnIndex="1" GridPane.columnSpan="3" GridPane.rowIndex="0"/>
+
+                        <Label text="提前作業加歲期間" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                        <TextField fx:id="ageStartField" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                        <Label text="-" GridPane.columnIndex="2" GridPane.rowIndex="1"/>
+                        <TextField fx:id="ageEndField" GridPane.columnIndex="3" GridPane.rowIndex="1"/>
+
+                        <Label text="允許變更款項期限" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                        <TextField fx:id="changeDeadlineField"
+                                   GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+
+                        <CheckBox fx:id="allowEditDonationBox" text="允許修改款項紀錄"
+                                  GridPane.columnIndex="1" GridPane.columnSpan="3" GridPane.rowIndex="3"/>
+                        <CheckBox fx:id="allowDeleteSingleBox" text="允許刪除單筆項目"
+                                  GridPane.columnIndex="1" GridPane.columnSpan="3" GridPane.rowIndex="4"/>
+
+                        <Button text="儲存設定" prefWidth="120" styleClass="btn-purple"
+                                onAction="#onSaveGeneral"
+                                GridPane.columnIndex="3" GridPane.rowIndex="5"/>
+                    </GridPane>
+                </content>
             </TitledPane>
 
-            <TitledPane text="疏文設定" collapsible="false" animated="false">
-                <GridPane hgap="8" vgap="8">
-                    <columnConstraints>
-                        <ColumnConstraints halignment="RIGHT" minWidth="120" />
-                        <ColumnConstraints minWidth="76" />
-                        <ColumnConstraints halignment="CENTER" minWidth="28" />
-                        <ColumnConstraints minWidth="76" />
-                        <ColumnConstraints halignment="CENTER" minWidth="28" />
-                        <ColumnConstraints minWidth="76" />
-                        <ColumnConstraints halignment="CENTER" minWidth="28" />
-                        <ColumnConstraints minWidth="110" />
-                    </columnConstraints>
-                    <Label text="太歲" GridPane.rowIndex="0" GridPane.columnIndex="0" />
-                    <TextField fx:id="taiSuiYearField" GridPane.rowIndex="0" GridPane.columnIndex="1" />
-                    <Label text="年" GridPane.rowIndex="0" GridPane.columnIndex="2" />
-                    <TextField fx:id="taiSuiMonthField" GridPane.rowIndex="0" GridPane.columnIndex="3" />
-                    <Label text="月" GridPane.rowIndex="0" GridPane.columnIndex="4" />
-                    <TextField fx:id="taiSuiDayField" GridPane.rowIndex="0" GridPane.columnIndex="5" />
-                    <Label text="日" GridPane.rowIndex="0" GridPane.columnIndex="6" />
-                    <Label text="太歲星君" GridPane.rowIndex="1" GridPane.columnIndex="0" />
-                    <TextField fx:id="taiSuiStarField" GridPane.rowIndex="1" GridPane.columnIndex="1" GridPane.columnSpan="3" />
-                    <Button text="儲存設定" prefWidth="110" styleClass="btn-purple" onAction="#onSavePrayer" GridPane.rowIndex="1" GridPane.columnIndex="7" />
-                </GridPane>
+            <TitledPane text="疏文設定" collapsible="false" animated="false"
+                        styleClass="parameter-group" VBox.vgrow="ALWAYS">
+                <content>
+                    <GridPane hgap="8" vgap="16" style="-fx-padding: 24;">
+                        <columnConstraints>
+                            <ColumnConstraints halignment="RIGHT" minWidth="90"/>
+                            <ColumnConstraints minWidth="80" hgrow="ALWAYS"/>
+                            <ColumnConstraints halignment="CENTER" minWidth="28"/>
+                            <ColumnConstraints minWidth="80" hgrow="ALWAYS"/>
+                            <ColumnConstraints halignment="CENTER" minWidth="28"/>
+                            <ColumnConstraints minWidth="80" hgrow="ALWAYS"/>
+                            <ColumnConstraints halignment="CENTER" minWidth="28"/>
+                        </columnConstraints>
+
+                        <Label text="太歲" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                        <TextField fx:id="taiSuiYearField" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                        <Label text="年" GridPane.columnIndex="2" GridPane.rowIndex="0"/>
+                        <TextField fx:id="taiSuiMonthField" GridPane.columnIndex="3" GridPane.rowIndex="0"/>
+                        <Label text="月" GridPane.columnIndex="4" GridPane.rowIndex="0"/>
+                        <TextField fx:id="taiSuiDayField" GridPane.columnIndex="5" GridPane.rowIndex="0"/>
+                        <Label text="日" GridPane.columnIndex="6" GridPane.rowIndex="0"/>
+
+                        <Label text="太歲星君" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                        <TextField fx:id="taiSuiStarField"
+                                   GridPane.columnIndex="1" GridPane.columnSpan="3" GridPane.rowIndex="1"/>
+                        <Button text="儲存設定" prefWidth="120" styleClass="btn-purple"
+                                onAction="#onSavePrayer"
+                                GridPane.columnIndex="5" GridPane.columnSpan="2" GridPane.rowIndex="1"/>
+                    </GridPane>
+                </content>
             </TitledPane>
         </VBox>
     </center>

@@ -23,7 +23,8 @@ public class ParameterSettingsController {
 
     @FXML
     public void initialize() {
-        repository = new SQLiteSystemSettingsRepository(SQLiteDatabaseManager.getInstance());
+        SQLiteDatabaseManager databaseManager = SQLiteDatabaseManager.getInstance();
+        repository = new SQLiteSystemSettingsRepository(databaseManager);
         try {
             repository.createTable();
             loadSettings();
