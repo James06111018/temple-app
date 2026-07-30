@@ -5,6 +5,7 @@ import java.util.Properties;
 
 public class AppConfig {
     private static String version = "Unknown";
+    private static boolean skipLogin = false;
 
     static {
         try (InputStream is = AppConfig.class.getResourceAsStream("/settings.properties")) {
@@ -12,6 +13,7 @@ public class AppConfig {
             if (is != null) {
                 prop.load(is);
                 version = prop.getProperty("app.version");
+                skipLogin = Boolean.parseBoolean(prop.getProperty("app.skipLogin", "false"));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -20,5 +22,9 @@ public class AppConfig {
 
     public static String getVersion() {
         return version;
+    }
+
+    public static boolean isSkipLogin() {
+        return skipLogin;
     }
 }

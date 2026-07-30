@@ -72,8 +72,17 @@ public class TempleApplication extends Application {
     }
 
     private boolean shouldSkipLogin() {
-        return Boolean.getBoolean("temple.skipLogin")
-                || "true".equalsIgnoreCase(System.getenv("TEMPLE_SKIP_LOGIN"));
+        String systemProperty = System.getProperty("temple.skipLogin");
+        if (systemProperty != null) {
+            return Boolean.parseBoolean(systemProperty);
+        }
+
+        String environmentValue = System.getenv("TEMPLE_SKIP_LOGIN");
+        if (environmentValue != null) {
+            return Boolean.parseBoolean(environmentValue);
+        }
+
+        return AppConfig.isSkipLogin();
     }
 
     private LoginResult showLogin(Stage owner) throws IOException {
