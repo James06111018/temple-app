@@ -116,7 +116,7 @@
                         <Label text="歲次"/>
                         <TextField fx:id="yearCycleField" prefWidth="60"/>
                         <Label text="時辰"/>
-                        <TextField fx:id="hourField" prefWidth="40"/>
+                        <TextField fx:id="hourField" prefWidth="55"/>
                         <Button text="…" styleClass="btn-green" onAction="#onOpenHourPicker"/>
                     </HBox>
 
@@ -156,7 +156,7 @@
                                     <TableColumn fx:id="colAge" text="年齡" minWidth="45" prefWidth="45" />
                                     <TableColumn fx:id="colZodiac" text="生肖" minWidth="45" prefWidth="45" />
                                     <TableColumn fx:id="colEra" text="歲次" minWidth="55" prefWidth="55" />
-                                    <TableColumn fx:id="colHour" text="時辰" minWidth="45" prefWidth="45" />
+                                    <TableColumn fx:id="colHour" text="時辰" minWidth="55" prefWidth="55" />
                                     <TableColumn fx:id="colGender" text="性別" minWidth="45" prefWidth="45" />
                                     <TableColumn fx:id="colAddress" text="地址" minWidth="260" prefWidth="260" />
                                     <TableColumn fx:id="colPhone" text="電話" minWidth="110" prefWidth="110" />

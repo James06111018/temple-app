@@ -33,7 +33,8 @@ public class HourPickerController {
 
         tableView.setItems(FXCollections.observableArrayList(
                 new HourItem("吉", "00-00"),
-                new HourItem("子", "23-01"),
+                new HourItem("早子", "23-00"),
+                new HourItem("晚子", "00-01"),
                 new HourItem("丑", "01-03"),
                 new HourItem("寅", "03-05"),
                 new HourItem("卯", "05-07"),
