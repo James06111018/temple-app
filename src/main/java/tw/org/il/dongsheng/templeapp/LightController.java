@@ -12,6 +12,8 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
@@ -45,6 +47,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
 /**
@@ -1208,8 +1211,135 @@ public class LightController {
     }
 
     @FXML
-    private void onDonationAuxiliaryAction() {
-        // 後續詞彙/家屬快選會接在這裡；先保留按鈕可點擊狀態。
+    private void onDonationAuxiliaryAction(ActionEvent event) {
+        if (event.getSource() == summaryPhraseButton) {
+            selectDonationSummary();
+        } else if (event.getSource() == familyPhraseButton) {
+            selectDonationFamilyMember();
+        }
+    }
+
+    private void selectDonationSummary() {
+        try {
+            List<DictionaryItem> summaries = dictionaryRepository.findEnabledItemsByType(
+                    SQLiteDictionaryRepository.TYPE_DONATION_SUMMARY
+            );
+            if (summaries.isEmpty()) {
+                AlertDialog.showInfo("款項摘要", "目前沒有可選擇的款項摘要");
+                return;
+            }
+
+            DictionaryItem selected = showQuickSelection(
+                    "選擇款項摘要",
+                    summaries,
+                    item -> {
+                        String code = Util.isBlank(item.getCode()) ? "" : item.getCode() + " - ";
+                        String description = Util.isBlank(item.getDescription())
+                                ? ""
+                                : "　" + item.getDescription();
+                        return code + item.getName() + description;
+                    }
+            );
+            if (selected != null) {
+                summaryField.setText(selected.getName());
+                summaryField.requestFocus();
+                summaryField.positionCaret(summaryField.getText().length());
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("讀取款項摘要失敗", e);
+        }
+    }
+
+    private void selectDonationFamilyMember() {
+        LightMember currentMember = memberTable.getSelectionModel().getSelectedItem();
+        LinkedHashMap<Integer, LightMember> familyById = new LinkedHashMap<>();
+        if (currentMember != null && currentMember.getId() != null && !Util.isBlank(currentMember.getName())) {
+            familyById.put(currentMember.getId(), currentMember);
+        }
+        for (LightMember member : allMember) {
+            if (member != null && member.getId() != null && !Util.isBlank(member.getName())) {
+                familyById.putIfAbsent(member.getId(), member);
+            }
+        }
+        if (familyById.isEmpty()) {
+            AlertDialog.showInfo("家屬", "目前沒有可選擇的家屬資料");
+            return;
+        }
+
+        LightMember selected = showQuickSelection(
+                "選擇家屬",
+                new ArrayList<>(familyById.values()),
+                member -> Util.stringFormat(member.getId()) + " - " + member.getName()
+        );
+        if (selected != null) {
+            donateNoteField.setText(selected.getName());
+            donateNoteField.requestFocus();
+            donateNoteField.positionCaret(donateNoteField.getText().length());
+        }
+    }
+
+    private <T> T showQuickSelection(String title, List<T> items, Function<T, String> displayText) {
+        ListView<T> listView = new ListView<>(FXCollections.observableArrayList(items));
+        listView.setCellFactory(view -> new ListCell<>() {
+            @Override
+            protected void updateItem(T item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : displayText.apply(item));
+            }
+        });
+
+        Button confirmButton = new Button("確定");
+        Button cancelButton = new Button("取消");
+        confirmButton.setDisable(true);
+        confirmButton.getStyleClass().add("btn-purple");
+        listView.getSelectionModel().selectedItemProperty().addListener(
+                (observable, oldValue, newValue) -> confirmButton.setDisable(newValue == null)
+        );
+
+        HBox buttonBar = new HBox(10, confirmButton, cancelButton);
+        buttonBar.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
+        VBox root = new VBox(10, listView, buttonBar);
+        root.setPadding(new Insets(12));
+        VBox.setVgrow(listView, javafx.scene.layout.Priority.ALWAYS);
+
+        Stage stage = new Stage();
+        stage.setTitle(title);
+        Scene scene = new Scene(root, 480, 460);
+        var styleResource = getClass().getResource("style.css");
+        if (styleResource != null) {
+            scene.getStylesheets().add(styleResource.toExternalForm());
+        }
+        stage.setScene(scene);
+        if (donationTable.getScene() != null) {
+            stage.initOwner(donationTable.getScene().getWindow());
+            stage.initModality(Modality.WINDOW_MODAL);
+        } else {
+            stage.initModality(Modality.APPLICATION_MODAL);
+        }
+
+        List<T> selectedResult = new ArrayList<>(1);
+        Runnable confirmSelection = () -> {
+            T selected = listView.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                selectedResult.add(selected);
+                stage.close();
+            }
+        };
+        confirmButton.setOnAction(event -> confirmSelection.run());
+        cancelButton.setOnAction(event -> stage.close());
+        listView.setOnMouseClicked(event -> {
+            if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
+                confirmSelection.run();
+            }
+        });
+        listView.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.ENTER) {
+                confirmSelection.run();
+            }
+        });
+
+        stage.showAndWait();
+        return selectedResult.isEmpty() ? null : selectedResult.get(0);
     }
 
     private void selectDonationCategory(String categoryId) {
