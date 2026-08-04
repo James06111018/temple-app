@@ -17,13 +17,16 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import tw.org.il.dongsheng.templeapp.model.HouseholdLightRecord;
 import tw.org.il.dongsheng.templeapp.model.LightMember;
+import tw.org.il.dongsheng.templeapp.model.LightNumberRecord;
 import tw.org.il.dongsheng.templeapp.model.LightType;
-import tw.org.il.dongsheng.templeapp.model.DictionaryItem;
 import tw.org.il.dongsheng.templeapp.model.Donation;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDictionaryRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteHouseholdLightRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteLightNumberRepository;
 import tw.org.il.dongsheng.templeapp.service.DonationService;
 import tw.org.il.dongsheng.templeapp.util.AlertDialog;
+import tw.org.il.dongsheng.templeapp.util.LightTypeUtil;
 import tw.org.il.dongsheng.templeapp.util.PaginationBar;
 import tw.org.il.dongsheng.templeapp.util.Util;
 
@@ -45,8 +48,11 @@ public class HouseholdLightController {
     private SQLiteHouseholdLightRepository repository;
     private SQLiteDictionaryRepository dictionaryRepository;
     private DonationService donationService;
+    private final SQLiteLightNumberRepository lightNumberRepository =
+            new SQLiteLightNumberRepository(SQLiteDatabaseManager.getInstance());
     private List<LightType> lightTypes = new ArrayList<>();
     private List<LightMember> currentMembers = new ArrayList<>();
+    private Map<String, HouseholdLightRecord> currentRecordMap = new LinkedHashMap<>();
     private int rocYear;
 
     @FXML
@@ -81,9 +87,9 @@ public class HouseholdLightController {
                     .toList();
             List<Integer> memberIds = members.stream().map(LightMember::getId).toList();
             List<HouseholdLightRecord> records = repository.findRecordsByMembersAndYear(memberIds, rocYear);
-            Map<String, HouseholdLightRecord> recordMap = records.stream()
+            currentRecordMap = records.stream()
                     .collect(Collectors.toMap(
-                            record -> record.getMemberId() + ":" + record.getLightTypeId(),
+                            record -> recordKey(record.getMemberId(), record.getLightTypeId()),
                             record -> record,
                             (left, right) -> left,
                             LinkedHashMap::new
@@ -92,7 +98,7 @@ public class HouseholdLightController {
             buildColumns();
             householdTable.setItems(FXCollections.observableArrayList(
                     members.stream()
-                            .map(member -> new HouseholdLightRow(member, lightTypes, recordMap, rocYear))
+                            .map(member -> new HouseholdLightRow(member, lightTypes, currentRecordMap, rocYear))
                             .toList()
             ));
             householdPageBar.setTotalCount(householdTable.getItems().size());
@@ -168,6 +174,36 @@ public class HouseholdLightController {
         if (repository == null) {
             return;
         }
+        HouseholdLightRow selectedRow = householdTable.getSelectionModel().getSelectedItem();
+        if (selectedRow == null) {
+            AlertDialog.showWarning("全戶點燈", "請先選擇一筆信眾資料");
+            return;
+        }
+        List<SelectedLight> selectedLights = collectSelectedLights(selectedRow);
+        if (selectedLights.isEmpty()) {
+            AlertDialog.showWarning(
+                    "全戶點燈",
+                    "請至少為「" + selectedRow.member().getName() + "」勾選一個燈別"
+            );
+            return;
+        }
+
+        try {
+            List<String> shortages = findInventoryShortages(selectedLights);
+            if (!shortages.isEmpty()) {
+                AlertDialog.showWarning(
+                        "全戶點燈",
+                        "下列燈別沒有足夠的未使用燈號：\n"
+                                + String.join("\n", shortages)
+                                + "\n請先至管理建立燈號。"
+                );
+                return;
+            }
+        } catch (SQLException e) {
+            AlertDialog.showError("全戶點燈", "檢查燈號失敗：" + e.getMessage());
+            return;
+        }
+
         Integer incenseAmount = Util.parseInteger(incenseAmountField.getText());
         if (incenseAmount == null || incenseAmount <= 0) {
             AlertDialog.showWarning("全戶點燈", "請輸入油香金額");
@@ -181,30 +217,8 @@ public class HouseholdLightController {
 
         String changedBy = AuthSession.getCurrentOperatorName();
         try {
-            boolean hasSelectedLight = false;
-            for (HouseholdLightRow row : householdTable.getItems()) {
-                for (LightType lightType : lightTypes) {
-                    boolean selected = row.lightProperty(lightType.getId()).get();
-                    if (selected) {
-                        hasSelectedLight = true;
-                        repository.saveRecord(new HouseholdLightRecord(
-                                null,
-                                row.member().getId(),
-                                lightType.getId(),
-                                rocYear,
-                                "",
-                                "",
-                                changedBy,
-                                null,
-                                changedBy,
-                                null
-                        ), changedBy);
-                    }
-                }
-            }
-            if (!hasSelectedLight) {
-                AlertDialog.showWarning("全戶點燈", "請至少勾選一個燈別");
-                return;
+            for (SelectedLight selectedLight : selectedLights) {
+                saveSelectedLight(selectedLight, changedBy);
             }
             donationService.save(buildIncenseDonation(representative, incenseAmount, changedBy));
             loadData(currentMembers);
@@ -212,6 +226,114 @@ public class HouseholdLightController {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private List<SelectedLight> collectSelectedLights(HouseholdLightRow row) {
+        List<SelectedLight> selectedLights = new ArrayList<>();
+        for (LightType lightType : lightTypes) {
+            if (row.lightProperty(lightType.getId()).get()) {
+                selectedLights.add(new SelectedLight(row, lightType));
+            }
+        }
+        return selectedLights;
+    }
+
+    private List<String> findInventoryShortages(List<SelectedLight> selectedLights) throws SQLException {
+        Map<InventoryKey, List<SelectedLight>> selectionsByInventory = selectedLights.stream()
+                .filter(this::requiresLightNumber)
+                .collect(Collectors.groupingBy(
+                        selected -> inventoryKey(selected.lightType()),
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+        List<String> shortages = new ArrayList<>();
+        for (Map.Entry<InventoryKey, List<SelectedLight>> entry : selectionsByInventory.entrySet()) {
+            InventoryKey key = entry.getKey();
+            int required = entry.getValue().size();
+            int available = lightNumberRepository.countByStatus(
+                    key.managementType(),
+                    key.lightType(),
+                    SQLiteLightNumberRepository.STATUS_UNUSED
+            );
+            if (available >= required) {
+                continue;
+            }
+            String lightNames = entry.getValue().stream()
+                    .map(SelectedLight::lightType)
+                    .map(LightType::getName)
+                    .filter(name -> name != null && !name.isBlank())
+                    .distinct()
+                    .collect(Collectors.joining("、"));
+            shortages.add(String.format(
+                    "%s（管理燈別：%s）：需要 %d 個，目前未使用 %d 個",
+                    lightNames,
+                    key.lightType(),
+                    required,
+                    available
+            ));
+        }
+        return shortages;
+    }
+
+    private void saveSelectedLight(SelectedLight selectedLight, String changedBy) throws SQLException {
+        HouseholdLightRecord existingRecord = existingRecord(selectedLight);
+        if (existingRecord != null && !Util.isBlank(existingRecord.getLightNo())) {
+            return;
+        }
+
+        InventoryKey key = inventoryKey(selectedLight.lightType());
+        LightMember member = selectedLight.row().member();
+        LightNumberRecord assignedNumber = lightNumberRepository.assignFirstUnused(
+                        key.managementType(),
+                        key.lightType(),
+                        member.getId(),
+                        member.getName(),
+                        changedBy
+                )
+                .orElseThrow(() -> new SQLException(
+                        "「" + selectedLight.lightType().getName() + "」已無未使用燈號"
+                ));
+        try {
+            repository.saveRecord(new HouseholdLightRecord(
+                    existingRecord == null ? null : existingRecord.getId(),
+                    member.getId(),
+                    selectedLight.lightType().getId(),
+                    rocYear,
+                    assignedNumber.getDisplayNumber(),
+                    existingRecord == null ? "" : existingRecord.getNote(),
+                    existingRecord == null ? changedBy : existingRecord.getCreatedBy(),
+                    existingRecord == null ? null : existingRecord.getCreatedAt(),
+                    changedBy,
+                    null
+            ), changedBy);
+        } catch (SQLException e) {
+            lightNumberRepository.releaseAssignment(assignedNumber.getId(), changedBy);
+            throw e;
+        }
+    }
+
+    private boolean requiresLightNumber(SelectedLight selectedLight) {
+        HouseholdLightRecord record = existingRecord(selectedLight);
+        return record == null || Util.isBlank(record.getLightNo());
+    }
+
+    private HouseholdLightRecord existingRecord(SelectedLight selectedLight) {
+        return currentRecordMap.get(recordKey(
+                selectedLight.row().member().getId(),
+                selectedLight.lightType().getId()
+        ));
+    }
+
+    private static String recordKey(Integer memberId, Integer lightTypeId) {
+        return memberId + ":" + lightTypeId;
+    }
+
+    private InventoryKey inventoryKey(LightType lightType) {
+        String name = lightType.getName() == null ? "" : lightType.getName().trim();
+        if ("安太歲".equals(name)) {
+            return new InventoryKey("TAI_SUI", "太");
+        }
+        return new InventoryKey("LIGHT", LightTypeUtil.abbreviation(name));
     }
 
     private LightMember findRepresentative() {
@@ -222,11 +344,7 @@ public class HouseholdLightController {
                 .orElse(currentMembers.isEmpty() ? null : currentMembers.get(0));
     }
 
-    private Donation buildIncenseDonation(LightMember representative, int incenseAmount, String changedBy) throws SQLException {
-        DictionaryItem incenseType = dictionaryRepository.findEnabledItemsByType(SQLiteDictionaryRepository.TYPE_DONATION_LIGHT).stream()
-                .filter(item -> "1".equals(item.getCode()) || "油香".equals(item.getName()))
-                .findFirst()
-                .orElseThrow(() -> new SQLException("找不到油香款項類別"));
+    private Donation buildIncenseDonation(LightMember representative, int incenseAmount, String changedBy) {
         return new Donation(
                 null,
                 representative.getId(),
@@ -240,7 +358,7 @@ public class HouseholdLightController {
                 "",
                 "",
                 incenseAmount,
-                String.valueOf(incenseType.getId()),
+                "",
                 changedBy
         );
     }
@@ -253,6 +371,12 @@ public class HouseholdLightController {
     @FunctionalInterface
     private interface RowTextProvider {
         String get(HouseholdLightRow row);
+    }
+
+    private record SelectedLight(HouseholdLightRow row, LightType lightType) {
+    }
+
+    private record InventoryKey(String managementType, String lightType) {
     }
 
     public record HouseholdLightRow(

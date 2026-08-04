@@ -24,6 +24,7 @@ import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteLightNumberReposito
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteSystemSettingsRepository;
 import tw.org.il.dongsheng.templeapp.util.AlertDialog;
 import tw.org.il.dongsheng.templeapp.util.LightManagementReportBuilder;
+import tw.org.il.dongsheng.templeapp.util.LightTypeUtil;
 import tw.org.il.dongsheng.templeapp.util.PrintPreview;
 import tw.org.il.dongsheng.templeapp.util.Util;
 
@@ -301,7 +302,7 @@ public class LightDataManagementController {
                 if (name.isEmpty() || "安太歲".equals(name)) {
                     continue;
                 }
-                prefixes.add(name.substring(0, name.offsetByCodePoints(0, 1)));
+                prefixes.add(LightTypeUtil.abbreviation(name));
             }
             return List.copyOf(prefixes);
         } catch (SQLException e) {

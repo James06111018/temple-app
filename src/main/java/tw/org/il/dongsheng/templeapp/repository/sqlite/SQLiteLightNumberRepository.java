@@ -16,6 +16,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class SQLiteLightNumberRepository {
     public static final String STATUS_UNUSED = "N";
@@ -138,6 +139,161 @@ public class SQLiteLightNumberRepository {
             }
         }
         return records;
+    }
+
+    public int countByStatus(
+            String managementType,
+            String lightType,
+            String status
+    ) throws SQLException {
+        createTable();
+        String sql = """
+                SELECT COUNT(1)
+                FROM light_numbers
+                WHERE management_type = ?
+                  AND light_type = ?
+                  AND status = ?
+                """;
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, managementType);
+            statement.setString(2, lightType);
+            statement.setString(3, status);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next() ? resultSet.getInt(1) : 0;
+            }
+        }
+    }
+
+    public Optional<LightNumberRecord> assignFirstUnused(
+            String managementType,
+            String lightType,
+            Integer memberId,
+            String principalName,
+            String changedBy
+    ) throws SQLException {
+        createTable();
+        String selectSql = """
+                SELECT id, serial_number
+                FROM light_numbers
+                WHERE management_type = ?
+                  AND light_type = ?
+                  AND status = 'N'
+                ORDER BY serial_number
+                LIMIT 1
+                """;
+        String updateSql = """
+                UPDATE light_numbers
+                SET member_id = ?,
+                    principal_name = ?,
+                    status = 'A',
+                    updated_by = ?,
+                    updated_at = CURRENT_TIMESTAMP,
+                    registered_at = CURRENT_TIMESTAMP,
+                    deleted_by = NULL,
+                    deleted_at = NULL
+                WHERE id = ?
+                  AND status = 'N'
+                """;
+        try (Connection connection = databaseManager.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement select = connection.prepareStatement(selectSql);
+                 PreparedStatement update = connection.prepareStatement(updateSql)) {
+                select.setString(1, managementType);
+                select.setString(2, lightType);
+                Integer id = null;
+                Integer serialNumber = null;
+                try (ResultSet resultSet = select.executeQuery()) {
+                    if (resultSet.next()) {
+                        id = resultSet.getInt("id");
+                        serialNumber = resultSet.getInt("serial_number");
+                    }
+                }
+                if (id == null) {
+                    connection.rollback();
+                    return Optional.empty();
+                }
+
+                update.setObject(1, memberId);
+                update.setString(2, principalName);
+                update.setString(3, changedBy);
+                update.setInt(4, id);
+                if (update.executeUpdate() == 0) {
+                    connection.rollback();
+                    return Optional.empty();
+                }
+                saveAudit(
+                        connection,
+                        id,
+                        "ASSIGN",
+                        STATUS_UNUSED,
+                        STATUS_ASSIGNED,
+                        changedBy,
+                        lightType + String.format("%05d", serialNumber)
+                                + " -> member=" + memberId
+                );
+                connection.commit();
+                return Optional.of(new LightNumberRecord(
+                        id,
+                        managementType,
+                        lightType,
+                        serialNumber,
+                        memberId,
+                        principalName,
+                        STATUS_ASSIGNED
+                ));
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        }
+    }
+
+    public boolean releaseAssignment(Integer id, String changedBy) throws SQLException {
+        createTable();
+        if (id == null) {
+            return false;
+        }
+        String updateSql = """
+                UPDATE light_numbers
+                SET member_id = NULL,
+                    principal_name = NULL,
+                    status = 'N',
+                    updated_by = ?,
+                    updated_at = CURRENT_TIMESTAMP,
+                    registered_at = NULL
+                WHERE id = ?
+                  AND status = 'A'
+                """;
+        try (Connection connection = databaseManager.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement update = connection.prepareStatement(updateSql)) {
+                update.setString(1, changedBy);
+                update.setInt(2, id);
+                if (update.executeUpdate() == 0) {
+                    connection.rollback();
+                    return false;
+                }
+                saveAudit(
+                        connection,
+                        id,
+                        "RELEASE",
+                        STATUS_ASSIGNED,
+                        STATUS_UNUSED,
+                        changedBy,
+                        "點燈紀錄儲存失敗，釋放燈號"
+                );
+                connection.commit();
+                return true;
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        }
     }
 
     public int addRange(
