@@ -6,24 +6,34 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.RadioButton;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.HBox;
 import tw.org.il.dongsheng.templeapp.model.DictionaryItem;
 import tw.org.il.dongsheng.templeapp.model.LightNumberRecord;
+import tw.org.il.dongsheng.templeapp.model.LightRegistrationReportRow;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDictionaryRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteLightNumberRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteSystemSettingsRepository;
 import tw.org.il.dongsheng.templeapp.util.AlertDialog;
+import tw.org.il.dongsheng.templeapp.util.LightManagementReportBuilder;
+import tw.org.il.dongsheng.templeapp.util.PrintPreview;
 import tw.org.il.dongsheng.templeapp.util.Util;
 
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 
 public class LightDataManagementController {
     @FXML private ComboBox<String> filterTypeBox, statusBox, taiSuiTypeBox, lightTypeBox;
@@ -34,6 +44,11 @@ public class LightDataManagementController {
     @FXML private Label editTypeLabel, editNumberLabel;
     @FXML private Label recordCountLabel;
     @FXML private TextField queryNumberField, editTypeField, startNumberField, endNumberField;
+    @FXML private TextField taiSuiStartNumberField, taiSuiEndNumberField;
+    @FXML private TextField taiSuiStartDateField, taiSuiEndDateField;
+    @FXML private TextField lightStartNumberField, lightEndNumberField;
+    @FXML private TextField lightStartDateField, lightEndDateField;
+    @FXML private RadioButton taiSuiTypeRadio, taiSuiDateRadio, lightTypeRadio, lightDateRadio;
     @FXML private TableView<LightNumberRecord> recordTable;
     @FXML private TableColumn<LightNumberRecord, String> recordNumberColumn;
     @FXML private TableColumn<LightNumberRecord, String> memberIdColumn, principalNameColumn, statusColumn;
@@ -41,6 +56,9 @@ public class LightDataManagementController {
 
     private final SQLiteLightNumberRepository lightNumberRepository =
             new SQLiteLightNumberRepository(SQLiteDatabaseManager.getInstance());
+    private final SQLiteSystemSettingsRepository settingsRepository =
+            new SQLiteSystemSettingsRepository(SQLiteDatabaseManager.getInstance());
+    private static final DateTimeFormatter ROC_DATE = DateTimeFormatter.ofPattern("yyy.MM.dd");
     private List<String> configuredLightPrefixes = List.of();
 
     @FXML
@@ -51,6 +69,7 @@ public class LightDataManagementController {
             throw new IllegalStateException("建立燈號管理資料表失敗", e);
         }
         initializeRecordTable();
+        initializeReportFilters();
         configuredLightPrefixes = loadConfiguredLightPrefixes();
         statusBox.setItems(FXCollections.observableArrayList(
                 "",
@@ -58,12 +77,18 @@ public class LightDataManagementController {
                 "A - 已登記",
                 "D - 已刪除"
         ));
-        taiSuiTypeBox.setItems(FXCollections.observableArrayList("太"));
-        lightTypeBox.setItems(FXCollections.observableArrayList(configuredLightPrefixes));
-        taiSuiTypeBox.getSelectionModel().selectFirst();
-        if (!lightTypeBox.getItems().isEmpty()) {
-            lightTypeBox.getSelectionModel().selectFirst();
-        }
+        statusBox.valueProperty().addListener((observable, oldStatus, newStatus) -> {
+            if (newStatus != null
+                    && managementTabs.getSelectionModel().getSelectedItem() != spareTab
+                    && managementWorkspace.isVisible()) {
+                onSearch();
+            }
+        });
+        taiSuiTypeBox.setItems(FXCollections.observableArrayList("", "太"));
+        lightTypeBox.setItems(FXCollections.observableArrayList(""));
+        lightTypeBox.getItems().addAll(configuredLightPrefixes);
+        taiSuiTypeBox.getSelectionModel().select("太");
+        lightTypeBox.getSelectionModel().selectFirst();
         filterTypeBox.valueProperty().addListener(
                 (observable, oldType, newType) -> editTypeField.setText(newType == null ? "" : newType)
         );
@@ -185,6 +210,26 @@ public class LightDataManagementController {
         );
     }
 
+    @FXML
+    private void onPrintTaiSuiLabels() {
+        openManagementReport(ReportKind.TAI_SUI_LABEL);
+    }
+
+    @FXML
+    private void onPrintTaiSuiPrayer() {
+        openManagementReport(ReportKind.TAI_SUI_PRAYER);
+    }
+
+    @FXML
+    private void onPrintLightLabels() {
+        openManagementReport(ReportKind.LIGHT_LABEL);
+    }
+
+    @FXML
+    private void onPrintLightPrayer() {
+        openManagementReport(ReportKind.LIGHT_PRAYER);
+    }
+
     private void initializeRecordTable() {
         recordNumberColumn.setCellValueFactory(
                 data -> new SimpleStringProperty(data.getValue().getDisplayNumber())
@@ -199,6 +244,49 @@ public class LightDataManagementController {
                 data -> new SimpleStringProperty(data.getValue().getDisplayStatus())
         );
         recordTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+    }
+
+    private void initializeReportFilters() {
+        ToggleGroup taiSuiGroup = new ToggleGroup();
+        taiSuiTypeRadio.setToggleGroup(taiSuiGroup);
+        taiSuiDateRadio.setToggleGroup(taiSuiGroup);
+        taiSuiTypeRadio.setSelected(true);
+        bindReportFilterState(
+                taiSuiTypeRadio,
+                taiSuiTypeBox,
+                taiSuiStartNumberField,
+                taiSuiEndNumberField,
+                taiSuiStartDateField,
+                taiSuiEndDateField
+        );
+
+        ToggleGroup lightGroup = new ToggleGroup();
+        lightTypeRadio.setToggleGroup(lightGroup);
+        lightDateRadio.setToggleGroup(lightGroup);
+        lightTypeRadio.setSelected(true);
+        bindReportFilterState(
+                lightTypeRadio,
+                lightTypeBox,
+                lightStartNumberField,
+                lightEndNumberField,
+                lightStartDateField,
+                lightEndDateField
+        );
+    }
+
+    private void bindReportFilterState(
+            RadioButton typeRadio,
+            ComboBox<String> typeBox,
+            TextField startNumberField,
+            TextField endNumberField,
+            TextField startDateField,
+            TextField endDateField
+    ) {
+        typeBox.disableProperty().bind(typeRadio.selectedProperty().not());
+        startNumberField.disableProperty().bind(typeRadio.selectedProperty().not());
+        endNumberField.disableProperty().bind(typeRadio.selectedProperty().not());
+        startDateField.disableProperty().bind(typeRadio.selectedProperty());
+        endDateField.disableProperty().bind(typeRadio.selectedProperty());
     }
 
     private List<String> loadConfiguredLightPrefixes() {
@@ -363,5 +451,156 @@ public class LightDataManagementController {
 
     private String valueOrEmpty(String value) {
         return value == null ? "" : value;
+    }
+
+    private void openManagementReport(ReportKind kind) {
+        boolean taiSui = kind == ReportKind.TAI_SUI_LABEL || kind == ReportKind.TAI_SUI_PRAYER;
+        try {
+            List<LightRegistrationReportRow> rows = lightNumberRepository
+                    .findRegisteredForReport(taiSui ? "TAI_SUI" : "LIGHT");
+            ReportFilter filter = buildReportFilter(taiSui);
+            if (filter == null) {
+                return;
+            }
+            List<LightRegistrationReportRow> filtered = rows.stream()
+                    .filter(filter::matches)
+                    .toList();
+            if (filtered.isEmpty()) {
+                AlertDialog.showInfo("信眾點燈資料管理", "查無符合條件的點燈資料");
+                return;
+            }
+
+            List<? extends javafx.scene.layout.Region> pages = switch (kind) {
+                case TAI_SUI_LABEL -> LightManagementReportBuilder.buildTaiSuiLabelPages(filtered);
+                case TAI_SUI_PRAYER -> LightManagementReportBuilder.buildTaiSuiPrayerPages(
+                        filtered,
+                        settingsRepository.findByGroup("PRAYER")
+                );
+                case LIGHT_LABEL -> LightManagementReportBuilder.buildLightLabelPages(filtered);
+                case LIGHT_PRAYER -> LightManagementReportBuilder.buildLightPrayerPages(filtered);
+            };
+            PrintPreview.show(managementTabs.getScene().getWindow(), kind.title, pages);
+        } catch (SQLException e) {
+            AlertDialog.showError("信眾點燈資料管理", "讀取列印資料失敗：" + e.getMessage());
+        }
+    }
+
+    private ReportFilter buildReportFilter(boolean taiSui) {
+        RadioButton typeRadio = taiSui ? taiSuiTypeRadio : lightTypeRadio;
+        ComboBox<String> typeBox = taiSui ? taiSuiTypeBox : lightTypeBox;
+        TextField startNumberField = taiSui ? taiSuiStartNumberField : lightStartNumberField;
+        TextField endNumberField = taiSui ? taiSuiEndNumberField : lightEndNumberField;
+        TextField startDateField = taiSui ? taiSuiStartDateField : lightStartDateField;
+        TextField endDateField = taiSui ? taiSuiEndDateField : lightEndDateField;
+
+        if (typeRadio.isSelected()) {
+            Integer startNumber = parseOptionalSerial(startNumberField.getText());
+            Integer endNumber = parseOptionalSerial(endNumberField.getText());
+            if ((!Util.isBlank(startNumberField.getText()) && startNumber == null)
+                    || (!Util.isBlank(endNumberField.getText()) && endNumber == null)
+                    || (startNumber != null && endNumber != null && startNumber > endNumber)) {
+                AlertDialog.showWarning("列印條件", "請輸入正確的燈號起訖範圍");
+                return null;
+            }
+            return ReportFilter.byType(typeBox.getValue(), startNumber, endNumber);
+        }
+
+        LocalDate startDate = parseOptionalDate(startDateField.getText());
+        LocalDate endDate = parseOptionalDate(endDateField.getText());
+        if ((!Util.isBlank(startDateField.getText()) && startDate == null)
+                || (!Util.isBlank(endDateField.getText()) && endDate == null)
+                || (startDate != null && endDate != null && startDate.isAfter(endDate))) {
+            AlertDialog.showWarning("列印條件", "日期請輸入民國 115.05.14 或西元 2026-05-14 格式");
+            return null;
+        }
+        return ReportFilter.byDate(startDate, endDate);
+    }
+
+    private Integer parseOptionalSerial(String value) {
+        if (Util.isBlank(value)) {
+            return null;
+        }
+        String digits = value.trim().replaceAll("\\D", "");
+        try {
+            return digits.isEmpty() ? null : Integer.valueOf(digits);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private LocalDate parseOptionalDate(String value) {
+        if (Util.isBlank(value)) {
+            return null;
+        }
+        String text = value.trim();
+        try {
+            if (text.matches("\\d{3}\\.\\d{2}\\.\\d{2}")) {
+                return LocalDate.parse(text, ROC_DATE).plusYears(1911);
+            }
+            return LocalDate.parse(text);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
+    private enum ReportKind {
+        TAI_SUI_LABEL("安太歲名條"),
+        TAI_SUI_PRAYER("安太歲疏文"),
+        LIGHT_LABEL("點燈名條"),
+        LIGHT_PRAYER("點燈疏文");
+
+        private final String title;
+
+        ReportKind(String title) {
+            this.title = title;
+        }
+    }
+
+    private record ReportFilter(
+            String lightType,
+            Integer startNumber,
+            Integer endNumber,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        private static ReportFilter byType(String type, Integer start, Integer end) {
+            return new ReportFilter(type == null ? "" : type.trim(), start, end, null, null);
+        }
+
+        private static ReportFilter byDate(LocalDate start, LocalDate end) {
+            return new ReportFilter("", null, null, start, end);
+        }
+
+        private boolean matches(LightRegistrationReportRow row) {
+            if (!lightType.isEmpty() && !value(row.lightNumber()).startsWith(lightType)) {
+                return false;
+            }
+            int serial = serial(row.lightNumber());
+            if (startNumber != null && serial < startNumber) {
+                return false;
+            }
+            if (endNumber != null && serial > endNumber) {
+                return false;
+            }
+            if (startDate != null
+                    && (row.registrationDate() == null || row.registrationDate().isBefore(startDate))) {
+                return false;
+            }
+            return endDate == null
+                    || (row.registrationDate() != null && !row.registrationDate().isAfter(endDate));
+        }
+
+        private static int serial(String lightNumber) {
+            String digits = value(lightNumber).replaceAll("\\D", "");
+            try {
+                return digits.isEmpty() ? Integer.MAX_VALUE : Integer.parseInt(digits);
+            } catch (NumberFormatException e) {
+                return Integer.MAX_VALUE;
+            }
+        }
+
+        private static String value(String value) {
+            return value == null ? "" : value.trim();
+        }
     }
 }

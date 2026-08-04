@@ -1,14 +1,21 @@
 package tw.org.il.dongsheng.templeapp.repository.sqlite;
 
 import tw.org.il.dongsheng.templeapp.model.LightNumberRecord;
+import tw.org.il.dongsheng.templeapp.model.LightRegistrationReportRow;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class SQLiteLightNumberRepository {
     public static final String STATUS_UNUSED = "N";
@@ -16,6 +23,7 @@ public class SQLiteLightNumberRepository {
     public static final String STATUS_DELETED = "D";
 
     private final SQLiteDatabaseManager databaseManager;
+    private static final DateTimeFormatter ROC_DATE = DateTimeFormatter.ofPattern("yyy.MM.dd");
 
     public SQLiteLightNumberRepository(SQLiteDatabaseManager databaseManager) {
         this.databaseManager = databaseManager;
@@ -37,6 +45,7 @@ public class SQLiteLightNumberRepository {
                         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                         updated_by TEXT,
                         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        registered_at TEXT,
                         deleted_by TEXT,
                         deleted_at TEXT,
                         UNIQUE(management_type, light_type, serial_number),
@@ -63,7 +72,30 @@ public class SQLiteLightNumberRepository {
                     CREATE INDEX IF NOT EXISTS idx_light_number_audits_target
                     ON light_number_audits(light_number_id, changed_at)
                     """);
+            addColumnIfMissing(connection, "registered_at", "TEXT");
         }
+    }
+
+    public List<LightRegistrationReportRow> findRegisteredForReport(String managementType)
+            throws SQLException {
+        createTable();
+        Map<String, LightRegistrationReportRow> rows = new LinkedHashMap<>();
+        loadInventoryRegistrations(managementType, rows);
+        if (tableExists("donations")) {
+            loadDonationRegistrations(managementType, rows);
+        }
+        if ("LIGHT".equals(managementType) && tableExists("household_light_records")) {
+            loadHouseholdRegistrations(rows);
+        }
+        return rows.values().stream()
+                .sorted(Comparator
+                        .comparing(LightRegistrationReportRow::lightNumber, Comparator.nullsLast(
+                                Comparator.comparing(this::lightPrefix)
+                                        .thenComparingInt(this::lightSerial)
+                        ))
+                        .thenComparing(LightRegistrationReportRow::registrationDate,
+                                Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
     }
 
     public List<LightNumberRecord> find(
@@ -349,5 +381,177 @@ public class SQLiteLightNumberRepository {
                 resultSet.getString("principal_name"),
                 resultSet.getString("status")
         );
+    }
+
+    private void loadInventoryRegistrations(
+            String managementType,
+            Map<String, LightRegistrationReportRow> rows
+    ) throws SQLException {
+        String sql = """
+                SELECT ln.light_type || printf('%05d', ln.serial_number) AS light_number,
+                       ln.member_id,
+                       COALESCE(NULLIF(TRIM(m.name), ''), ln.principal_name, '') AS member_name,
+                       m.gender, m.birth_date, m.lunar_birth_date, m.age, m.zodiac, m.zodiac_year,
+                       m.birth_time, m.address,
+                       COALESCE(ln.registered_at, ln.updated_at, ln.created_at) AS registration_date
+                FROM light_numbers ln
+                LEFT JOIN light_members m ON m.id = ln.member_id
+                WHERE ln.management_type = ?
+                  AND ln.status = 'A'
+                """;
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, managementType);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    putReportRow(rows, resultSet);
+                }
+            }
+        }
+    }
+
+    private void loadDonationRegistrations(
+            String managementType,
+            Map<String, LightRegistrationReportRow> rows
+    ) throws SQLException {
+        String numberColumn = "TAI_SUI".equals(managementType) ? "d.donor_no" : "d.light_no";
+        if (!"TAI_SUI".equals(managementType) && !"LIGHT".equals(managementType)) {
+            return;
+        }
+        String sql = """
+                SELECT %s AS light_number,
+                       d.member_id,
+                       m.name AS member_name,
+                       m.gender, m.birth_date, m.lunar_birth_date, m.age, m.zodiac, m.zodiac_year,
+                       m.birth_time, m.address,
+                       d.donate_date AS registration_date
+                FROM donations d
+                LEFT JOIN light_members m ON m.id = d.member_id
+                WHERE COALESCE(d.is_deleted, 0) = 0
+                  AND TRIM(COALESCE(%s, '')) <> ''
+                """.formatted(numberColumn, numberColumn);
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                putReportRow(rows, resultSet);
+            }
+        }
+    }
+
+    private void loadHouseholdRegistrations(Map<String, LightRegistrationReportRow> rows)
+            throws SQLException {
+        String sql = """
+                SELECT h.light_no AS light_number,
+                       h.member_id,
+                       m.name AS member_name,
+                       m.gender, m.birth_date, m.lunar_birth_date, m.age, m.zodiac, m.zodiac_year,
+                       m.birth_time, m.address,
+                       h.created_at AS registration_date
+                FROM household_light_records h
+                LEFT JOIN light_members m ON m.id = h.member_id
+                WHERE TRIM(COALESCE(h.light_no, '')) <> ''
+                """;
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                putReportRow(rows, resultSet);
+            }
+        }
+    }
+
+    private void putReportRow(
+            Map<String, LightRegistrationReportRow> rows,
+            ResultSet resultSet
+    ) throws SQLException {
+        String lightNumber = clean(resultSet.getString("light_number"));
+        if (lightNumber.isEmpty()) {
+            return;
+        }
+        int memberIdValue = resultSet.getInt("member_id");
+        Integer memberId = resultSet.wasNull() ? null : memberIdValue;
+        LocalDate registrationDate = parseDate(resultSet.getString("registration_date"));
+        LightRegistrationReportRow row = new LightRegistrationReportRow(
+                lightNumber,
+                memberId,
+                clean(resultSet.getString("member_name")),
+                clean(resultSet.getString("gender")),
+                clean(resultSet.getString("birth_date")),
+                clean(resultSet.getString("lunar_birth_date")),
+                nullableInteger(resultSet, "age"),
+                clean(resultSet.getString("zodiac")),
+                clean(resultSet.getString("zodiac_year")),
+                clean(resultSet.getString("birth_time")),
+                clean(resultSet.getString("address")),
+                registrationDate
+        );
+        String key = lightNumber + ":" + (memberId == null ? row.name() : memberId)
+                + ":" + (registrationDate == null ? "" : registrationDate);
+        rows.putIfAbsent(key, row);
+    }
+
+    private Integer nullableInteger(ResultSet resultSet, String column) throws SQLException {
+        int value = resultSet.getInt(column);
+        return resultSet.wasNull() ? null : value;
+    }
+
+    private LocalDate parseDate(String value) {
+        String text = clean(value);
+        if (text.isEmpty()) {
+            return null;
+        }
+        try {
+            if (text.matches("\\d{3}\\.\\d{2}\\.\\d{2}")) {
+                LocalDate roc = LocalDate.parse(text, ROC_DATE);
+                return roc.plusYears(1911);
+            }
+            return LocalDate.parse(text.length() >= 10 ? text.substring(0, 10) : text);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
+    private String lightPrefix(String lightNumber) {
+        return clean(lightNumber).replaceFirst("\\d.*$", "");
+    }
+
+    private int lightSerial(String lightNumber) {
+        String digits = clean(lightNumber).replaceAll("\\D", "");
+        try {
+            return digits.isEmpty() ? Integer.MAX_VALUE : Integer.parseInt(digits);
+        } catch (NumberFormatException e) {
+            return Integer.MAX_VALUE;
+        }
+    }
+
+    private boolean tableExists(String tableName) throws SQLException {
+        String sql = "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?";
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, tableName);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        }
+    }
+
+    private void addColumnIfMissing(Connection connection, String columnName, String definition)
+            throws SQLException {
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("PRAGMA table_info(light_numbers)")) {
+            while (resultSet.next()) {
+                if (columnName.equalsIgnoreCase(resultSet.getString("name"))) {
+                    return;
+                }
+            }
+        }
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE light_numbers ADD COLUMN " + columnName + " " + definition);
+        }
+    }
+
+    private String clean(String value) {
+        return value == null ? "" : value.trim();
     }
 }

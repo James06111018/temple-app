@@ -70,47 +70,47 @@
                 </HBox>
                 </VBox>
 
-                <VBox spacing="18" prefWidth="310">
-                    <TitledPane text="安太歲" expanded="true" collapsible="false">
-                        <VBox spacing="14" style="-fx-padding: 12 18 18 18;">
-                            <HBox spacing="8" alignment="CENTER_LEFT">
-                                <RadioButton selected="true" />
+                <VBox spacing="18" prefWidth="320">
+                    <TitledPane text="安太歲" expanded="true" collapsible="false" styleClass="parameter-group">
+                        <VBox spacing="14" style="-fx-padding: 12 10 18 10;">
+                            <HBox spacing="6" alignment="CENTER_LEFT">
+                                <RadioButton fx:id="taiSuiTypeRadio" selected="true" />
                                 <Label text="燈別" />
-                                <ComboBox fx:id="taiSuiTypeBox" prefWidth="58" />
-                                <TextField prefWidth="70" />
+                                <ComboBox fx:id="taiSuiTypeBox" prefWidth="82" />
+                                <TextField fx:id="taiSuiStartNumberField" prefWidth="62" />
                                 <Label text="-" />
-                                <TextField prefWidth="70" />
+                                <TextField fx:id="taiSuiEndNumberField" prefWidth="62" />
                             </HBox>
-                            <HBox spacing="8" alignment="CENTER_LEFT">
-                                <RadioButton />
+                            <HBox spacing="6" alignment="CENTER_LEFT">
+                                <RadioButton fx:id="taiSuiDateRadio" />
                                 <Label text="日期" />
-                                <TextField prefWidth="86" />
+                                <TextField fx:id="taiSuiStartDateField" prefWidth="92" />
                                 <Label text="-" />
-                                <TextField prefWidth="86" />
+                                <TextField fx:id="taiSuiEndDateField" prefWidth="92" />
                             </HBox>
-                            <Button text="安太歲名條" styleClass="btn-purple" prefWidth="150" onAction="#onPlaceholderAction" />
-                            <Button text="安太歲疏文" styleClass="btn-purple" prefWidth="150" onAction="#onPlaceholderAction" />
+                            <Button text="安太歲名條" styleClass="btn-purple" prefWidth="150" onAction="#onPrintTaiSuiLabels" />
+                            <Button text="安太歲疏文" styleClass="btn-purple" prefWidth="150" onAction="#onPrintTaiSuiPrayer" />
                         </VBox>
                     </TitledPane>
-                    <TitledPane text="點燈" expanded="true" collapsible="false">
-                        <VBox spacing="14" style="-fx-padding: 12 18 18 18;">
-                            <HBox spacing="8" alignment="CENTER_LEFT">
-                                <RadioButton selected="true" />
+                    <TitledPane text="點燈" expanded="true" collapsible="false" styleClass="parameter-group">
+                        <VBox spacing="14" style="-fx-padding: 12 10 18 10;">
+                            <HBox spacing="6" alignment="CENTER_LEFT">
+                                <RadioButton fx:id="lightTypeRadio" selected="true" />
                                 <Label text="燈別" />
-                                <ComboBox fx:id="lightTypeBox" prefWidth="58" />
-                                <TextField prefWidth="70" />
+                                <ComboBox fx:id="lightTypeBox" prefWidth="82" />
+                                <TextField fx:id="lightStartNumberField" prefWidth="62" />
                                 <Label text="-" />
-                                <TextField prefWidth="70" />
+                                <TextField fx:id="lightEndNumberField" prefWidth="62" />
                             </HBox>
-                            <HBox spacing="8" alignment="CENTER_LEFT">
-                                <RadioButton />
+                            <HBox spacing="6" alignment="CENTER_LEFT">
+                                <RadioButton fx:id="lightDateRadio" />
                                 <Label text="日期" />
-                                <TextField prefWidth="86" />
+                                <TextField fx:id="lightStartDateField" prefWidth="92" />
                                 <Label text="-" />
-                                <TextField prefWidth="86" />
+                                <TextField fx:id="lightEndDateField" prefWidth="92" />
                             </HBox>
-                            <Button text="點燈名條" styleClass="btn-purple" prefWidth="150" onAction="#onPlaceholderAction" />
-                            <Button text="點燈疏文" styleClass="btn-purple" prefWidth="150" onAction="#onPlaceholderAction" />
+                            <Button text="點燈名條" styleClass="btn-purple" prefWidth="150" onAction="#onPrintLightLabels" />
+                            <Button text="點燈疏文" styleClass="btn-purple" prefWidth="150" onAction="#onPrintLightPrayer" />
                         </VBox>
                     </TitledPane>
                 </VBox>
