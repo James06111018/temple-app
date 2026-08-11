@@ -20,8 +20,10 @@ import tw.org.il.dongsheng.templeapp.model.LightMember;
 import tw.org.il.dongsheng.templeapp.model.LightNumberRecord;
 import tw.org.il.dongsheng.templeapp.model.LightType;
 import tw.org.il.dongsheng.templeapp.model.Donation;
+import tw.org.il.dongsheng.templeapp.model.DonationSupplement;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDictionaryRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationSupplementRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteHouseholdLightRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteLightNumberRepository;
 import tw.org.il.dongsheng.templeapp.service.DonationService;
@@ -44,12 +46,16 @@ public class HouseholdLightController {
     @FXML private TableView<HouseholdLightRow> householdTable;
     @FXML private PaginationBar householdPageBar;
     @FXML private TextField incenseAmountField;
+    @FXML private TextField supplementDateField;
+    @FXML private TextField supplementNoField;
 
     private SQLiteHouseholdLightRepository repository;
     private SQLiteDictionaryRepository dictionaryRepository;
     private DonationService donationService;
     private final SQLiteLightNumberRepository lightNumberRepository =
             new SQLiteLightNumberRepository(SQLiteDatabaseManager.getInstance());
+    private final SQLiteDonationSupplementRepository supplementRepository =
+            new SQLiteDonationSupplementRepository(SQLiteDatabaseManager.getInstance());
     private List<LightType> lightTypes = new ArrayList<>();
     private List<LightMember> currentMembers = new ArrayList<>();
     private Map<String, HouseholdLightRecord> currentRecordMap = new LinkedHashMap<>();
@@ -60,6 +66,11 @@ public class HouseholdLightController {
         householdTable.setEditable(true);
         householdPageBar.setTotalCount(0);
         householdPageBar.setOnAction(() -> selectTableRow(householdPageBar.getCurrentIndex()));
+        try {
+            supplementRepository.createTable();
+        } catch (SQLException e) {
+            throw new IllegalStateException("初始化補登資料表失敗", e);
+        }
     }
 
     public void setData(List<LightMember> members, SQLiteHouseholdLightRepository repository, SQLiteDictionaryRepository dictionaryRepository, DonationService donationService, int rocYear) {
@@ -170,7 +181,7 @@ public class HouseholdLightController {
     }
 
     @FXML
-    private void onPlaceholderAction() {
+    private void onConfirm() {
         if (repository == null) {
             return;
         }
@@ -214,17 +225,77 @@ public class HouseholdLightController {
             AlertDialog.showWarning("全戶點燈", "請選擇收據代表人");
             return;
         }
+        SupplementInput supplementInput;
+        try {
+            supplementInput = readSupplementInput();
+        } catch (IllegalArgumentException e) {
+            AlertDialog.showWarning("全戶點燈", e.getMessage());
+            return;
+        }
 
         String changedBy = AuthSession.getCurrentOperatorName();
         try {
             for (SelectedLight selectedLight : selectedLights) {
                 saveSelectedLight(selectedLight, changedBy);
             }
-            donationService.save(buildIncenseDonation(representative, incenseAmount, changedBy));
+            Donation donation = donationService.save(
+                    buildIncenseDonation(representative, incenseAmount, changedBy)
+            );
+            if (supplementInput != null) {
+                supplementRepository.save(new DonationSupplement(
+                        null,
+                        donation.getId(),
+                        supplementInput.date().toString(),
+                        supplementInput.number(),
+                        SQLiteDonationSupplementRepository.SOURCE_HOUSEHOLD_LIGHT,
+                        changedBy,
+                        null,
+                        changedBy,
+                        null,
+                        false
+                ), changedBy);
+            }
+            supplementDateField.clear();
+            supplementNoField.clear();
             loadData(currentMembers);
             AlertDialog.showInfo("全戶點燈", "儲存成功");
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private SupplementInput readSupplementInput() {
+        String dateText = supplementDateField.getText() == null
+                ? ""
+                : supplementDateField.getText().trim();
+        String number = supplementNoField.getText() == null
+                ? ""
+                : supplementNoField.getText().trim();
+        if (dateText.isEmpty() && number.isEmpty()) {
+            return null;
+        }
+        if (dateText.isEmpty() || number.isEmpty()) {
+            throw new IllegalArgumentException("補登日期與補登號碼必須同時填寫");
+        }
+        LocalDate date = parseDate(dateText);
+        if (date == null) {
+            throw new IllegalArgumentException("補登日期請輸入民國 115.05.14 或西元 2026-05-14 格式");
+        }
+        return new SupplementInput(date, number);
+    }
+
+    private LocalDate parseDate(String value) {
+        String[] parts = value.trim().replace('/', '.').replace('-', '.').split("\\.");
+        if (parts.length != 3) {
+            return null;
+        }
+        try {
+            int year = Integer.parseInt(parts[0]);
+            int month = Integer.parseInt(parts[1]);
+            int day = Integer.parseInt(parts[2]);
+            return LocalDate.of(year < 1912 ? year + 1911 : year, month, day);
+        } catch (RuntimeException e) {
+            return null;
         }
     }
 
@@ -377,6 +448,9 @@ public class HouseholdLightController {
     }
 
     private record InventoryKey(String managementType, String lightType) {
+    }
+
+    private record SupplementInput(LocalDate date, String number) {
     }
 
     public record HouseholdLightRow(

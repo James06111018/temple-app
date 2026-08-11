@@ -13,6 +13,10 @@
             style="-fx-background-color: #f0f0f0;">
     <center>
         <VBox spacing="12" style="-fx-padding: 16 12 12 12;">
+            <HBox alignment="CENTER_LEFT">
+                <Button text="燈種管理" styleClass="btn-purple" onAction="#onOpenLightTypeManagement" />
+            </HBox>
+
             <TableView fx:id="householdTable" prefHeight="505" VBox.vgrow="ALWAYS" />
 
             <PaginationBar fx:id="householdPageBar" />
@@ -22,14 +26,13 @@
                 <ComboBox fx:id="collectorBox" prefWidth="180" />
                 <Label text="油香" />
                 <TextField fx:id="incenseAmountField" prefWidth="100" />
-                <Button text="確定" styleClass="btn-orange" onAction="#onPlaceholderAction" />
                 <Region HBox.hgrow="ALWAYS" />
-                <Button text="燈種管理" styleClass="btn-purple" onAction="#onOpenLightTypeManagement" />
+                <Button text="確定" styleClass="btn-orange" prefWidth="160" onAction="#onConfirm" />
                 <Region HBox.hgrow="ALWAYS" />
                 <Label text="補登日期" />
-                <TextField prefWidth="90" />
+                <TextField fx:id="supplementDateField" prefWidth="100" />
                 <Label text="補登號碼" />
-                <TextField prefWidth="110" />
+                <TextField fx:id="supplementNoField" prefWidth="120" />
             </HBox>
         </VBox>
     </center>
