@@ -264,6 +264,34 @@ public class SQLiteDonationRepository implements DonationRepository {
         return donations;
     }
 
+    public List<Donation> findByIds(List<Integer> donationIds) throws SQLException {
+        if (donationIds == null || donationIds.isEmpty()) {
+            return List.of();
+        }
+
+        String placeholders = donationIds.stream()
+                .map(id -> "?")
+                .collect(Collectors.joining(", "));
+        String sql = "SELECT * FROM " + TABLE_NAME
+                + " WHERE id IN (" + placeholders + ")"
+                + " AND COALESCE(is_deleted, 0) = 0 ORDER BY id";
+        List<Donation> donations = new ArrayList<>();
+
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            int index = 1;
+            for (Integer donationId : donationIds) {
+                statement.setInt(index++, donationId);
+            }
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    donations.add(mapRow(resultSet));
+                }
+            }
+        }
+        return donations;
+    }
+
     private void setCommonFields(PreparedStatement statement, Donation donation) throws SQLException {
         statement.setObject(1, donation.getMemberId());
         statement.setString(2, donation.getReceiptNo());

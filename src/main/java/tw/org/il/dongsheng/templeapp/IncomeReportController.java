@@ -4,10 +4,12 @@ import javafx.fxml.FXML;
 import javafx.scene.control.TextField;
 import tw.org.il.dongsheng.templeapp.model.DictionaryItem;
 import tw.org.il.dongsheng.templeapp.model.Donation;
+import tw.org.il.dongsheng.templeapp.model.DonationSupplement;
 import tw.org.il.dongsheng.templeapp.model.LightMember;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDictionaryRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationSupplementRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteLightMemberRepository;
 import tw.org.il.dongsheng.templeapp.util.AlertDialog;
 import tw.org.il.dongsheng.templeapp.util.LightReportBuilder;
@@ -36,6 +38,8 @@ public class IncomeReportController {
             new SQLiteDictionaryRepository(SQLiteDatabaseManager.getInstance());
     private final SQLiteLightMemberRepository memberRepository =
             new SQLiteLightMemberRepository(SQLiteDatabaseManager.getInstance());
+    private final SQLiteDonationSupplementRepository supplementRepository =
+            new SQLiteDonationSupplementRepository(SQLiteDatabaseManager.getInstance());
 
     @FXML
     private void initialize() {
@@ -46,6 +50,7 @@ public class IncomeReportController {
             donationRepository.createTable();
             dictionaryRepository.migrateFromLegacy();
             memberRepository.createTable();
+            supplementRepository.createTable();
         } catch (SQLException e) {
             throw new IllegalStateException("初始化收入報表失敗", e);
         }
@@ -84,6 +89,21 @@ public class IncomeReportController {
     @FXML
     private void onOpenMonthlyTotalReport() {
         openReport(ReportKind.MONTHLY_TOTAL);
+    }
+
+    @FXML
+    private void onOpenSupplementDetailReport() {
+        openSupplementReport(SupplementReportKind.DETAIL);
+    }
+
+    @FXML
+    private void onOpenSupplementSummaryReport() {
+        openSupplementReport(SupplementReportKind.SUMMARY);
+    }
+
+    @FXML
+    private void onOpenSupplementAllReport() {
+        openSupplementReport(SupplementReportKind.ALL);
     }
 
     @FXML
@@ -181,6 +201,81 @@ public class IncomeReportController {
         return new ReportData(donations, membersById, categoryNames);
     }
 
+    private void openSupplementReport(SupplementReportKind kind) {
+        LocalDate startDate = parseDate(startDateField.getText());
+        LocalDate endDate = parseDate(endDateField.getText());
+        if (startDate == null || endDate == null) {
+            AlertDialog.showWarning("補登款項", "日期請輸入民國 115.05.14 或西元 2026-05-14 格式");
+            return;
+        }
+        if (startDate.isAfter(endDate)) {
+            AlertDialog.showWarning("補登款項", "起始日期不可晚於結束日期");
+            return;
+        }
+
+        try {
+            List<DonationSupplement> supplements = supplementRepository.findByDateRange(startDate, endDate);
+            List<Integer> donationIds = supplements.stream()
+                    .map(DonationSupplement::getDonationId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .toList();
+            Map<Integer, Donation> donationsById = donationRepository.findByIds(donationIds).stream()
+                    .collect(Collectors.toMap(
+                            Donation::getId,
+                            Function.identity(),
+                            (left, right) -> left,
+                            LinkedHashMap::new
+                    ));
+            supplements = supplements.stream()
+                    .filter(supplement -> donationsById.containsKey(supplement.getDonationId()))
+                    .toList();
+            if (supplements.isEmpty()) {
+                AlertDialog.showInfo("補登款項", "查無指定補登日期內的資料");
+                return;
+            }
+
+            Map<Integer, LightMember> membersById = memberRepository.findAllIncludingDeleted().stream()
+                    .collect(Collectors.toMap(
+                            LightMember::getId,
+                            Function.identity(),
+                            (left, right) -> left,
+                            LinkedHashMap::new
+                    ));
+            Map<String, String> categoryNames = loadAllDonationCategoryNames();
+            List<? extends javafx.scene.layout.Region> pages = switch (kind) {
+                case DETAIL -> LightReportBuilder.buildSupplementDetailPages(
+                        supplements, donationsById, membersById, categoryNames
+                );
+                case SUMMARY -> LightReportBuilder.buildSupplementSummaryPages(
+                        supplements, donationsById, categoryNames
+                );
+                case ALL -> LightReportBuilder.buildSupplementAllPages(
+                        supplements, donationsById, membersById, categoryNames
+                );
+            };
+            PrintPreview.show(startDateField.getScene().getWindow(), kind.title, pages);
+        } catch (SQLException e) {
+            AlertDialog.showError("補登款項", "讀取補登資料失敗：" + e.getMessage());
+        }
+    }
+
+    private Map<String, String> loadAllDonationCategoryNames() throws SQLException {
+        List<DictionaryItem> categoryItems = new ArrayList<>();
+        categoryItems.addAll(dictionaryRepository.findItemsByType(
+                SQLiteDictionaryRepository.TYPE_DONATION_LIGHT
+        ));
+        categoryItems.addAll(dictionaryRepository.findItemsByType(
+                SQLiteDictionaryRepository.TYPE_DONATION_GHOST
+        ));
+        return categoryItems.stream().collect(Collectors.toMap(
+                item -> String.valueOf(item.getId()),
+                DictionaryItem::getName,
+                (left, right) -> left,
+                LinkedHashMap::new
+        ));
+    }
+
     private boolean isWithinRange(Donation donation, LocalDate startDate, LocalDate endDate) {
         LocalDate donationDate = parseDate(donation.getDonateDate());
         return donationDate != null
@@ -223,6 +318,18 @@ public class IncomeReportController {
         private final String title;
 
         ReportKind(String title) {
+            this.title = title;
+        }
+    }
+
+    private enum SupplementReportKind {
+        DETAIL("補登款項明細表"),
+        SUMMARY("補登統計表"),
+        ALL("補登款項明細表（全）");
+
+        private final String title;
+
+        SupplementReportKind(String title) {
             this.title = title;
         }
     }

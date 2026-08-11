@@ -10,6 +10,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import tw.org.il.dongsheng.templeapp.model.Donation;
+import tw.org.il.dongsheng.templeapp.model.DonationSupplement;
 import tw.org.il.dongsheng.templeapp.model.LightMember;
 
 import java.text.NumberFormat;
@@ -36,6 +37,7 @@ public final class LightReportBuilder {
     private static final int STATISTICS_ROWS_PER_PAGE = 25;
     private static final int INCOME_ROWS_PER_PAGE = 23;
     private static final int INCOME_SUMMARY_ROWS_PER_PAGE = 28;
+    private static final int SUPPLEMENT_ROWS_PER_PAGE = 22;
     private static final String TEMPLE_NAME = "五結東聖宮";
     private static final String INCOME_REPORT_FONT_FAMILY = resolveIncomeReportFontFamily();
     private static final DateTimeFormatter DOT_DATE = DateTimeFormatter.ofPattern("yyyy.M.d");
@@ -408,6 +410,137 @@ public final class LightReportBuilder {
                 VBox.setMargin(totalLabel, new Insets(24, 0, 0, 4));
                 page.getChildren().add(totalLabel);
             }
+            pages.add(page);
+        }
+        return pages;
+    }
+
+    public static List<Region> buildSupplementDetailPages(
+            List<DonationSupplement> supplements,
+            Map<Integer, Donation> donationsById,
+            Map<Integer, LightMember> membersById,
+            Map<String, String> categoryNames
+    ) {
+        return buildSupplementDetailPages(
+                supplements, donationsById, membersById, categoryNames, true
+        );
+    }
+
+    public static List<Region> buildSupplementAllPages(
+            List<DonationSupplement> supplements,
+            Map<Integer, Donation> donationsById,
+            Map<Integer, LightMember> membersById,
+            Map<String, String> categoryNames
+    ) {
+        return buildSupplementDetailPages(
+                supplements, donationsById, membersById, categoryNames, false
+        );
+    }
+
+    public static List<Region> buildSupplementSummaryPages(
+            List<DonationSupplement> supplements,
+            Map<Integer, Donation> donationsById,
+            Map<String, String> categoryNames
+    ) {
+        List<SupplementReportLine> lines = supplementLines(
+                supplements, donationsById, Map.of(), categoryNames
+        );
+        Map<String, int[]> grouped = new LinkedHashMap<>();
+        for (SupplementReportLine line : lines) {
+            int[] summary = grouped.computeIfAbsent(line.categoryName(), ignored -> new int[2]);
+            summary[0]++;
+            summary[1] += incomeAmount(line.donation());
+        }
+        List<CategorySummary> summaries = grouped.entrySet().stream()
+                .map(entry -> new CategorySummary(
+                        entry.getKey(), entry.getValue()[0], entry.getValue()[1]
+                ))
+                .toList();
+        int pageCount = Math.max(1, pageCount(summaries.size(), INCOME_SUMMARY_ROWS_PER_PAGE));
+        int totalAmount = summaries.stream().mapToInt(CategorySummary::amount).sum();
+        String dateRange = supplementDateRange(lines);
+        List<Region> pages = new ArrayList<>();
+
+        for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+            int from = pageIndex * INCOME_SUMMARY_ROWS_PER_PAGE;
+            int to = Math.min(summaries.size(), from + INCOME_SUMMARY_ROWS_PER_PAGE);
+            VBox page = createIncomePage("補登統計表");
+            page.getChildren().add(incomeSummaryRow(
+                    new String[]{dateRange, "款項類別", "筆數", "金額"},
+                    new double[]{180, 220, 100, 144},
+                    true
+            ));
+            for (int index = from; index < to; index++) {
+                CategorySummary summary = summaries.get(index);
+                page.getChildren().add(incomeSummaryRow(
+                        new String[]{
+                                "",
+                                summary.categoryName(),
+                                String.valueOf(summary.count()),
+                                formatAmount(summary.amount())
+                        },
+                        new double[]{250, 175, 30, 144},
+                        false,
+                        2, 3
+                ));
+            }
+            if (pageIndex == pageCount - 1) {
+                page.getChildren().add(incomeSummaryTotalRow(totalAmount));
+            }
+            pages.add(page);
+        }
+        return pages;
+    }
+
+    private static List<Region> buildSupplementDetailPages(
+            List<DonationSupplement> supplements,
+            Map<Integer, Donation> donationsById,
+            Map<Integer, LightMember> membersById,
+            Map<String, String> categoryNames,
+            boolean showTotal
+    ) {
+        List<SupplementReportLine> lines = supplementLines(
+                supplements, donationsById, membersById, categoryNames
+        );
+        int pageCount = Math.max(1, pageCount(lines.size(), SUPPLEMENT_ROWS_PER_PAGE));
+        int totalAmount = lines.stream()
+                .map(SupplementReportLine::donation)
+                .mapToInt(LightReportBuilder::incomeAmount)
+                .sum();
+        double[] widths = {95, 90, 90, 130, 100, 90, 119};
+        List<Region> pages = new ArrayList<>();
+
+        for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+            int from = pageIndex * SUPPLEMENT_ROWS_PER_PAGE;
+            int to = Math.min(lines.size(), from + SUPPLEMENT_ROWS_PER_PAGE);
+            VBox page = createIncomePage("補登款項明細表");
+            page.getChildren().add(incomeRow(
+                    new String[]{"補登號碼", "金    額", "日    期", "款項類別", "姓    名", "經辦人", "備    註"},
+                    widths,
+                    true,
+                    1
+            ));
+            for (int index = from; index < to; index++) {
+                SupplementReportLine line = lines.get(index);
+                page.getChildren().add(incomeRow(
+                        new String[]{
+                                safe(line.supplement().getSupplementNo()),
+                                formatAmount(incomeAmount(line.donation())),
+                                toRocDate(line.supplement().getSupplementDate()),
+                                line.categoryName(),
+                                line.memberName(),
+                                safe(line.donation().getCreator()),
+                                line.note()
+                        },
+                        widths,
+                        false,
+                        1
+                ));
+            }
+            if (showTotal && pageIndex == pageCount - 1) {
+                page.getChildren().add(incomeTotalRow("總    計", totalAmount, widths[0]));
+            }
+            addIncomePageNumber(page, pageIndex + 1, pageCount);
             pages.add(page);
         }
         return pages;
@@ -888,6 +1021,17 @@ public final class LightReportBuilder {
         page.getChildren().addAll(spacer, line, pageLabel);
     }
 
+    private static void addIncomePageNumber(VBox page, int pageNumber, int pageCount) {
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
+        Label pageLabel = incomeTextLabel("Page " + pageNumber + " of " + pageCount, 11);
+        pageLabel.setMaxWidth(Double.MAX_VALUE);
+        pageLabel.setAlignment(Pos.CENTER_RIGHT);
+        VBox.setMargin(pageLabel, new Insets(6, 4, 0, 0));
+        page.getChildren().addAll(spacer, pageLabel);
+    }
+
     private static Label incomeTableCell(String text, double width, Pos alignment) {
         return incomeTableCell(text, width, alignment, 14);
     }
@@ -1053,6 +1197,79 @@ public final class LightReportBuilder {
         return separatorIndex >= 0 ? category.substring(separatorIndex + 3) : category;
     }
 
+    private static List<SupplementReportLine> supplementLines(
+            List<DonationSupplement> supplements,
+            Map<Integer, Donation> donationsById,
+            Map<Integer, LightMember> membersById,
+            Map<String, String> categoryNames
+    ) {
+        if (supplements == null || donationsById == null) {
+            return List.of();
+        }
+        return supplements.stream()
+                .filter(supplement -> supplement.getDonationId() != null)
+                .filter(supplement -> donationsById.containsKey(supplement.getDonationId()))
+                .sorted(Comparator
+                        .comparing(
+                                (DonationSupplement supplement) -> parseReportDate(
+                                        supplement.getSupplementDate()
+                                ),
+                                Comparator.nullsLast(Comparator.naturalOrder())
+                        )
+                        .thenComparing(
+                                DonationSupplement::getSupplementNo,
+                                Comparator.nullsLast(String::compareTo)
+                        )
+                        .thenComparing(
+                                DonationSupplement::getId,
+                                Comparator.nullsLast(Comparator.naturalOrder())
+                        ))
+                .map(supplement -> {
+                    Donation donation = donationsById.get(supplement.getDonationId());
+                    LightMember member = membersById == null
+                            ? null
+                            : membersById.get(donation.getMemberId());
+                    String categoryName = categoryLabel(categoryNames, donation.getDonateType());
+                    if (categoryName.isBlank()) {
+                        categoryName = firstNonBlank(donation.getSummary(), "未分類");
+                    }
+                    String note = firstNonBlank(
+                            donation.getDonateNote(),
+                            donation.getOtherNote(),
+                            donation.getDonorNo(),
+                            donation.getLightNo()
+                    );
+                    return new SupplementReportLine(
+                            supplement,
+                            donation,
+                            member == null ? "" : safe(member.getName()),
+                            categoryName,
+                            note
+                    );
+                })
+                .toList();
+    }
+
+    private static String supplementDateRange(List<SupplementReportLine> lines) {
+        if (lines == null || lines.isEmpty()) {
+            return "";
+        }
+        LocalDate startDate = lines.stream()
+                .map(line -> parseReportDate(line.supplement().getSupplementDate()))
+                .filter(java.util.Objects::nonNull)
+                .min(Comparator.naturalOrder())
+                .orElse(null);
+        LocalDate endDate = lines.stream()
+                .map(line -> parseReportDate(line.supplement().getSupplementDate()))
+                .filter(java.util.Objects::nonNull)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+        if (startDate == null || endDate == null) {
+            return "";
+        }
+        return toRocDate(startDate) + " - " + toRocDate(endDate);
+    }
+
     private static List<ClassifiedDonationRow> classifiedRows(
             List<Donation> donations,
             Map<String, String> categoryNames
@@ -1198,6 +1415,15 @@ public final class LightReportBuilder {
             LocalDate date,
             IncomeSummaryLine summary,
             boolean header
+    ) {
+    }
+
+    private record SupplementReportLine(
+            DonationSupplement supplement,
+            Donation donation,
+            String memberName,
+            String categoryName,
+            String note
     ) {
     }
 }
