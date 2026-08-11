@@ -4,6 +4,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
@@ -13,6 +14,7 @@ import tw.org.il.dongsheng.templeapp.model.LightMember;
 
 import java.text.NumberFormat;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -20,6 +22,8 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
+import java.util.function.Function;
 
 public final class LightReportBuilder {
     private static final double PAGE_WIDTH = 794;
@@ -30,7 +34,10 @@ public final class LightReportBuilder {
     private static final int TOTAL_DETAIL_ROWS_PER_PAGE = 24;
     private static final int CATEGORY_ROWS_PER_PAGE = 23;
     private static final int STATISTICS_ROWS_PER_PAGE = 25;
+    private static final int INCOME_ROWS_PER_PAGE = 23;
+    private static final int INCOME_SUMMARY_ROWS_PER_PAGE = 28;
     private static final String TEMPLE_NAME = "五結東聖宮";
+    private static final String INCOME_REPORT_FONT_FAMILY = resolveIncomeReportFontFamily();
     private static final DateTimeFormatter DOT_DATE = DateTimeFormatter.ofPattern("yyyy.M.d");
 
     private LightReportBuilder() {
@@ -250,6 +257,289 @@ public final class LightReportBuilder {
         return pages;
     }
 
+    public static List<Region> buildIncomeDetailPages(
+            List<Donation> donations,
+            Map<Integer, LightMember> membersById,
+            Map<String, String> categoryNames
+    ) {
+        List<Donation> rows = sortDonations(donations);
+        int pageCount = Math.max(1, pageCount(rows.size(), INCOME_ROWS_PER_PAGE));
+        int totalAmount = rows.stream().mapToInt(LightReportBuilder::incomeAmount).sum();
+        List<Region> pages = new ArrayList<>();
+
+        for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+            int from = pageIndex * INCOME_ROWS_PER_PAGE;
+            int to = Math.min(rows.size(), from + INCOME_ROWS_PER_PAGE);
+            VBox page = createIncomePage(TEMPLE_NAME + "　收入明細表");
+            page.getChildren().add(incomeRow(
+                    new String[]{"收據編號", "金    額", "日    期", "款項類別", "姓    名", "經辦人", "摘    要"},
+                    new double[]{90, 90, 90, 135, 100, 90, 119},
+                    true,
+                    1
+            ));
+            for (int index = from; index < to; index++) {
+                Donation donation = rows.get(index);
+                LightMember member = membersById.get(donation.getMemberId());
+                page.getChildren().add(incomeRow(
+                        new String[]{
+                                formatReceiptNo(donation.getReceiptNo()),
+                                formatAmount(incomeAmount(donation)),
+                                toRocDate(donation.getDonateDate()),
+                                categoryLabel(categoryNames, donation.getDonateType()),
+                                member == null ? "" : safe(member.getName()),
+                                safe(donation.getCreator()),
+                                donationSummary(donation)
+                        },
+                        new double[]{90, 90, 90, 135, 100, 90, 119},
+                        false,
+                        1
+                ));
+            }
+            if (pageIndex == pageCount - 1) {
+                page.getChildren().add(incomeTotalRow("總　  計", totalAmount, 90));
+            }
+            pages.add(page);
+        }
+        return pages;
+    }
+
+    public static List<Region> buildIncomeSubtotalPages(
+            List<Donation> donations,
+            Map<Integer, LightMember> membersById,
+            Map<String, String> categoryNames
+    ) {
+        List<IncomeReportLine> lines = new ArrayList<>();
+        for (CategoryGroup group : categoryGroups(donations, categoryNames)) {
+            for (Donation donation : group.donations()) {
+                lines.add(new IncomeReportLine(group.categoryName(), donation, false, 0));
+            }
+            lines.add(new IncomeReportLine(
+                    group.categoryName(),
+                    null,
+                    true,
+                    group.donations().stream().mapToInt(LightReportBuilder::incomeAmount).sum()
+            ));
+        }
+        int pageCount = Math.max(1, pageCount(lines.size(), INCOME_ROWS_PER_PAGE));
+        int totalAmount = donations == null
+                ? 0
+                : donations.stream().mapToInt(LightReportBuilder::incomeAmount).sum();
+        List<Region> pages = new ArrayList<>();
+
+        for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+            int from = pageIndex * INCOME_ROWS_PER_PAGE;
+            int to = Math.min(lines.size(), from + INCOME_ROWS_PER_PAGE);
+            VBox page = createIncomePage(TEMPLE_NAME + "　收入明細表");
+            page.getChildren().add(incomeRow(
+                    new String[]{"款項類別", "金    額", "日    期", "收據編號", "姓    名", "經辦人", "摘    要"},
+                    new double[]{135, 90, 90, 90, 100, 90, 119},
+                    true,
+                    1
+            ));
+            for (int index = from; index < to; index++) {
+                IncomeReportLine line = lines.get(index);
+                if (line.subtotal()) {
+                    page.getChildren().add(incomeSubtotalRow(line.amount()));
+                    continue;
+                }
+                Donation donation = line.donation();
+                LightMember member = membersById.get(donation.getMemberId());
+                page.getChildren().add(incomeRow(
+                        new String[]{
+                                line.categoryName(),
+                                formatAmount(incomeAmount(donation)),
+                                toRocDate(donation.getDonateDate()),
+                                formatReceiptNo(donation.getReceiptNo()),
+                                member == null ? "" : safe(member.getName()),
+                                safe(donation.getCreator()),
+                                donationSummary(donation)
+                        },
+                        new double[]{135, 90, 90, 90, 100, 90, 119},
+                        false,
+                        1
+                ));
+            }
+            if (pageIndex == pageCount - 1) {
+                page.getChildren().add(incomeTotalRow("總    計", totalAmount, 135));
+            }
+            pages.add(page);
+        }
+        return pages;
+    }
+
+    public static List<Region> buildIncomeAllPages(
+            List<Donation> donations,
+            Map<Integer, LightMember> membersById
+    ) {
+        List<Donation> rows = sortDonations(donations);
+        int pageCount = Math.max(1, pageCount(rows.size(), INCOME_ROWS_PER_PAGE));
+        int totalAmount = rows.stream().mapToInt(LightReportBuilder::incomeAmount).sum();
+        List<Region> pages = new ArrayList<>();
+
+        for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+            int from = pageIndex * INCOME_ROWS_PER_PAGE;
+            int to = Math.min(rows.size(), from + INCOME_ROWS_PER_PAGE);
+            VBox page = createIncomePage(TEMPLE_NAME + "　收入明細表");
+            page.getChildren().add(incomeRow(
+                    new String[]{"收據編號", "金    額", "日    期", "經辦人", "收據代表人", "備    註"},
+                    new double[]{90, 100, 90, 90, 170, 174},
+                    true,
+                    1
+            ));
+            for (int index = from; index < to; index++) {
+                Donation donation = rows.get(index);
+                LightMember member = membersById.get(donation.getMemberId());
+                page.getChildren().add(incomeRow(
+                        new String[]{
+                                formatReceiptNo(donation.getReceiptNo()),
+                                formatAmount(incomeAmount(donation)),
+                                toRocDate(donation.getDonateDate()),
+                                safe(donation.getCreator()),
+                                member == null ? "" : safe(member.getName()),
+                                donationSummary(donation)
+                        },
+                        new double[]{90, 100, 90, 90, 170, 174},
+                        false,
+                        1
+                ));
+            }
+            if (pageIndex == pageCount - 1) {
+                Label totalLabel = incomeTextLabel("現金收入：" + formatAmount(totalAmount) + "元", 18);
+                VBox.setMargin(totalLabel, new Insets(24, 0, 0, 4));
+                page.getChildren().add(totalLabel);
+            }
+            pages.add(page);
+        }
+        return pages;
+    }
+
+    public static List<Region> buildIncomeDailyOperatorPages(List<Donation> donations) {
+        List<IncomeSummaryLine> summaries = summarizeDailyIncome(
+                donations,
+                donation -> firstNonBlank(donation.getCreator(), "未指定")
+        );
+        return buildIncomeDailySummaryPages("收入日報表", "經辦人", summaries);
+    }
+
+    public static List<Region> buildIncomeDailyCategoryPages(
+            List<Donation> donations,
+            Map<String, String> categoryNames
+    ) {
+        List<IncomeSummaryLine> summaries = summarizeDailyIncome(
+                donations,
+                donation -> categoryLabel(categoryNames, donation.getDonateType())
+        );
+        return buildIncomeDailySummaryPages("收入日統計表", "款項類別", summaries);
+    }
+
+    public static List<Region> buildIncomeMonthlyDailyPages(List<Donation> donations) {
+        Map<YearMonth, Map<LocalDate, Integer>> monthlyDailyAmounts = new TreeMap<>();
+        for (Donation donation : sortDonations(donations)) {
+            LocalDate date = parseReportDate(donation.getDonateDate());
+            if (date == null) {
+                continue;
+            }
+            monthlyDailyAmounts
+                    .computeIfAbsent(YearMonth.from(date), ignored -> new TreeMap<>())
+                    .merge(date, incomeAmount(donation), Integer::sum);
+        }
+
+        int totalPageCount = monthlyDailyAmounts.values().stream()
+                .mapToInt(rows -> Math.max(1, pageCount(rows.size(), INCOME_SUMMARY_ROWS_PER_PAGE)))
+                .sum();
+        int totalAmount = donations == null
+                ? 0
+                : donations.stream().mapToInt(LightReportBuilder::incomeAmount).sum();
+        int reportPageNumber = 0;
+        List<Region> pages = new ArrayList<>();
+        for (Map.Entry<YearMonth, Map<LocalDate, Integer>> monthEntry : monthlyDailyAmounts.entrySet()) {
+            List<Map.Entry<LocalDate, Integer>> rows = new ArrayList<>(monthEntry.getValue().entrySet());
+            int pageCount = Math.max(1, pageCount(rows.size(), INCOME_SUMMARY_ROWS_PER_PAGE));
+            for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+                reportPageNumber++;
+                int from = pageIndex * INCOME_SUMMARY_ROWS_PER_PAGE;
+                int to = Math.min(rows.size(), from + INCOME_SUMMARY_ROWS_PER_PAGE);
+                VBox page = createIncomePage(TEMPLE_NAME + "　收入月報表");
+                page.getChildren().add(incomeSummaryRow(
+                        new String[]{"資料月份：" + toRocMonth(monthEntry.getKey()), "日  期", "金額"},
+                        new double[]{200, 132, 132},
+                        true,
+                        2
+                ));
+                for (int index = from; index < to; index++) {
+                    Map.Entry<LocalDate, Integer> row = rows.get(index);
+                    page.getChildren().add(incomeSummaryRow(
+                            new String[]{"", toRocDate(row.getKey()), formatAmount(row.getValue())},
+                            new double[]{240, 75, 102},
+                            false,
+                            2
+                    ));
+                }
+                if (reportPageNumber == totalPageCount) {
+                    page.getChildren().add(incomeSummaryTotalRow(totalAmount));
+                }
+                addIncomePageFooter(page, reportPageNumber, totalPageCount);
+                pages.add(page);
+            }
+        }
+        return pages;
+    }
+
+    public static List<Region> buildIncomeMonthlyTotalPages(List<Donation> donations) {
+        Map<YearMonth, Integer> monthlyAmounts = new TreeMap<>();
+        for (Donation donation : sortDonations(donations)) {
+            LocalDate date = parseReportDate(donation.getDonateDate());
+            if (date != null) {
+                monthlyAmounts.merge(YearMonth.from(date), incomeAmount(donation), Integer::sum);
+            }
+        }
+
+        List<Map.Entry<YearMonth, Integer>> rows = new ArrayList<>(monthlyAmounts.entrySet());
+        int pageCount = Math.max(1, pageCount(rows.size(), INCOME_SUMMARY_ROWS_PER_PAGE));
+        int totalAmount = rows.stream().mapToInt(Map.Entry::getValue).sum();
+        List<Region> pages = new ArrayList<>();
+        for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+            int from = pageIndex * INCOME_SUMMARY_ROWS_PER_PAGE;
+            int to = Math.min(rows.size(), from + INCOME_SUMMARY_ROWS_PER_PAGE);
+            VBox page = createIncomePage(TEMPLE_NAME + "　收入月統計表");
+            if (!rows.isEmpty()) {
+                page.getChildren().add(incomeSummaryRow(
+                        new String[]{
+                                "資料月份：" + toRocMonth(rows.get(0).getKey())
+                                        + " － " + toRocMonth(rows.get(rows.size() - 1).getKey()),
+                                "月  份",
+                                "金額"
+                        },
+                        new double[]{220, 135, 132},
+                        true,
+                        2
+                ));
+            } else {
+                page.getChildren().add(incomeSummaryRow(
+                        new String[]{"資料月份：", "月  份", "金額"},
+                        new double[]{220, 135, 132},
+                        true,
+                        2
+                ));
+            }
+            for (int index = from; index < to; index++) {
+                Map.Entry<YearMonth, Integer> row = rows.get(index);
+                page.getChildren().add(incomeSummaryRow(
+                        new String[]{"", toRocMonth(row.getKey()), formatAmount(row.getValue())},
+                        new double[]{255, 55, 132},
+                        false,
+                        2
+                ));
+            }
+            if (pageIndex == pageCount - 1) {
+                page.getChildren().add(incomeSummaryTotalRow(totalAmount));
+            }
+            addIncomePageFooter(page, pageIndex + 1, pageCount);
+            pages.add(page);
+        }
+        return pages;
+    }
+
     private static VBox createPage(String title) {
         VBox page = createBlankPage();
 
@@ -260,6 +550,16 @@ public final class LightReportBuilder {
         VBox.setMargin(titleLabel, new Insets(0, 0, 14, 0));
         page.getChildren().add(titleLabel);
 
+        return page;
+    }
+
+    private static VBox createIncomePage(String title) {
+        VBox page = createBlankPage();
+        Label titleLabel = incomeTextLabel(title, 24);
+        titleLabel.setMaxWidth(Double.MAX_VALUE);
+        titleLabel.setAlignment(Pos.CENTER);
+        VBox.setMargin(titleLabel, new Insets(0, 0, 14, 0));
+        page.getChildren().add(titleLabel);
         return page;
     }
 
@@ -344,7 +644,7 @@ public final class LightReportBuilder {
     }
 
     private static HBox totalRow(int totalAmount) {
-        Label totalLabel = tableCell("合　計", 624, Pos.CENTER_RIGHT, true, true);
+        Label totalLabel = tableCell("合　  計", 624, Pos.CENTER_RIGHT, true, true);
         Label amountLabel = tableCell(formatAmount(totalAmount), 90, Pos.CENTER_RIGHT, true, true);
         HBox row = new HBox(totalLabel, amountLabel);
         row.setStyle("-fx-border-color: #303030; -fx-border-width: 0 0 0 1;");
@@ -364,15 +664,265 @@ public final class LightReportBuilder {
     }
 
     private static HBox categorySubtotalRow(String categoryName, int amount) {
-        Label label = tableCell(categoryName + "　小計", 624, Pos.CENTER, true, true);
+        Label label = tableCell(categoryName + "　小  計", 624, Pos.CENTER, true, true);
         Label amountLabel = tableCell(formatAmount(amount), 90, Pos.CENTER_RIGHT, true, true);
         return new HBox(label, amountLabel);
     }
 
     private static HBox categoryGrandTotalRow(int amount) {
-        Label label = tableCell("總　計", 105, Pos.CENTER, true, true);
+        Label label = tableCell("總  計", 105, Pos.CENTER, true, true);
         Label amountLabel = tableCell(formatAmount(amount), 185, Pos.CENTER_RIGHT, true, true);
         return new HBox(label, amountLabel);
+    }
+
+    private static HBox incomeSubtotalRow(int amount) {
+        Label label = incomeTableCell("小　  計", 135, Pos.CENTER, 16);
+        Label amountLabel = incomeTableCell(formatAmount(amount), 90, Pos.CENTER_RIGHT, 16);
+        Label remainder = incomeTableCell("", 489, Pos.CENTER_LEFT);
+        HBox row = new HBox(label, amountLabel, remainder);
+        row.setStyle("-fx-border-color: #303030; -fx-border-width: 0 0 0 1;");
+        return row;
+    }
+
+    private static HBox incomeTotalRow(String labelText, int amount, double labelWidth) {
+        Label label = incomeTableCell(labelText, labelWidth, Pos.CENTER, 16);
+        Label amountLabel = incomeTableCell(formatAmount(amount), 90, Pos.CENTER_RIGHT, 16);
+        HBox row = new HBox(label, amountLabel);
+        row.setStyle("-fx-border-color: #303030; -fx-border-width: 0 0 0 1;");
+        return row;
+    }
+
+    private static List<Region> buildIncomeDailySummaryPages(
+            String title,
+            String groupHeading,
+            List<IncomeSummaryLine> summaries
+    ) {
+        List<List<IncomeDailyDisplayLine>> pageLines = paginateDailySummaries(summaries);
+        int pageCount = pageLines.size();
+        int totalAmount = summaries.stream().mapToInt(IncomeSummaryLine::amount).sum();
+        List<Region> pages = new ArrayList<>();
+        for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+            VBox page = createIncomePage(TEMPLE_NAME + "　" + title);
+            for (IncomeDailyDisplayLine line : pageLines.get(pageIndex)) {
+                if (line.header()) {
+                    page.getChildren().add(incomeSummaryRow(
+                            new String[]{toRocDate(line.date()), groupHeading, "筆數", "金額"},
+                            new double[]{170, 250, 110, 184},
+                            true
+                    ));
+                    continue;
+                }
+                IncomeSummaryLine summary = line.summary();
+                page.getChildren().add(incomeSummaryRow(
+                        new String[]{
+                                "",
+                                summary.label(),
+                                String.valueOf(summary.count()),
+                                formatAmount(summary.amount())
+                        },
+                        new double[]{260, 195, 140, 184},
+                        false
+                ));
+            }
+            if (pageIndex == pageCount - 1) {
+                page.getChildren().add(incomeSummaryTotalRow(totalAmount));
+            }
+            addIncomePageFooter(page, pageIndex + 1, pageCount);
+            pages.add(page);
+        }
+        return pages;
+    }
+
+    private static List<List<IncomeDailyDisplayLine>> paginateDailySummaries(
+            List<IncomeSummaryLine> summaries
+    ) {
+        List<List<IncomeDailyDisplayLine>> pages = new ArrayList<>();
+        List<IncomeDailyDisplayLine> currentPage = new ArrayList<>();
+        LocalDate currentDate = null;
+
+        for (IncomeSummaryLine summary : summaries) {
+            boolean needsHeader = !summary.date().equals(currentDate);
+            int requiredLines = needsHeader ? 2 : 1;
+            if (!currentPage.isEmpty()
+                    && currentPage.size() + requiredLines > INCOME_SUMMARY_ROWS_PER_PAGE) {
+                pages.add(List.copyOf(currentPage));
+                currentPage = new ArrayList<>();
+                currentDate = null;
+                needsHeader = true;
+            }
+            if (needsHeader) {
+                currentPage.add(new IncomeDailyDisplayLine(summary.date(), null, true));
+                currentDate = summary.date();
+            }
+            currentPage.add(new IncomeDailyDisplayLine(summary.date(), summary, false));
+        }
+
+        if (!currentPage.isEmpty()) {
+            pages.add(List.copyOf(currentPage));
+        }
+        if (pages.isEmpty()) {
+            pages.add(List.of());
+        }
+        return pages;
+    }
+
+    private static List<IncomeSummaryLine> summarizeDailyIncome(
+            List<Donation> donations,
+            Function<Donation, String> labelProvider
+    ) {
+        Map<LocalDate, Map<String, int[]>> grouped = new TreeMap<>();
+        for (Donation donation : sortDonations(donations)) {
+            LocalDate date = parseReportDate(donation.getDonateDate());
+            if (date == null) {
+                continue;
+            }
+            String label = firstNonBlank(labelProvider.apply(donation), "未指定");
+            int[] summary = grouped
+                    .computeIfAbsent(date, ignored -> new LinkedHashMap<>())
+                    .computeIfAbsent(label, ignored -> new int[2]);
+            summary[0]++;
+            summary[1] += incomeAmount(donation);
+        }
+
+        List<IncomeSummaryLine> result = new ArrayList<>();
+        for (Map.Entry<LocalDate, Map<String, int[]>> dateEntry : grouped.entrySet()) {
+            for (Map.Entry<String, int[]> groupEntry : dateEntry.getValue().entrySet()) {
+                result.add(new IncomeSummaryLine(
+                        dateEntry.getKey(),
+                        groupEntry.getKey(),
+                        groupEntry.getValue()[0],
+                        groupEntry.getValue()[1]
+                ));
+            }
+        }
+        return result;
+    }
+
+    private static HBox incomeRow(String[] values, double[] widths, boolean header, int amountColumn) {
+        HBox row = new HBox(0);
+        for (int index = 0; index < values.length; index++) {
+            Pos alignment = header
+                    ? Pos.CENTER
+                    : index == amountColumn ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT;
+            row.getChildren().add(incomeTableCell(
+                    values[index],
+                    widths[index],
+                    alignment,
+                    header ? 16 : 14
+            ));
+        }
+        row.setStyle("-fx-border-color: #303030; -fx-border-width: "
+                + (header ? "1 0 0 1;" : "0 0 0 1;"));
+        return row;
+    }
+
+    private static HBox incomeSummaryRow(
+            String[] values,
+            double[] widths,
+            boolean header,
+            int... rightAlignedColumns
+    ) {
+        HBox row = new HBox(0);
+        for (int index = 0; index < values.length; index++) {
+            boolean rightAligned = false;
+            for (int column : rightAlignedColumns) {
+                if (column == index) {
+                    rightAligned = true;
+                    break;
+                }
+            }
+            Pos alignment = header ? Pos.CENTER : rightAligned ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT;
+            row.getChildren().add(incomeSummaryCell(
+                    values[index],
+                    widths[index],
+                    alignment,
+                    header ? 16 : 14
+            ));
+        }
+        if (header) {
+            row.setStyle("-fx-border-color: #303030; -fx-border-width: 0 0 1.5 0;");
+        }
+        return row;
+    }
+
+    private static Label incomeSummaryCell(
+            String text,
+            double width,
+            Pos alignment,
+            double fontSize
+    ) {
+        Label label = incomeTextLabel(safe(text), fontSize);
+        label.setPrefWidth(width);
+        label.setMinWidth(width);
+        label.setMaxWidth(width);
+        label.setPrefHeight(32);
+        label.setMinHeight(32);
+        label.setAlignment(alignment);
+        label.setPadding(new Insets(2, 8, 2, 8));
+        return label;
+    }
+
+    private static HBox incomeSummaryTotalRow(int amount) {
+        Label label = incomeSummaryCell("總金額：", 110, Pos.CENTER_LEFT, 18);
+        Label amountLabel = incomeSummaryCell(formatAmount(amount), 120, Pos.CENTER_LEFT, 18);
+        HBox row = new HBox(label, amountLabel);
+        VBox.setMargin(row, new Insets(24, 0, 0, 4));
+        return row;
+    }
+
+    private static void addIncomePageFooter(VBox page, int pageNumber, int pageCount) {
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
+        Region line = new Region();
+        line.setPrefHeight(1.5);
+        line.setMinHeight(1.5);
+        line.setMaxHeight(1.5);
+        line.setMaxWidth(Double.MAX_VALUE);
+        line.setStyle("-fx-background-color: #303030;");
+
+        Label pageLabel = incomeTextLabel("Page " + pageNumber + " of " + pageCount, 11);
+        pageLabel.setMaxWidth(Double.MAX_VALUE);
+        pageLabel.setAlignment(Pos.CENTER_RIGHT);
+        VBox.setMargin(pageLabel, new Insets(6, 4, 0, 0));
+        page.getChildren().addAll(spacer, line, pageLabel);
+    }
+
+    private static Label incomeTableCell(String text, double width, Pos alignment) {
+        return incomeTableCell(text, width, alignment, 14);
+    }
+
+    private static Label incomeTableCell(String text, double width, Pos alignment, double fontSize) {
+        Label label = incomeTextLabel(safe(text), fontSize);
+        label.setPrefWidth(width);
+        label.setMinWidth(width);
+        label.setMaxWidth(width);
+        label.setPrefHeight(28);
+        label.setMinHeight(28);
+        label.setAlignment(alignment);
+        label.setPadding(new Insets(2, 5, 2, 5));
+        label.setStyle(label.getStyle()
+                + "-fx-border-color: #303030; -fx-border-width: 0 1 1 0;");
+        return label;
+    }
+
+    private static Label incomeTextLabel(String text, double size) {
+        Label label = new Label(safe(text));
+        label.setFont(Font.font(INCOME_REPORT_FONT_FAMILY, FontWeight.BOLD, size));
+        label.setStyle("-fx-font-weight: bold;");
+        label.setMaxWidth(CONTENT_WIDTH);
+        return label;
+    }
+
+    private static String resolveIncomeReportFontFamily() {
+        List<String> available = Font.getFamilies();
+        String[] preferred = {"BiauKai", "Kaiti TC", "DFKai-SB", "KaiTi", "標楷體", "STKaiti"};
+        for (String family : preferred) {
+            if (available.contains(family)) {
+                return family;
+            }
+        }
+        return "Serif";
     }
 
     private static Label pageNumber(int page, int pageCount) {
@@ -478,6 +1028,10 @@ public final class LightReportBuilder {
         return donation == null ? 0 : valueOrZero(donation.getShouldPay());
     }
 
+    private static int incomeAmount(Donation donation) {
+        return donation == null ? 0 : valueOrZero(donation.getAmount());
+    }
+
     private static String donationSummary(Donation donation) {
         return firstNonBlank(
                 donation.getSummary(),
@@ -579,6 +1133,25 @@ public final class LightReportBuilder {
         }
     }
 
+    private static String toRocDate(LocalDate date) {
+        if (date == null) {
+            return "";
+        }
+        return String.format(
+                "%03d.%02d.%02d",
+                date.getYear() - 1911,
+                date.getMonthValue(),
+                date.getDayOfMonth()
+        );
+    }
+
+    private static String toRocMonth(YearMonth month) {
+        if (month == null) {
+            return "";
+        }
+        return String.format("%03d.%02d", month.getYear() - 1911, month.getMonthValue());
+    }
+
     private static int valueOrZero(Integer value) {
         return value == null ? 0 : value;
     }
@@ -608,5 +1181,23 @@ public final class LightReportBuilder {
     }
 
     private record CategorySummary(String categoryName, int count, int amount) {
+    }
+
+    private record IncomeReportLine(
+            String categoryName,
+            Donation donation,
+            boolean subtotal,
+            int amount
+    ) {
+    }
+
+    private record IncomeSummaryLine(LocalDate date, String label, int count, int amount) {
+    }
+
+    private record IncomeDailyDisplayLine(
+            LocalDate date,
+            IncomeSummaryLine summary,
+            boolean header
+    ) {
     }
 }

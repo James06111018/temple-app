@@ -2,20 +2,88 @@ package tw.org.il.dongsheng.templeapp;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.TextField;
+import tw.org.il.dongsheng.templeapp.model.DictionaryItem;
+import tw.org.il.dongsheng.templeapp.model.Donation;
+import tw.org.il.dongsheng.templeapp.model.LightMember;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDictionaryRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteLightMemberRepository;
 import tw.org.il.dongsheng.templeapp.util.AlertDialog;
+import tw.org.il.dongsheng.templeapp.util.LightReportBuilder;
+import tw.org.il.dongsheng.templeapp.util.PrintPreview;
 
+import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class IncomeReportController {
 
     @FXML private TextField startDateField;
     @FXML private TextField endDateField;
 
+    private final SQLiteDonationRepository donationRepository =
+            new SQLiteDonationRepository(SQLiteDatabaseManager.getInstance());
+    private final SQLiteDictionaryRepository dictionaryRepository =
+            new SQLiteDictionaryRepository(SQLiteDatabaseManager.getInstance());
+    private final SQLiteLightMemberRepository memberRepository =
+            new SQLiteLightMemberRepository(SQLiteDatabaseManager.getInstance());
+
     @FXML
     private void initialize() {
         String today = currentRocDate();
         startDateField.setText(today);
         endDateField.setText(today);
+        try {
+            donationRepository.createTable();
+            dictionaryRepository.migrateFromLegacy();
+            memberRepository.createTable();
+        } catch (SQLException e) {
+            throw new IllegalStateException("初始化收入報表失敗", e);
+        }
+    }
+
+    @FXML
+    private void onOpenDetailReport() {
+        openReport(ReportKind.DETAIL);
+    }
+
+    @FXML
+    private void onOpenSubtotalReport() {
+        openReport(ReportKind.SUBTOTAL);
+    }
+
+    @FXML
+    private void onOpenAllReport() {
+        openReport(ReportKind.ALL);
+    }
+
+    @FXML
+    private void onOpenDailyReport() {
+        openReport(ReportKind.DAILY_OPERATOR);
+    }
+
+    @FXML
+    private void onOpenDailyCategoryReport() {
+        openReport(ReportKind.DAILY_CATEGORY);
+    }
+
+    @FXML
+    private void onOpenMonthlyReport() {
+        openReport(ReportKind.MONTHLY_DAILY);
+    }
+
+    @FXML
+    private void onOpenMonthlyTotalReport() {
+        openReport(ReportKind.MONTHLY_TOTAL);
     }
 
     @FXML
@@ -23,8 +91,146 @@ public class IncomeReportController {
         AlertDialog.showInfo("收入報表", "此功能尚未實作");
     }
 
+    private void openReport(ReportKind kind) {
+        LocalDate startDate = parseDate(startDateField.getText());
+        LocalDate endDate = parseDate(endDateField.getText());
+        if (startDate == null || endDate == null) {
+            AlertDialog.showWarning("收入報表", "日期請輸入民國 115.05.14 或西元 2026-05-14 格式");
+            return;
+        }
+        if (startDate.isAfter(endDate)) {
+            AlertDialog.showWarning("收入報表", "起始日期不可晚於結束日期");
+            return;
+        }
+
+        try {
+            ReportData data = loadReportData(startDate, endDate);
+            if (data.donations().isEmpty()) {
+                AlertDialog.showInfo("收入報表", "查無指定日期內的點燈或中元普渡收入資料");
+                return;
+            }
+            List<? extends javafx.scene.layout.Region> pages = switch (kind) {
+                case DETAIL -> LightReportBuilder.buildIncomeDetailPages(
+                        data.donations(), data.membersById(), data.categoryNames()
+                );
+                case SUBTOTAL -> LightReportBuilder.buildIncomeSubtotalPages(
+                        data.donations(), data.membersById(), data.categoryNames()
+                );
+                case ALL -> LightReportBuilder.buildIncomeAllPages(
+                        data.donations(), data.membersById()
+                );
+                case DAILY_OPERATOR -> LightReportBuilder.buildIncomeDailyOperatorPages(
+                        data.donations()
+                );
+                case DAILY_CATEGORY -> LightReportBuilder.buildIncomeDailyCategoryPages(
+                        data.donations(), data.categoryNames()
+                );
+                case MONTHLY_DAILY -> LightReportBuilder.buildIncomeMonthlyDailyPages(
+                        data.donations()
+                );
+                case MONTHLY_TOTAL -> LightReportBuilder.buildIncomeMonthlyTotalPages(
+                        data.donations()
+                );
+            };
+            PrintPreview.show(startDateField.getScene().getWindow(), kind.title, pages);
+        } catch (SQLException e) {
+            AlertDialog.showError("收入報表", "讀取收入資料失敗：" + e.getMessage());
+        }
+    }
+
+    private ReportData loadReportData(LocalDate startDate, LocalDate endDate) throws SQLException {
+        List<DictionaryItem> categoryItems = new ArrayList<>();
+        categoryItems.addAll(dictionaryRepository.findItemsByType(
+                SQLiteDictionaryRepository.TYPE_DONATION_LIGHT
+        ));
+        categoryItems.addAll(dictionaryRepository.findItemsByType(
+                SQLiteDictionaryRepository.TYPE_DONATION_GHOST
+        ));
+
+        Set<String> incomeCategoryIds = categoryItems.stream()
+                .filter(item -> !"-".equals(item.getDirection()))
+                .map(DictionaryItem::getId)
+                .map(String::valueOf)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Map<String, String> categoryNames = categoryItems.stream()
+                .filter(item -> incomeCategoryIds.contains(String.valueOf(item.getId())))
+                .collect(Collectors.toMap(
+                        item -> String.valueOf(item.getId()),
+                        DictionaryItem::getName,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
+
+        List<Donation> donations = donationRepository.findAll().stream()
+                .filter(donation -> incomeCategoryIds.contains(donation.getDonateType()))
+                .filter(donation -> isWithinRange(donation, startDate, endDate))
+                .sorted(Comparator
+                        .comparing(
+                                (Donation donation) -> parseDate(donation.getDonateDate()),
+                                Comparator.nullsLast(Comparator.naturalOrder())
+                        )
+                        .thenComparing(Donation::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+        Map<Integer, LightMember> membersById = memberRepository.findAllIncludingDeleted().stream()
+                .collect(Collectors.toMap(
+                        LightMember::getId,
+                        Function.identity(),
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
+        return new ReportData(donations, membersById, categoryNames);
+    }
+
+    private boolean isWithinRange(Donation donation, LocalDate startDate, LocalDate endDate) {
+        LocalDate donationDate = parseDate(donation.getDonateDate());
+        return donationDate != null
+                && !donationDate.isBefore(startDate)
+                && !donationDate.isAfter(endDate);
+    }
+
+    private LocalDate parseDate(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String[] parts = value.trim().replace('/', '.').replace('-', '.').split("\\.");
+        if (parts.length != 3) {
+            return null;
+        }
+        try {
+            int year = Integer.parseInt(parts[0]);
+            int month = Integer.parseInt(parts[1]);
+            int day = Integer.parseInt(parts[2]);
+            return LocalDate.of(year < 1912 ? year + 1911 : year, month, day);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
     private String currentRocDate() {
         LocalDate today = LocalDate.now();
         return String.format("%03d.%02d.%02d", today.getYear() - 1911, today.getMonthValue(), today.getDayOfMonth());
+    }
+
+    private enum ReportKind {
+        DETAIL("收入報表－明細表"),
+        SUBTOTAL("收入報表－明細表（分類小計）"),
+        ALL("收入報表－明細表（全）"),
+        DAILY_OPERATOR("收入日報表"),
+        DAILY_CATEGORY("收入日統計表"),
+        MONTHLY_DAILY("收入月報表"),
+        MONTHLY_TOTAL("收入月統計表");
+
+        private final String title;
+
+        ReportKind(String title) {
+            this.title = title;
+        }
+    }
+
+    private record ReportData(
+            List<Donation> donations,
+            Map<Integer, LightMember> membersById,
+            Map<String, String> categoryNames
+    ) {
     }
 }

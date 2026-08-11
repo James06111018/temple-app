@@ -39,11 +39,11 @@
                     layoutX="88" layoutY="276" onAction="#onPlaceholderAction" />
             <Button text="補登款項" styleClass="btn-green" prefWidth="94" prefHeight="28"
                     layoutX="88" layoutY="316" onAction="#onPlaceholderAction" />
-            <Button text="刪除紀錄" styleClass="btn-orange" prefWidth="94" prefHeight="28"
+            <Button text="刪除記錄" styleClass="btn-orange" prefWidth="94" prefHeight="28"
                     layoutX="88" layoutY="356" onAction="#onPlaceholderAction" />
-            <Button text="修改紀錄" styleClass="btn-pink" prefWidth="94" prefHeight="28"
+            <Button text="修改記錄" styleClass="btn-pink" prefWidth="94" prefHeight="28"
                     layoutX="88" layoutY="396" onAction="#onPlaceholderAction" />
-            <Button text="補帳紀錄" styleClass="btn-action" prefWidth="94" prefHeight="28"
+            <Button text="補據記錄" styleClass="btn-action" prefWidth="94" prefHeight="28"
                     layoutX="88" layoutY="436" onAction="#onPlaceholderAction" />
         </AnchorPane>
     </center>

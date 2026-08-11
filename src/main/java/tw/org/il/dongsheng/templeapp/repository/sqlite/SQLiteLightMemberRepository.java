@@ -355,6 +355,19 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
         return members;
     }
 
+    public List<LightMember> findAllIncludingDeleted() throws SQLException {
+        String sql = "SELECT * FROM " + TABLE_NAME + " ORDER BY sort_order ASC, id ASC";
+        List<LightMember> members = new ArrayList<>();
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                members.add(mapRow(resultSet));
+            }
+        }
+        return members;
+    }
+
     @Override
     public List<Integer> findDeletedIds() throws SQLException {
         List<Integer> existingIds = new ArrayList<>();

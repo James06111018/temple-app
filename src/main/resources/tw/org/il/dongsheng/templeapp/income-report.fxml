@@ -24,23 +24,23 @@
             <Label text="※" layoutX="46" layoutY="431" style="-fx-text-fill: red; -fx-font-size: 32;" />
             <Label text="※" layoutX="46" layoutY="479" style="-fx-text-fill: red; -fx-font-size: 32;" />
 
-            <Button text="明細表" styleClass="btn-purple" prefWidth="146" prefHeight="44" layoutX="98" layoutY="170" onAction="#onPlaceholderAction" />
-            <Button text="計" styleClass="btn-purple" prefWidth="40" prefHeight="44" layoutX="252" layoutY="170" onAction="#onPlaceholderAction" />
-            <Button text="全" styleClass="btn-purple" prefWidth="40" prefHeight="44" layoutX="300" layoutY="170" onAction="#onPlaceholderAction" />
+            <Button text="明細表" styleClass="btn-purple" prefWidth="146" prefHeight="44" layoutX="98" layoutY="170" onAction="#onOpenDetailReport" />
+            <Button text="計" styleClass="btn-purple" prefWidth="40" prefHeight="44" layoutX="252" layoutY="170" onAction="#onOpenSubtotalReport" />
+            <Button text="全" styleClass="btn-purple" prefWidth="40" prefHeight="44" layoutX="300" layoutY="170" onAction="#onOpenAllReport" />
 
-            <Button text="日報表" styleClass="btn-purple" prefWidth="146" prefHeight="44" layoutX="98" layoutY="222" onAction="#onPlaceholderAction" />
-            <Button text="計" styleClass="btn-purple" prefWidth="40" prefHeight="44" layoutX="252" layoutY="222" onAction="#onPlaceholderAction" />
+            <Button text="日報表" styleClass="btn-purple" prefWidth="146" prefHeight="44" layoutX="98" layoutY="222" onAction="#onOpenDailyReport" />
+            <Button text="計" styleClass="btn-purple" prefWidth="40" prefHeight="44" layoutX="252" layoutY="222" onAction="#onOpenDailyCategoryReport" />
 
-            <Button text="月報表" styleClass="btn-purple" prefWidth="146" prefHeight="44" layoutX="98" layoutY="274" onAction="#onPlaceholderAction" />
-            <Button text="計" styleClass="btn-purple" prefWidth="40" prefHeight="44" layoutX="252" layoutY="274" onAction="#onPlaceholderAction" />
+            <Button text="月報表" styleClass="btn-purple" prefWidth="146" prefHeight="44" layoutX="98" layoutY="274" onAction="#onOpenMonthlyReport" />
+            <Button text="計" styleClass="btn-purple" prefWidth="40" prefHeight="44" layoutX="252" layoutY="274" onAction="#onOpenMonthlyTotalReport" />
 
             <Button text="補登款項" styleClass="btn-green" prefWidth="146" prefHeight="44" layoutX="98" layoutY="326" onAction="#onPlaceholderAction" />
             <Button text="計" styleClass="btn-green" prefWidth="40" prefHeight="44" layoutX="252" layoutY="326" onAction="#onPlaceholderAction" />
             <Button text="全" styleClass="btn-green" prefWidth="40" prefHeight="44" layoutX="300" layoutY="326" onAction="#onPlaceholderAction" />
 
-            <Button text="刪除紀錄" styleClass="btn-orange" prefWidth="146" prefHeight="44" layoutX="98" layoutY="378" onAction="#onPlaceholderAction" />
-            <Button text="修改紀錄" styleClass="btn-pink" prefWidth="146" prefHeight="44" layoutX="98" layoutY="430" onAction="#onPlaceholderAction" />
-            <Button text="補帳紀錄" styleClass="btn-action" prefWidth="146" prefHeight="44" layoutX="98" layoutY="482" onAction="#onPlaceholderAction" />
+            <Button text="刪除記錄" styleClass="btn-orange" prefWidth="146" prefHeight="44" layoutX="98" layoutY="378" onAction="#onPlaceholderAction" />
+            <Button text="修改記錄" styleClass="btn-pink" prefWidth="146" prefHeight="44" layoutX="98" layoutY="430" onAction="#onPlaceholderAction" />
+            <Button text="補據記錄" styleClass="btn-action" prefWidth="146" prefHeight="44" layoutX="98" layoutY="482" onAction="#onPlaceholderAction" />
         </AnchorPane>
     </center>
 </BorderPane>
