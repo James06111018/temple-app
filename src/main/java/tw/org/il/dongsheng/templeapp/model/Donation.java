@@ -198,7 +198,7 @@ public class Donation {
                 ", lightNo='" + lightNo + '\'' +
                 ", shouldPay=" + shouldPay +
                 ", donateType='" + donateType + '\'' +
+                ", creator='" + creator + '\'' +
                 '}';
     }
 }
-

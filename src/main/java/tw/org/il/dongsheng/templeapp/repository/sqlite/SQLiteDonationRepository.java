@@ -2,6 +2,7 @@ package tw.org.il.dongsheng.templeapp.repository.sqlite;
 
 import tw.org.il.dongsheng.templeapp.AuthSession;
 import tw.org.il.dongsheng.templeapp.model.Donation;
+import tw.org.il.dongsheng.templeapp.model.DonationAuditRecord;
 import tw.org.il.dongsheng.templeapp.repository.DonationRepository;
 
 import java.sql.Connection;
@@ -9,13 +10,18 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class SQLiteDonationRepository implements DonationRepository {
     private static final String TABLE_NAME = "donations";
+    public static final String AUDIT_ACTION_UPDATE = "UPDATE";
+    public static final String AUDIT_ACTION_DELETE = "DELETE";
 
     private final SQLiteDatabaseManager databaseManager;
 
@@ -292,6 +298,84 @@ public class SQLiteDonationRepository implements DonationRepository {
         return donations;
     }
 
+    public List<DonationAuditRecord> findAuditRecordsByDateRange(
+            String action,
+            LocalDate startDate,
+            LocalDate endDate
+    ) throws SQLException {
+        createTable();
+        String sql = """
+                SELECT a.id AS audit_id,
+                       a.donation_id,
+                       a.member_id AS audit_member_id,
+                       a.action,
+                       a.changed_by,
+                       a.changed_at,
+                       a.snapshot,
+                       m.name AS member_name,
+                       d.id AS current_id,
+                       d.member_id AS current_member_id,
+                       d.receipt_no AS current_receipt_no,
+                       d.donate_date AS current_donate_date,
+                       d.extra_no AS current_extra_no,
+                       d.amount AS current_amount,
+                       d.summary AS current_summary,
+                       d.donate_note AS current_donate_note,
+                       d.other_note AS current_other_note,
+                       d.donor_no AS current_donor_no,
+                       d.light_no AS current_light_no,
+                       d.should_pay AS current_should_pay,
+                       d.donate_type AS current_donate_type,
+                       d.creator AS current_creator
+                FROM donation_audits a
+                LEFT JOIN donations d ON d.id = a.donation_id
+                LEFT JOIN light_members m ON m.id = a.member_id
+                WHERE a.action = ?
+                  AND date(a.changed_at) BETWEEN ? AND ?
+                ORDER BY a.changed_at, a.id
+                """;
+        List<DonationAuditRecord> records = new ArrayList<>();
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, action);
+            statement.setString(2, startDate.toString());
+            statement.setString(3, endDate.toString());
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    String snapshot = resultSet.getString("snapshot");
+                    Donation current = mapCurrentDonation(resultSet);
+                    Donation before = parseBeforeDonation(snapshot);
+                    Donation after = parseAfterDonation(snapshot);
+                    if (AUDIT_ACTION_DELETE.equals(action) && before == null) {
+                        before = current;
+                    }
+                    if (AUDIT_ACTION_UPDATE.equals(action) && after == null) {
+                        after = current;
+                    }
+                    if (before != null && before.getCreator() == null && current != null) {
+                        before.setCreator(current.getCreator());
+                    }
+                    if (after != null && after.getCreator() == null && current != null) {
+                        after.setCreator(current.getCreator());
+                    }
+                    records.add(new DonationAuditRecord(
+                            resultSet.getInt("audit_id"),
+                            getNullableInt(resultSet, "donation_id"),
+                            getNullableInt(resultSet, "audit_member_id"),
+                            resultSet.getString("action"),
+                            resultSet.getString("changed_by"),
+                            resultSet.getString("changed_at"),
+                            resultSet.getString("member_name"),
+                            before,
+                            after,
+                            extractReason(snapshot)
+                    ));
+                }
+            }
+        }
+        return records;
+    }
+
     private void setCommonFields(PreparedStatement statement, Donation donation) throws SQLException {
         statement.setObject(1, donation.getMemberId());
         statement.setString(2, donation.getReceiptNo());
@@ -359,5 +443,101 @@ public class SQLiteDonationRepository implements DonationRepository {
         donation.setDonateType(resultSet.getString("donate_type"));
         donation.setCreator(resultSet.getString("creator"));
         return donation;
+    }
+
+    private Donation mapCurrentDonation(ResultSet resultSet) throws SQLException {
+        Integer id = getNullableInt(resultSet, "current_id");
+        if (id == null) {
+            return null;
+        }
+        Donation donation = new Donation();
+        donation.setId(id);
+        donation.setMemberId(getNullableInt(resultSet, "current_member_id"));
+        donation.setReceiptNo(resultSet.getString("current_receipt_no"));
+        donation.setDonateDate(resultSet.getString("current_donate_date"));
+        donation.setExtraNo(resultSet.getString("current_extra_no"));
+        donation.setAmount(getNullableInt(resultSet, "current_amount"));
+        donation.setSummary(resultSet.getString("current_summary"));
+        donation.setDonateNote(resultSet.getString("current_donate_note"));
+        donation.setOtherNote(resultSet.getString("current_other_note"));
+        donation.setDonorNo(resultSet.getString("current_donor_no"));
+        donation.setLightNo(resultSet.getString("current_light_no"));
+        donation.setShouldPay(getNullableInt(resultSet, "current_should_pay"));
+        donation.setDonateType(resultSet.getString("current_donate_type"));
+        donation.setCreator(resultSet.getString("current_creator"));
+        return donation;
+    }
+
+    private Integer getNullableInt(ResultSet resultSet, String column) throws SQLException {
+        Object value = resultSet.getObject(column);
+        return value == null ? null : ((Number) value).intValue();
+    }
+
+    private Donation parseBeforeDonation(String snapshot) {
+        if (snapshot == null || snapshot.isBlank()) {
+            return null;
+        }
+        int afterIndex = snapshot.indexOf("after=Donation{");
+        String beforePart = afterIndex >= 0 ? snapshot.substring(0, afterIndex) : snapshot;
+        return parseDonationSnapshot(beforePart);
+    }
+
+    private Donation parseAfterDonation(String snapshot) {
+        if (snapshot == null || snapshot.isBlank()) {
+            return null;
+        }
+        int afterIndex = snapshot.indexOf("after=Donation{");
+        return afterIndex < 0 ? null : parseDonationSnapshot(snapshot.substring(afterIndex));
+    }
+
+    private Donation parseDonationSnapshot(String snapshot) {
+        int start = snapshot.indexOf("Donation{");
+        int end = snapshot.indexOf('}', start);
+        if (start < 0 || end < 0) {
+            return null;
+        }
+        String value = snapshot.substring(start, end + 1);
+        Donation donation = new Donation();
+        donation.setId(extractInteger(value, "id"));
+        donation.setMemberId(extractInteger(value, "memberId"));
+        donation.setReceiptNo(extractQuoted(value, "receiptNo"));
+        donation.setDonateDate(extractQuoted(value, "donateDate"));
+        donation.setExtraNo(extractQuoted(value, "extraNo"));
+        donation.setAmount(extractInteger(value, "amount"));
+        donation.setSummary(extractQuoted(value, "summary"));
+        donation.setDonateNote(extractQuoted(value, "donateNote"));
+        donation.setOtherNote(extractQuoted(value, "otherNote"));
+        donation.setDonorNo(extractQuoted(value, "donorNo"));
+        donation.setLightNo(extractQuoted(value, "lightNo"));
+        donation.setShouldPay(extractInteger(value, "shouldPay"));
+        donation.setDonateType(extractQuoted(value, "donateType"));
+        donation.setCreator(extractQuoted(value, "creator"));
+        return donation;
+    }
+
+    private Integer extractInteger(String snapshot, String field) {
+        Matcher matcher = Pattern.compile("(?:^|[,{ ])" + Pattern.quote(field) + "=(-?\\d+|null)")
+                .matcher(snapshot);
+        if (!matcher.find() || "null".equals(matcher.group(1))) {
+            return null;
+        }
+        return Integer.valueOf(matcher.group(1));
+    }
+
+    private String extractQuoted(String snapshot, String field) {
+        Matcher matcher = Pattern.compile("(?:^|[,{ ])" + Pattern.quote(field) + "='(.*?)'(?=, [A-Za-z]|})")
+                .matcher(snapshot);
+        if (!matcher.find()) {
+            return null;
+        }
+        return "null".equals(matcher.group(1)) ? null : matcher.group(1);
+    }
+
+    private String extractReason(String snapshot) {
+        if (snapshot == null) {
+            return "";
+        }
+        Matcher matcher = Pattern.compile("(?:^|\\R)reason=(.*)$", Pattern.MULTILINE).matcher(snapshot);
+        return matcher.find() ? matcher.group(1).trim() : "";
     }
 }

@@ -4,6 +4,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.TextField;
 import tw.org.il.dongsheng.templeapp.model.DictionaryItem;
 import tw.org.il.dongsheng.templeapp.model.Donation;
+import tw.org.il.dongsheng.templeapp.model.DonationAuditRecord;
 import tw.org.il.dongsheng.templeapp.model.DonationSupplement;
 import tw.org.il.dongsheng.templeapp.model.LightMember;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
@@ -107,8 +108,18 @@ public class IncomeReportController {
     }
 
     @FXML
-    private void onPlaceholderAction() {
-        AlertDialog.showInfo("收入報表", "此功能尚未實作");
+    private void onOpenDeleteAuditReport() {
+        openAuditReport(AuditReportKind.DELETE);
+    }
+
+    @FXML
+    private void onOpenUpdateAuditReport() {
+        openAuditReport(AuditReportKind.UPDATE);
+    }
+
+    @FXML
+    private void onOpenReceiptSupplementAuditReport() {
+        openAuditReport(AuditReportKind.RECEIPT_SUPPLEMENT);
     }
 
     private void openReport(ReportKind kind) {
@@ -276,6 +287,46 @@ public class IncomeReportController {
         ));
     }
 
+    private void openAuditReport(AuditReportKind kind) {
+        LocalDate startDate = parseDate(startDateField.getText());
+        LocalDate endDate = parseDate(endDateField.getText());
+        if (startDate == null || endDate == null) {
+            AlertDialog.showWarning(kind.title, "日期請輸入民國 115.05.14 或西元 2026-05-14 格式");
+            return;
+        }
+        if (startDate.isAfter(endDate)) {
+            AlertDialog.showWarning(kind.title, "起始日期不可晚於結束日期");
+            return;
+        }
+
+        try {
+            List<DonationAuditRecord> records = switch (kind) {
+                case DELETE -> donationRepository.findAuditRecordsByDateRange(
+                        SQLiteDonationRepository.AUDIT_ACTION_DELETE, startDate, endDate
+                );
+                case UPDATE -> donationRepository.findAuditRecordsByDateRange(
+                        SQLiteDonationRepository.AUDIT_ACTION_UPDATE, startDate, endDate
+                );
+                case RECEIPT_SUPPLEMENT -> List.of();
+            };
+            Map<String, String> categoryNames = loadAllDonationCategoryNames();
+            List<? extends javafx.scene.layout.Region> pages = switch (kind) {
+                case DELETE -> LightReportBuilder.buildDonationDeleteAuditPages(
+                        records, categoryNames
+                );
+                case UPDATE -> LightReportBuilder.buildDonationUpdateAuditPages(
+                        records, categoryNames
+                );
+                case RECEIPT_SUPPLEMENT -> LightReportBuilder.buildDonationReceiptSupplementAuditPages(
+                        records, categoryNames
+                );
+            };
+            PrintPreview.show(startDateField.getScene().getWindow(), kind.title, pages);
+        } catch (SQLException e) {
+            AlertDialog.showError(kind.title, "讀取捐款記錄失敗：" + e.getMessage());
+        }
+    }
+
     private boolean isWithinRange(Donation donation, LocalDate startDate, LocalDate endDate) {
         LocalDate donationDate = parseDate(donation.getDonateDate());
         return donationDate != null
@@ -330,6 +381,18 @@ public class IncomeReportController {
         private final String title;
 
         SupplementReportKind(String title) {
+            this.title = title;
+        }
+    }
+
+    private enum AuditReportKind {
+        DELETE("刪除款項明細表"),
+        UPDATE("修改款項明細表"),
+        RECEIPT_SUPPLEMENT("補據款項明細表");
+
+        private final String title;
+
+        AuditReportKind(String title) {
             this.title = title;
         }
     }

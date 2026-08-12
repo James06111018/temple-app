@@ -10,6 +10,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import tw.org.il.dongsheng.templeapp.model.Donation;
+import tw.org.il.dongsheng.templeapp.model.DonationAuditRecord;
 import tw.org.il.dongsheng.templeapp.model.DonationSupplement;
 import tw.org.il.dongsheng.templeapp.model.LightMember;
 
@@ -38,6 +39,7 @@ public final class LightReportBuilder {
     private static final int INCOME_ROWS_PER_PAGE = 23;
     private static final int INCOME_SUMMARY_ROWS_PER_PAGE = 28;
     private static final int SUPPLEMENT_ROWS_PER_PAGE = 22;
+    private static final int AUDIT_ROWS_PER_PAGE = 25;
     private static final String TEMPLE_NAME = "五結東聖宮";
     private static final String INCOME_REPORT_FONT_FAMILY = resolveIncomeReportFontFamily();
     private static final DateTimeFormatter DOT_DATE = DateTimeFormatter.ofPattern("yyyy.M.d");
@@ -546,6 +548,106 @@ public final class LightReportBuilder {
         return pages;
     }
 
+    public static List<Region> buildDonationDeleteAuditPages(
+            List<DonationAuditRecord> records,
+            Map<String, String> categoryNames
+    ) {
+        List<String[]> rows = new ArrayList<>();
+        if (records != null) {
+            for (DonationAuditRecord record : records) {
+                Donation donation = firstDonation(record.beforeDonation(), record.afterDonation());
+                rows.add(new String[]{
+                        donation == null ? "" : formatReceiptNo(donation.getReceiptNo()),
+                        donation == null ? "" : toRocDate(donation.getDonateDate()),
+                        safe(record.memberName()),
+                        auditCategory(categoryNames, donation),
+                        donation == null ? "" : formatAmount(incomeAmount(donation)),
+                        safe(record.changedBy()),
+                        toRocDateTime(record.changedAt()),
+                        safe(record.reason())
+                });
+            }
+        }
+        return buildAuditPages(
+                "刪除款項明細表",
+                new String[]{"收據編號", "捐款日期", "姓    名", "款項類別", "金額", "刪除人", "刪除日期時間", "刪除原因"},
+                new double[]{70, 82, 90, 105, 62, 70, 135, 100},
+                rows,
+                4
+        );
+    }
+
+    public static List<Region> buildDonationUpdateAuditPages(
+            List<DonationAuditRecord> records,
+            Map<String, String> categoryNames
+    ) {
+        List<String[]> rows = new ArrayList<>();
+        if (records != null) {
+            for (DonationAuditRecord record : records) {
+                Donation before = record.beforeDonation();
+                Donation after = record.afterDonation();
+                Donation identity = firstDonation(after, before);
+                rows.add(new String[]{
+                        identity == null ? "" : formatReceiptNo(identity.getReceiptNo()),
+                        safe(record.memberName()),
+                        auditCategory(categoryNames, firstDonation(before, after)),
+                        before == null ? "" : toRocDate(before.getDonateDate()),
+                        before == null ? "" : formatAmount(incomeAmount(before)),
+                        before == null ? "" : safe(before.getCreator()),
+                        after == null ? "" : toRocDate(after.getDonateDate()),
+                        after == null ? "" : formatAmount(incomeAmount(after)),
+                        after == null ? "" : safe(after.getCreator()),
+                        toRocDateTime(record.changedAt())
+                });
+            }
+        }
+        return buildAuditPages(
+                "修改款項明細表",
+                new String[]{
+                        "收據編號", "姓名", "款項類別", "原捐款日期", "原金額",
+                        "原經辦人", "新捐款日期", "新金額", "修改人", "修改日期時間"
+                },
+                new double[]{62, 72, 86, 76, 58, 70, 76, 58, 70, 86},
+                rows,
+                4, 7
+        );
+    }
+
+    public static List<Region> buildDonationReceiptSupplementAuditPages(
+            List<DonationAuditRecord> records,
+            Map<String, String> categoryNames
+    ) {
+        List<String[]> rows = new ArrayList<>();
+        if (records != null) {
+            for (DonationAuditRecord record : records) {
+                Donation before = record.beforeDonation();
+                Donation after = record.afterDonation();
+                Donation donation = firstDonation(after, before);
+                rows.add(new String[]{
+                        donation == null ? "" : formatReceiptNo(donation.getReceiptNo()),
+                        safe(record.memberName()),
+                        auditCategory(categoryNames, donation),
+                        before == null ? "" : toRocDate(before.getDonateDate()),
+                        donation == null ? "" : formatAmount(incomeAmount(donation)),
+                        before == null ? "" : safe(before.getCreator()),
+                        safe(record.changedBy()),
+                        toRocDateTime(record.changedAt()),
+                        safe(record.reason())
+                });
+            }
+        }
+        return buildAuditPages(
+                "補據款項明細表",
+                new String[]{
+                        "收據編號", "姓名", "款項類別", "捐款日期", "金額",
+                        "經辦人", "補據人", "補據日期時間", "補據原因"
+                },
+                new double[]{65, 80, 95, 82, 58, 68, 68, 120, 78},
+                rows,
+                4
+        );
+    }
+
     public static List<Region> buildIncomeDailyOperatorPages(List<Donation> donations) {
         List<IncomeSummaryLine> summaries = summarizeDailyIncome(
                 donations,
@@ -929,6 +1031,76 @@ public final class LightReportBuilder {
             }
         }
         return result;
+    }
+
+    private static List<Region> buildAuditPages(
+            String title,
+            String[] headers,
+            double[] widths,
+            List<String[]> rows,
+            int... rightAlignedColumns
+    ) {
+        List<String[]> safeRows = rows == null ? List.of() : rows;
+        int pageCount = Math.max(1, pageCount(safeRows.size(), AUDIT_ROWS_PER_PAGE));
+        List<Region> pages = new ArrayList<>();
+        for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+            int from = pageIndex * AUDIT_ROWS_PER_PAGE;
+            int to = Math.min(safeRows.size(), from + AUDIT_ROWS_PER_PAGE);
+            VBox page = createIncomePage(title);
+            page.getChildren().add(auditRow(headers, widths, true, rightAlignedColumns));
+            for (int index = from; index < to; index++) {
+                page.getChildren().add(auditRow(
+                        safeRows.get(index), widths, false, rightAlignedColumns
+                ));
+            }
+            addIncomePageFooter(page, pageIndex + 1, pageCount);
+            pages.add(page);
+        }
+        return pages;
+    }
+
+    private static HBox auditRow(
+            String[] values,
+            double[] widths,
+            boolean header,
+            int... rightAlignedColumns
+    ) {
+        HBox row = new HBox(0);
+        double fontSize = header ? (values.length >= 9 ? 10 : 11) : 11;
+        for (int index = 0; index < values.length; index++) {
+            boolean rightAligned = false;
+            for (int column : rightAlignedColumns) {
+                if (column == index) {
+                    rightAligned = true;
+                    break;
+                }
+            }
+            Label cell = incomeTextLabel(safe(values[index]), fontSize);
+            cell.setPrefWidth(widths[index]);
+            cell.setMinWidth(widths[index]);
+            cell.setMaxWidth(widths[index]);
+            cell.setPrefHeight(30);
+            cell.setMinHeight(30);
+            cell.setAlignment(header ? Pos.CENTER : rightAligned ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+            cell.setPadding(new Insets(2, 4, 2, 4));
+            row.getChildren().add(cell);
+        }
+        if (header) {
+            row.setStyle("-fx-border-color: #303030; -fx-border-width: 0 0 1.5 0;");
+        }
+        return row;
+    }
+
+    private static Donation firstDonation(Donation preferred, Donation fallback) {
+        return preferred == null ? fallback : preferred;
+    }
+
+    private static String auditCategory(Map<String, String> categoryNames, Donation donation) {
+        if (donation == null) {
+            return "";
+        }
+        String category = categoryLabel(categoryNames, donation.getDonateType());
+        return category.isBlank() ? firstNonBlank(donation.getSummary(), "未分類") : category;
     }
 
     private static HBox incomeRow(String[] values, double[] widths, boolean header, int amountColumn) {
@@ -1360,6 +1532,19 @@ public final class LightReportBuilder {
                 date.getMonthValue(),
                 date.getDayOfMonth()
         );
+    }
+
+    private static String toRocDateTime(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() < 10) {
+            return value;
+        }
+        String date = toRocDate(trimmed.substring(0, 10));
+        String time = trimmed.length() > 10 ? trimmed.substring(10).trim() : "";
+        return time.isBlank() ? date : date + " " + time;
     }
 
     private static String toRocMonth(YearMonth month) {
