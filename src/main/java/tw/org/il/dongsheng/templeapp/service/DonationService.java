@@ -34,7 +34,11 @@ public class DonationService {
         repo.update(donation);
     }
 
-    public boolean deleteById(int id) throws SQLException {
-        return repo.deleteById(id);
+    public boolean deleteById(int id, String reason) throws SQLException {
+        return repo.deleteById(id, reason);
+    }
+
+    public boolean supplementReceipt(int id, String reason, String supplementReceiptNo) throws SQLException {
+        return repo.supplementReceipt(id, reason, supplementReceiptNo);
     }
 }

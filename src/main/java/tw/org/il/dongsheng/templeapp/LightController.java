@@ -757,15 +757,26 @@ public class LightController {
             return;
         }
 
+        DictionaryItem selectedReason = selectDonationReason(
+                "選擇刪除原因",
+                SQLiteDictionaryRepository.TYPE_DELETE_REASON
+        );
+        if (selectedReason == null) {
+            return;
+        }
+
         String receiptText = Util.isBlank(selectedDonation.getReceiptNo())
                 ? "這筆捐款資料"
                 : "收據編號 " + selectedDonation.getReceiptNo();
-        if (!AlertDialog.showConfirm("刪除捐款", "確定要刪除" + receiptText + "？")) {
+        if (!AlertDialog.showConfirm(
+                "刪除捐款",
+                "確定要刪除" + receiptText + "？\n刪除原因：" + selectedReason.getName()
+        )) {
             return;
         }
 
         try {
-            if (!donationService.deleteById(selectedDonation.getId())) {
+            if (!donationService.deleteById(selectedDonation.getId(), selectedReason.getName())) {
                 AlertDialog.showWarning("信眾點燈", "找不到可刪除的捐款資料");
                 return;
             }
@@ -775,6 +786,145 @@ public class LightController {
             AlertDialog.showInfo("信眾點燈", "刪除捐款資料成功");
         } catch (SQLException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    @FXML
+    public void onDonationSupplement() {
+        if (donationMode != DonationMode.BROWSE) {
+            warnIfDonationEditing();
+            return;
+        }
+
+        Donation selectedDonation = donationTable.getSelectionModel().getSelectedItem();
+        if (selectedDonation == null || selectedDonation.getId() == null) {
+            AlertDialog.showWarning("信眾點燈", "請先選擇要補據的捐款資料");
+            return;
+        }
+
+        DonationSupplementInput supplementInput = showDonationSupplementDialog(selectedDonation);
+        if (supplementInput == null) {
+            return;
+        }
+
+        try {
+            if (!donationService.supplementReceipt(
+                    selectedDonation.getId(),
+                    supplementInput.reason().getName(),
+                    supplementInput.receiptNo()
+            )) {
+                AlertDialog.showWarning("信眾點燈", "找不到可補據的捐款資料");
+                return;
+            }
+            AlertDialog.showInfo("信眾點燈", "補據記錄建立成功");
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private DonationSupplementInput showDonationSupplementDialog(Donation donation) {
+        List<DictionaryItem> reasons;
+        try {
+            reasons = dictionaryRepository.findEnabledItemsByType(
+                    SQLiteDictionaryRepository.TYPE_SUPPLEMENT_REASON
+            );
+        } catch (SQLException e) {
+            throw new RuntimeException("讀取補據原因詞彙失敗", e);
+        }
+        if (reasons.isEmpty()) {
+            AlertDialog.showWarning("補據捐款", "詞彙設定中目前沒有可選擇的補據原因");
+            return null;
+        }
+
+        Dialog<DonationSupplementInput> dialog = new Dialog<>();
+        dialog.setTitle("補據捐款");
+        dialog.setHeaderText(null);
+        if (donationTable.getScene() != null) {
+            dialog.initOwner(donationTable.getScene().getWindow());
+            dialog.initModality(Modality.WINDOW_MODAL);
+        }
+
+        ButtonType confirmButton = new ButtonType("確定", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelButton = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+        dialog.getDialogPane().getButtonTypes().addAll(confirmButton, cancelButton);
+
+        TextField originalReceiptField = new TextField(
+                Util.isBlank(donation.getReceiptNo()) ? "（無）" : donation.getReceiptNo()
+        );
+        originalReceiptField.setEditable(false);
+
+        ComboBox<DictionaryItem> reasonBox = new ComboBox<>(FXCollections.observableArrayList(reasons));
+        reasonBox.setPromptText("請選擇補據原因");
+        reasonBox.setMaxWidth(Double.MAX_VALUE);
+        reasonBox.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(DictionaryItem item) {
+                if (item == null) {
+                    return "";
+                }
+                String code = Util.isBlank(item.getCode()) ? "" : item.getCode() + " - ";
+                return code + item.getName();
+            }
+
+            @Override
+            public DictionaryItem fromString(String value) {
+                return null;
+            }
+        });
+
+        TextField supplementReceiptField = new TextField();
+        supplementReceiptField.setPromptText("請輸入補據收據編號");
+
+        GridPane content = new GridPane();
+        content.setHgap(12);
+        content.setVgap(12);
+        content.setPadding(new Insets(16));
+        content.addRow(0, new Label("原收據編號"), originalReceiptField);
+        content.addRow(1, new Label("補據原因"), reasonBox);
+        content.addRow(2, new Label("補據收據編號"), supplementReceiptField);
+        content.setPrefWidth(520);
+        dialog.getDialogPane().setContent(content);
+
+        Node confirmNode = dialog.getDialogPane().lookupButton(confirmButton);
+        confirmNode.getStyleClass().add("btn-purple");
+        Runnable updateConfirmState = () -> confirmNode.setDisable(
+                reasonBox.getValue() == null || supplementReceiptField.getText().trim().isEmpty()
+        );
+        reasonBox.valueProperty().addListener((observable, oldValue, newValue) -> updateConfirmState.run());
+        supplementReceiptField.textProperty().addListener(
+                (observable, oldValue, newValue) -> updateConfirmState.run()
+        );
+        updateConfirmState.run();
+
+        var styleResource = getClass().getResource("style.css");
+        if (styleResource != null) {
+            dialog.getDialogPane().getStylesheets().add(styleResource.toExternalForm());
+        }
+        dialog.setResultConverter(button -> button == confirmButton
+                ? new DonationSupplementInput(reasonBox.getValue(), supplementReceiptField.getText().trim())
+                : null
+        );
+        Platform.runLater(reasonBox::requestFocus);
+        return dialog.showAndWait().orElse(null);
+    }
+
+    private DictionaryItem selectDonationReason(String title, String dictionaryType) {
+        try {
+            List<DictionaryItem> reasons = dictionaryRepository.findEnabledItemsByType(dictionaryType);
+            if (reasons.isEmpty()) {
+                AlertDialog.showWarning(title, "詞彙設定中目前沒有可選擇的原因");
+                return null;
+            }
+            return showQuickSelection(
+                    title,
+                    reasons,
+                    item -> {
+                        String code = Util.isBlank(item.getCode()) ? "" : item.getCode() + " - ";
+                        return code + item.getName();
+                    }
+            );
+        } catch (SQLException e) {
+            throw new RuntimeException("讀取原因詞彙失敗", e);
         }
     }
 
@@ -1765,6 +1915,9 @@ public class LightController {
                 return null;
             }
         }
+    }
+
+    private record DonationSupplementInput(DictionaryItem reason, String receiptNo) {
     }
 
     private enum DonationMode {

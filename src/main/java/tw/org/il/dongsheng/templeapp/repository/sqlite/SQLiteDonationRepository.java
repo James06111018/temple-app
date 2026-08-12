@@ -22,6 +22,7 @@ public class SQLiteDonationRepository implements DonationRepository {
     private static final String TABLE_NAME = "donations";
     public static final String AUDIT_ACTION_UPDATE = "UPDATE";
     public static final String AUDIT_ACTION_DELETE = "DELETE";
+    public static final String AUDIT_ACTION_RECEIPT_SUPPLEMENT = "RECEIPT_SUPPLEMENT";
 
     private final SQLiteDatabaseManager databaseManager;
 
@@ -69,6 +70,21 @@ public class SQLiteDonationRepository implements DonationRepository {
                         snapshot TEXT
                     )
                     """);
+            addAuditColumnIfMissing(connection, "member_name_at_change", "TEXT");
+            addAuditColumnIfMissing(connection, "before_recorded", "INTEGER NOT NULL DEFAULT 0");
+            addAuditColumnIfMissing(connection, "before_receipt_no", "TEXT");
+            addAuditColumnIfMissing(connection, "before_donate_date", "TEXT");
+            addAuditColumnIfMissing(connection, "before_amount", "INTEGER");
+            addAuditColumnIfMissing(connection, "before_donate_type", "TEXT");
+            addAuditColumnIfMissing(connection, "before_creator", "TEXT");
+            addAuditColumnIfMissing(connection, "after_recorded", "INTEGER NOT NULL DEFAULT 0");
+            addAuditColumnIfMissing(connection, "after_receipt_no", "TEXT");
+            addAuditColumnIfMissing(connection, "after_donate_date", "TEXT");
+            addAuditColumnIfMissing(connection, "after_amount", "INTEGER");
+            addAuditColumnIfMissing(connection, "after_donate_type", "TEXT");
+            addAuditColumnIfMissing(connection, "after_creator", "TEXT");
+            addAuditColumnIfMissing(connection, "reason", "TEXT");
+            addAuditColumnIfMissing(connection, "supplement_receipt_no", "TEXT");
         }
     }
 
@@ -107,42 +123,105 @@ public class SQLiteDonationRepository implements DonationRepository {
                 "light_no = ?, should_pay = ?, donate_type = ?, creator = ? " +
                 "WHERE id = ? AND COALESCE(is_deleted, 0) = 0";
 
-        Optional<Donation> before = findById(donation.getId());
-        try (Connection connection = databaseManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            connection.createStatement().execute("PRAGMA foreign_keys = ON");
-            setCommonFields(statement, donation);
-            statement.setObject(14, donation.getId());
-            boolean updated = statement.executeUpdate() > 0;
-            if (updated) {
-                saveAudit(donation.getId(), donation.getMemberId(), "UPDATE",
-                        AuthSession.getCurrentOperatorName(),
-                        "before=" + before.map(Donation::toString).orElse("") + "\nafter=" + donation);
+        try (Connection connection = databaseManager.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                connection.createStatement().execute("PRAGMA foreign_keys = ON");
+                Optional<Donation> before = findById(connection, donation.getId());
+                if (before.isEmpty()) {
+                    connection.rollback();
+                    return false;
+                }
+
+                boolean updated;
+                try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                    setCommonFields(statement, donation);
+                    statement.setObject(14, donation.getId());
+                    updated = statement.executeUpdate() > 0;
+                }
+                if (updated) {
+                    saveUpdateAudit(
+                            connection,
+                            before.get(),
+                            donation,
+                            AuthSession.getCurrentOperatorName(),
+                            findMemberName(connection, donation.getMemberId())
+                    );
+                }
+                connection.commit();
+                return updated;
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
             }
-            return updated;
         }
     }
 
     @Override
-    public boolean deleteById(int id) throws SQLException {
-        Optional<Donation> before = findById(id);
+    public boolean deleteById(int id, String reason) throws SQLException {
+        requireReason(reason);
+        createTable();
         String sql = "UPDATE " + TABLE_NAME +
                 " SET is_deleted = 1 WHERE id = ? AND COALESCE(is_deleted, 0) = 0";
 
-        try (Connection connection = databaseManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, id);
-            boolean deleted = statement.executeUpdate() > 0;
-            if (deleted) {
-                saveAudit(
-                        id,
-                        before.map(Donation::getMemberId).orElse(null),
-                        "DELETE",
-                        AuthSession.getCurrentOperatorName(),
-                        before.map(Donation::toString).orElse("")
-                );
+        try (Connection connection = databaseManager.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                Optional<Donation> before = findById(connection, id);
+                if (before.isEmpty()) {
+                    connection.rollback();
+                    return false;
+                }
+
+                boolean deleted;
+                try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                    statement.setInt(1, id);
+                    deleted = statement.executeUpdate() > 0;
+                }
+                if (deleted) {
+                    saveActionAudit(
+                            connection,
+                            AUDIT_ACTION_DELETE,
+                            before.get(),
+                            reason,
+                            null,
+                            AuthSession.getCurrentOperatorName(),
+                            findMemberName(connection, before.get().getMemberId())
+                    );
+                }
+                connection.commit();
+                return deleted;
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
             }
-            return deleted;
+        }
+    }
+
+    @Override
+    public boolean supplementReceipt(int id, String reason, String supplementReceiptNo) throws SQLException {
+        requireReason(reason);
+        requireSupplementReceiptNo(supplementReceiptNo);
+        createTable();
+        try (Connection connection = databaseManager.getConnection()) {
+            Optional<Donation> donation = findById(connection, id);
+            if (donation.isEmpty()) {
+                return false;
+            }
+            saveActionAudit(
+                    connection,
+                    AUDIT_ACTION_RECEIPT_SUPPLEMENT,
+                    donation.get(),
+                    reason,
+                    supplementReceiptNo.trim(),
+                    AuthSession.getCurrentOperatorName(),
+                    findMemberName(connection, donation.get().getMemberId())
+            );
+            return true;
         }
     }
 
@@ -312,7 +391,21 @@ public class SQLiteDonationRepository implements DonationRepository {
                        a.changed_by,
                        a.changed_at,
                        a.snapshot,
-                       m.name AS member_name,
+                       a.reason,
+                       a.supplement_receipt_no,
+                       COALESCE(a.member_name_at_change, m.name) AS member_name,
+                       a.before_recorded,
+                       a.before_receipt_no,
+                       a.before_donate_date,
+                       a.before_amount,
+                       a.before_donate_type,
+                       a.before_creator,
+                       a.after_recorded,
+                       a.after_receipt_no,
+                       a.after_donate_date,
+                       a.after_amount,
+                       a.after_donate_type,
+                       a.after_creator,
                        d.id AS current_id,
                        d.member_id AS current_member_id,
                        d.receipt_no AS current_receipt_no,
@@ -344,8 +437,14 @@ public class SQLiteDonationRepository implements DonationRepository {
                 while (resultSet.next()) {
                     String snapshot = resultSet.getString("snapshot");
                     Donation current = mapCurrentDonation(resultSet);
-                    Donation before = parseBeforeDonation(snapshot);
-                    Donation after = parseAfterDonation(snapshot);
+                    Donation before = resultSet.getInt("before_recorded") != 0
+                            ? mapAuditDonation(resultSet, "before_", getNullableInt(resultSet, "donation_id"),
+                                    getNullableInt(resultSet, "audit_member_id"))
+                            : parseBeforeDonation(snapshot);
+                    Donation after = resultSet.getInt("after_recorded") != 0
+                            ? mapAuditDonation(resultSet, "after_", getNullableInt(resultSet, "donation_id"),
+                                    getNullableInt(resultSet, "audit_member_id"))
+                            : parseAfterDonation(snapshot);
                     if (AUDIT_ACTION_DELETE.equals(action) && before == null) {
                         before = current;
                     }
@@ -368,7 +467,8 @@ public class SQLiteDonationRepository implements DonationRepository {
                             resultSet.getString("member_name"),
                             before,
                             after,
-                            extractReason(snapshot)
+                            firstNonBlank(resultSet.getString("reason"), extractReason(snapshot)),
+                            resultSet.getString("supplement_receipt_no")
                     ));
                 }
             }
@@ -408,6 +508,103 @@ public class SQLiteDonationRepository implements DonationRepository {
         }
     }
 
+    private void saveUpdateAudit(
+            Connection connection,
+            Donation before,
+            Donation after,
+            String changedBy,
+            String memberName
+    ) throws SQLException {
+        String sql = """
+                INSERT INTO donation_audits (
+                    donation_id, member_id, action, changed_by, snapshot, member_name_at_change,
+                    before_recorded, before_receipt_no, before_donate_date, before_amount,
+                    before_donate_type, before_creator,
+                    after_recorded, after_receipt_no, after_donate_date, after_amount,
+                    after_donate_type, after_creator
+                ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
+                """;
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setObject(1, after.getId());
+            statement.setObject(2, after.getMemberId());
+            statement.setString(3, AUDIT_ACTION_UPDATE);
+            statement.setString(4, changedBy);
+            statement.setString(5, "before=" + before + "\nafter=" + after);
+            statement.setString(6, memberName);
+            setAuditDonationFields(statement, 7, before);
+            setAuditDonationFields(statement, 12, after);
+            statement.executeUpdate();
+        }
+    }
+
+    private void saveActionAudit(
+            Connection connection,
+            String action,
+            Donation donation,
+            String reason,
+            String supplementReceiptNo,
+            String changedBy,
+            String memberName
+    ) throws SQLException {
+        String sql = """
+                INSERT INTO donation_audits (
+                    donation_id, member_id, action, changed_by, snapshot, member_name_at_change,
+                    before_recorded, before_receipt_no, before_donate_date, before_amount,
+                    before_donate_type, before_creator, reason, supplement_receipt_no
+                ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
+                """;
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setObject(1, donation.getId());
+            statement.setObject(2, donation.getMemberId());
+            statement.setString(3, action);
+            statement.setString(4, changedBy);
+            statement.setString(5, donation + "\nreason=" + reason
+                    + "\nsupplementReceiptNo=" + firstNonBlank(supplementReceiptNo, ""));
+            statement.setString(6, memberName);
+            setAuditDonationFields(statement, 7, donation);
+            statement.setString(12, reason);
+            statement.setString(13, supplementReceiptNo);
+            statement.executeUpdate();
+        }
+    }
+
+    private void setAuditDonationFields(
+            PreparedStatement statement,
+            int startIndex,
+            Donation donation
+    ) throws SQLException {
+        statement.setString(startIndex, donation.getReceiptNo());
+        statement.setString(startIndex + 1, donation.getDonateDate());
+        statement.setObject(startIndex + 2, donation.getAmount());
+        statement.setString(startIndex + 3, donation.getDonateType());
+        statement.setString(startIndex + 4, donation.getCreator());
+    }
+
+    private Optional<Donation> findById(Connection connection, int id) throws SQLException {
+        String sql = "SELECT * FROM " + TABLE_NAME
+                + " WHERE id = ? AND COALESCE(is_deleted, 0) = 0";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, id);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next() ? Optional.of(mapRow(resultSet)) : Optional.empty();
+            }
+        }
+    }
+
+    private String findMemberName(Connection connection, Integer memberId) throws SQLException {
+        if (memberId == null) {
+            return "";
+        }
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT name FROM light_members WHERE id = ?"
+        )) {
+            statement.setInt(1, memberId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next() ? resultSet.getString("name") : "";
+            }
+        }
+    }
+
     private void addColumnIfMissing(Connection connection, String columnName, String definition) throws SQLException {
         boolean exists = false;
         try (Statement statement = connection.createStatement();
@@ -422,6 +619,29 @@ public class SQLiteDonationRepository implements DonationRepository {
         if (!exists) {
             try (Statement statement = connection.createStatement()) {
                 statement.execute("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + columnName + " " + definition);
+            }
+        }
+    }
+
+    private void addAuditColumnIfMissing(
+            Connection connection,
+            String columnName,
+            String definition
+    ) throws SQLException {
+        boolean exists = false;
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("PRAGMA table_info(donation_audits)")) {
+            while (resultSet.next()) {
+                if (columnName.equalsIgnoreCase(resultSet.getString("name"))) {
+                    exists = true;
+                    break;
+                }
+            }
+        }
+        if (!exists) {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("ALTER TABLE donation_audits ADD COLUMN "
+                        + columnName + " " + definition);
             }
         }
     }
@@ -465,6 +685,23 @@ public class SQLiteDonationRepository implements DonationRepository {
         donation.setShouldPay(getNullableInt(resultSet, "current_should_pay"));
         donation.setDonateType(resultSet.getString("current_donate_type"));
         donation.setCreator(resultSet.getString("current_creator"));
+        return donation;
+    }
+
+    private Donation mapAuditDonation(
+            ResultSet resultSet,
+            String prefix,
+            Integer donationId,
+            Integer memberId
+    ) throws SQLException {
+        Donation donation = new Donation();
+        donation.setId(donationId);
+        donation.setMemberId(memberId);
+        donation.setReceiptNo(resultSet.getString(prefix + "receipt_no"));
+        donation.setDonateDate(resultSet.getString(prefix + "donate_date"));
+        donation.setAmount(getNullableInt(resultSet, prefix + "amount"));
+        donation.setDonateType(resultSet.getString(prefix + "donate_type"));
+        donation.setCreator(resultSet.getString(prefix + "creator"));
         return donation;
     }
 
@@ -539,5 +776,21 @@ public class SQLiteDonationRepository implements DonationRepository {
         }
         Matcher matcher = Pattern.compile("(?:^|\\R)reason=(.*)$", Pattern.MULTILINE).matcher(snapshot);
         return matcher.find() ? matcher.group(1).trim() : "";
+    }
+
+    private String firstNonBlank(String first, String second) {
+        return first != null && !first.isBlank() ? first : second;
+    }
+
+    private void requireReason(String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("Donation action reason cannot be blank.");
+        }
+    }
+
+    private void requireSupplementReceiptNo(String supplementReceiptNo) {
+        if (supplementReceiptNo == null || supplementReceiptNo.isBlank()) {
+            throw new IllegalArgumentException("Supplement receipt number cannot be blank.");
+        }
     }
 }

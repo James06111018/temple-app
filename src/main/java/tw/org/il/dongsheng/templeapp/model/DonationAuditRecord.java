@@ -10,6 +10,7 @@ public record DonationAuditRecord(
         String memberName,
         Donation beforeDonation,
         Donation afterDonation,
-        String reason
+        String reason,
+        String supplementReceiptNo
 ) {
 }

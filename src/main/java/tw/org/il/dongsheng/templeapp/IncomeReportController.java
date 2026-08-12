@@ -307,7 +307,9 @@ public class IncomeReportController {
                 case UPDATE -> donationRepository.findAuditRecordsByDateRange(
                         SQLiteDonationRepository.AUDIT_ACTION_UPDATE, startDate, endDate
                 );
-                case RECEIPT_SUPPLEMENT -> List.of();
+                case RECEIPT_SUPPLEMENT -> donationRepository.findAuditRecordsByDateRange(
+                        SQLiteDonationRepository.AUDIT_ACTION_RECEIPT_SUPPLEMENT, startDate, endDate
+                );
             };
             Map<String, String> categoryNames = loadAllDonationCategoryNames();
             List<? extends javafx.scene.layout.Region> pages = switch (kind) {

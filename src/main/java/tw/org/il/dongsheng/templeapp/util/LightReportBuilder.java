@@ -569,9 +569,10 @@ public final class LightReportBuilder {
             }
         }
         return buildAuditPages(
-                "刪除款項明細表",
+                "刪 除 款 項 明 細 表",
                 new String[]{"收據編號", "捐款日期", "姓    名", "款項類別", "金額", "刪除人", "刪除日期時間", "刪除原因"},
-                new double[]{70, 82, 90, 105, 62, 70, 135, 100},
+                new double[]{65, 85, 55, 160, 42, 70, 135, 100},
+                new double[]{65, 85, 55, 160, 42, 70, 135, 100},
                 rows,
                 4
         );
@@ -602,12 +603,13 @@ public final class LightReportBuilder {
             }
         }
         return buildAuditPages(
-                "修改款項明細表",
+                "修 改 款 項 明 細 表",
                 new String[]{
-                        "收據編號", "姓名", "款項類別", "原捐款日期", "原金額",
+                        "收據編號", "姓    名", "款項類別", "原捐款日期", "原金額",
                         "原經辦人", "新捐款日期", "新金額", "修改人", "修改日期時間"
                 },
-                new double[]{62, 72, 86, 76, 58, 70, 76, 58, 70, 86},
+                new double[]{62, 72, 86, 76, 58, 70, 76, 58, 70, 90},
+                new double[]{62, 72, 86, 76, 58, 70, 76, 58, 70, 90},
                 rows,
                 4, 7
         );
@@ -624,12 +626,15 @@ public final class LightReportBuilder {
                 Donation after = record.afterDonation();
                 Donation donation = firstDonation(after, before);
                 rows.add(new String[]{
-                        donation == null ? "" : formatReceiptNo(donation.getReceiptNo()),
+                        formatReceiptNo(firstNonBlank(
+                                record.supplementReceiptNo(),
+                                donation == null ? "" : donation.getReceiptNo()
+                        )),
                         safe(record.memberName()),
                         auditCategory(categoryNames, donation),
-                        before == null ? "" : toRocDate(before.getDonateDate()),
+                        donation == null ? "" : toRocDate(donation.getDonateDate()),
                         donation == null ? "" : formatAmount(incomeAmount(donation)),
-                        before == null ? "" : safe(before.getCreator()),
+                        donation == null ? "" : safe(donation.getCreator()),
                         safe(record.changedBy()),
                         toRocDateTime(record.changedAt()),
                         safe(record.reason())
@@ -642,6 +647,7 @@ public final class LightReportBuilder {
                         "收據編號", "姓名", "款項類別", "捐款日期", "金額",
                         "經辦人", "補據人", "補據日期時間", "補據原因"
                 },
+                new double[]{65, 80, 95, 82, 58, 68, 68, 120, 78},
                 new double[]{65, 80, 95, 82, 58, 68, 68, 120, 78},
                 rows,
                 4
@@ -1037,6 +1043,7 @@ public final class LightReportBuilder {
             String title,
             String[] headers,
             double[] widths,
+            double[] innerWidths,
             List<String[]> rows,
             int... rightAlignedColumns
     ) {
@@ -1050,7 +1057,7 @@ public final class LightReportBuilder {
             page.getChildren().add(auditRow(headers, widths, true, rightAlignedColumns));
             for (int index = from; index < to; index++) {
                 page.getChildren().add(auditRow(
-                        safeRows.get(index), widths, false, rightAlignedColumns
+                        safeRows.get(index), innerWidths, false, rightAlignedColumns
                 ));
             }
             addIncomePageFooter(page, pageIndex + 1, pageCount);
@@ -1066,7 +1073,7 @@ public final class LightReportBuilder {
             int... rightAlignedColumns
     ) {
         HBox row = new HBox(0);
-        double fontSize = header ? (values.length >= 9 ? 10 : 11) : 11;
+        double fontSize = header ? (values.length >= 9 ? 13 : 14) : 11;
         for (int index = 0; index < values.length; index++) {
             boolean rightAligned = false;
             for (int column : rightAlignedColumns) {
@@ -1081,7 +1088,7 @@ public final class LightReportBuilder {
             cell.setMaxWidth(widths[index]);
             cell.setPrefHeight(30);
             cell.setMinHeight(30);
-            cell.setAlignment(header ? Pos.CENTER : rightAligned ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+            cell.setAlignment(rightAligned ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
             cell.setPadding(new Insets(2, 4, 2, 4));
             row.getChildren().add(cell);
         }

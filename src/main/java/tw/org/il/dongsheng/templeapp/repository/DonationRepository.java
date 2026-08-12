@@ -13,7 +13,9 @@ public interface DonationRepository {
 
     boolean update(Donation donation) throws SQLException;
 
-    boolean deleteById(int id) throws SQLException;
+    boolean deleteById(int id, String reason) throws SQLException;
+
+    boolean supplementReceipt(int id, String reason, String supplementReceiptNo) throws SQLException;
 
     Optional<Donation> findById(int id) throws SQLException;
 
