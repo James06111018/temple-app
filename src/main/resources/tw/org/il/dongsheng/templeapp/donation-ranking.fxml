@@ -17,15 +17,15 @@
                     <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY" />
                 </columnResizePolicy>
                 <columns>
-                    <TableColumn text="" prefWidth="24" />
-                    <TableColumn text="名稱" prefWidth="320" />
-                    <TableColumn text="電腦編號" prefWidth="124" />
-                    <TableColumn text="捐款總金額" prefWidth="146" />
-                    <TableColumn text="總筆數" prefWidth="110" />
+                    <TableColumn fx:id="rankColumn" text="" prefWidth="24" />
+                    <TableColumn fx:id="nameColumn" text="名稱" prefWidth="318" />
+                    <TableColumn fx:id="memberIdColumn" text="電腦編號" prefWidth="124" />
+                    <TableColumn fx:id="totalAmountColumn" text="捐款總金額" prefWidth="146" />
+                    <TableColumn fx:id="totalCountColumn" text="總筆數" prefWidth="110" />
                 </columns>
             </TableView>
             <PaginationBar fx:id="rankingPageBar" />
-            <Button text="列印名冊" styleClass="btn-orange" prefWidth="128" prefHeight="40" />
+            <Button text="列印名冊" styleClass="btn-orange" prefWidth="128" prefHeight="40" onAction="#onPrintRoster" />
         </VBox>
     </center>
 </BorderPane>

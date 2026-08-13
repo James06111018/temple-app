@@ -3,6 +3,7 @@ package tw.org.il.dongsheng.templeapp.repository.sqlite;
 import tw.org.il.dongsheng.templeapp.AuthSession;
 import tw.org.il.dongsheng.templeapp.model.Donation;
 import tw.org.il.dongsheng.templeapp.model.DonationAuditRecord;
+import tw.org.il.dongsheng.templeapp.model.DonationRankingRow;
 import tw.org.il.dongsheng.templeapp.repository.DonationRepository;
 
 import java.sql.Connection;
@@ -347,6 +348,44 @@ public class SQLiteDonationRepository implements DonationRepository {
         }
 
         return donations;
+    }
+
+    @Override
+    public List<DonationRankingRow> findRanking(int limit) throws SQLException {
+        int resultLimit = Math.max(1, limit);
+        String sql = """
+                SELECT m.id AS member_id,
+                       m.name AS member_name,
+                       SUM(COALESCE(d.should_pay, 0)) AS total_amount,
+                       COUNT(d.id) AS total_count
+                FROM donations d
+                JOIN light_members m ON m.id = d.member_id
+                WHERE COALESCE(d.is_deleted, 0) = 0
+                  AND COALESCE(m.is_deleted, 0) = 0
+                  AND TRIM(COALESCE(m.name, '')) <> ''
+                GROUP BY m.id, m.name
+                ORDER BY total_amount DESC, total_count DESC, m.id ASC
+                LIMIT ?
+                """;
+        List<DonationRankingRow> rows = new ArrayList<>();
+
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, resultLimit);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                int rank = 1;
+                while (resultSet.next()) {
+                    rows.add(new DonationRankingRow(
+                            rank++,
+                            resultSet.getInt("member_id"),
+                            resultSet.getString("member_name"),
+                            resultSet.getLong("total_amount"),
+                            resultSet.getInt("total_count")
+                    ));
+                }
+            }
+        }
+        return rows;
     }
 
     public List<Donation> findByIds(List<Integer> donationIds) throws SQLException {

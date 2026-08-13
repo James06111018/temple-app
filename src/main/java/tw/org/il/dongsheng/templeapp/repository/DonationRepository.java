@@ -1,6 +1,7 @@
 package tw.org.il.dongsheng.templeapp.repository;
 
 import tw.org.il.dongsheng.templeapp.model.Donation;
+import tw.org.il.dongsheng.templeapp.model.DonationRankingRow;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -25,4 +26,6 @@ public interface DonationRepository {
     int getDonationCount(List<Integer> memberIds) throws SQLException;
 
     List<Donation> findAll() throws SQLException;
+
+    List<DonationRankingRow> findRanking(int limit) throws SQLException;
 }

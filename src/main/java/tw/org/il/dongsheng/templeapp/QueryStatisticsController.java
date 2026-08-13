@@ -26,7 +26,7 @@ public class QueryStatisticsController {
     @FXML private ListView<DictionaryItem> availableCategoryList, selectedCategoryList;
     @FXML private ComboBox<String> amountOperatorBox, dataTypeBox;
     @FXML private RadioButton singleAmountRadio;
-    @FXML private TextField startDateField, endDateField;
+    @FXML private TextField startDateField, endDateField, rankingLimitField;
 
     private SQLiteDictionaryRepository dictionaryRepository;
 
@@ -98,7 +98,20 @@ public class QueryStatisticsController {
 
     @FXML
     private void onOpenDonationRanking() throws IOException {
-        showModal("捐款累計金額最多前 100 名", "donation-ranking.fxml");
+        int limit = parseRankingLimit();
+        if (limit <= 0) {
+            return;
+        }
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("donation-ranking.fxml"));
+        Parent root = loader.load();
+        DonationRankingController controller = loader.getController();
+        controller.setLimit(limit);
+
+        Stage stage = new Stage();
+        stage.setTitle("捐款累計金額最多前 " + limit + " 名");
+        stage.setScene(new Scene(root));
+        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.showAndWait();
     }
 
     @FXML
@@ -124,5 +137,17 @@ public class QueryStatisticsController {
     private String currentRocDate() {
         LocalDate today = LocalDate.now();
         return String.format("%03d.%02d.%02d", today.getYear() - 1911, today.getMonthValue(), today.getDayOfMonth());
+    }
+
+    private int parseRankingLimit() {
+        try {
+            int limit = Integer.parseInt(rankingLimitField.getText().trim());
+            if (limit > 0) {
+                return limit;
+            }
+        } catch (RuntimeException ignored) {
+        }
+        AlertDialog.showWarning("捐款排行榜", "前幾名請輸入大於 0 的整數");
+        return 0;
     }
 }
