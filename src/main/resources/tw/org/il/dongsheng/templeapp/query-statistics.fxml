@@ -14,8 +14,8 @@
     </fx:define>
     <center>
         <AnchorPane prefWidth="960" prefHeight="700">
-            <CheckBox text="電腦編號" layoutX="34" layoutY="48" />
-            <TextField prefWidth="80" layoutX="158" layoutY="42" />
+            <CheckBox fx:id="memberIdFilterCheck" text="電腦編號" layoutX="34" layoutY="48" />
+            <TextField fx:id="memberIdField" prefWidth="80" layoutX="158" layoutY="42" />
 
             <Button text="收入報表" styleClass="btn-pink" prefWidth="132" prefHeight="38" layoutX="255" layoutY="38" onAction="#onOpenIncomeReport" />
             <Button text="列印標籤" styleClass="btn-orange" prefWidth="132" prefHeight="38" layoutX="410" layoutY="38" onAction="#onOpenPrintLabels" />
@@ -24,7 +24,7 @@
             <TextField fx:id="rankingLimitField" text="100" prefWidth="46" layoutX="830" layoutY="42" />
             <Label text="名" layoutX="884" layoutY="48" />
 
-            <CheckBox text="款項類別" layoutX="34" layoutY="103" />
+            <CheckBox fx:id="categoryFilterCheck" text="款項類別" layoutX="34" layoutY="103" />
             <Label text="可選" layoutX="185" layoutY="101" />
             <Label text="已選" layoutX="392" layoutY="101" />
             <ListView fx:id="availableCategoryList" prefWidth="160" prefHeight="190" layoutX="158" layoutY="126" />
@@ -36,7 +36,7 @@
             </VBox>
             <ListView fx:id="selectedCategoryList" prefWidth="150" prefHeight="190" layoutX="386" layoutY="126" />
 
-            <TitledPane text="總金額" collapsible="false" animated="false" prefWidth="350" prefHeight="254" layoutX="560" layoutY="128">
+            <TitledPane text="總金額" styleClass="query-summary" collapsible="false" animated="false" prefWidth="350" prefHeight="254" layoutX="560" layoutY="128">
                 <content>
                     <GridPane hgap="8" vgap="12" style="-fx-padding: 26 16 12 16;">
                         <columnConstraints>
@@ -47,57 +47,57 @@
                             <ColumnConstraints halignment="CENTER" minWidth="22" />
                         </columnConstraints>
                         <Label text="收入(+)" GridPane.rowIndex="0" GridPane.columnIndex="0" />
-                        <TextField GridPane.rowIndex="0" GridPane.columnIndex="1" />
+                        <TextField fx:id="incomeCountField" editable="false" styleClass="query-summary-field" GridPane.rowIndex="0" GridPane.columnIndex="1" />
                         <Label text="筆" GridPane.rowIndex="0" GridPane.columnIndex="2" />
-                        <TextField GridPane.rowIndex="0" GridPane.columnIndex="3" />
+                        <TextField fx:id="incomeAmountField" editable="false" styleClass="query-summary-field" GridPane.rowIndex="0" GridPane.columnIndex="3" />
                         <Label text="元" GridPane.rowIndex="0" GridPane.columnIndex="4" />
                         <Label text="支付(-)" GridPane.rowIndex="1" GridPane.columnIndex="0" />
-                        <TextField GridPane.rowIndex="1" GridPane.columnIndex="1" />
+                        <TextField fx:id="expenseCountField" editable="false" styleClass="query-summary-field" GridPane.rowIndex="1" GridPane.columnIndex="1" />
                         <Label text="筆" GridPane.rowIndex="1" GridPane.columnIndex="2" />
-                        <TextField GridPane.rowIndex="1" GridPane.columnIndex="3" />
+                        <TextField fx:id="expenseAmountField" editable="false" styleClass="query-summary-field" GridPane.rowIndex="1" GridPane.columnIndex="3" />
                         <Label text="元" GridPane.rowIndex="1" GridPane.columnIndex="4" />
                         <Label text="總計" GridPane.rowIndex="2" GridPane.columnIndex="0" />
-                        <TextField GridPane.rowIndex="2" GridPane.columnIndex="1" />
+                        <TextField fx:id="totalCountField" editable="false" styleClass="query-summary-field" GridPane.rowIndex="2" GridPane.columnIndex="1" />
                         <Label text="筆" GridPane.rowIndex="2" GridPane.columnIndex="2" />
-                        <TextField GridPane.rowIndex="2" GridPane.columnIndex="3" />
+                        <TextField fx:id="totalAmountField" editable="false" styleClass="query-summary-field" GridPane.rowIndex="2" GridPane.columnIndex="3" />
                         <Label text="元" GridPane.rowIndex="2" GridPane.columnIndex="4" />
-                        <Button text="人數統計" styleClass="btn-purple" prefWidth="112" GridPane.rowIndex="3" GridPane.columnIndex="1" onAction="#onOpenPeopleStatistics" />
-                        <Button text="捐款明細" styleClass="btn-purple" prefWidth="112" GridPane.rowIndex="3" GridPane.columnIndex="3" onAction="#onOpenDonationDetails" />
+                        <Button fx:id="peopleStatisticsButton" text="人數統計" styleClass="btn-purple" prefWidth="112" GridPane.rowIndex="3" GridPane.columnIndex="1" onAction="#onOpenPeopleStatistics" />
+                        <Button fx:id="donationDetailsButton" text="捐款明細" styleClass="btn-purple" prefWidth="112" GridPane.rowIndex="3" GridPane.columnIndex="3" onAction="#onOpenDonationDetails" />
                     </GridPane>
                 </content>
             </TitledPane>
 
-            <CheckBox text="捐款日期" layoutX="34" layoutY="356" />
+            <CheckBox fx:id="dateFilterCheck" text="捐款日期" layoutX="34" layoutY="356" />
             <TextField fx:id="startDateField" prefWidth="100" layoutX="158" layoutY="350" />
             <Label text="至" layoutX="305" layoutY="356" />
             <TextField fx:id="endDateField" prefWidth="100" layoutX="334" layoutY="350" />
 
-            <CheckBox text="金額" layoutX="34" layoutY="410" />
+            <CheckBox fx:id="amountFilterCheck" text="金額" layoutX="34" layoutY="410" />
             <RadioButton fx:id="singleAmountRadio" text="單筆" toggleGroup="$amountModeGroup" layoutX="126" layoutY="410" />
             <RadioButton text="合計" toggleGroup="$amountModeGroup" layoutX="216" layoutY="410" />
             <ComboBox fx:id="amountOperatorBox" prefWidth="78" layoutX="302" layoutY="404" />
-            <TextField prefWidth="100" layoutX="390" layoutY="404" />
+            <TextField fx:id="amountField" prefWidth="100" layoutX="390" layoutY="404" />
             <Label text="元" layoutX="500" layoutY="410" />
 
-            <CheckBox text="摘要" layoutX="34" layoutY="462" />
-            <TextField prefWidth="285" layoutX="158" layoutY="456" />
+            <CheckBox fx:id="summaryFilterCheck" text="摘要" layoutX="34" layoutY="462" />
+            <TextField fx:id="summaryField" prefWidth="285" layoutX="158" layoutY="456" />
 
-            <CheckBox text="捐款備註" layoutX="34" layoutY="514" />
-            <TextField prefWidth="285" layoutX="158" layoutY="508" />
+            <CheckBox fx:id="donateNoteFilterCheck" text="捐款備註" layoutX="34" layoutY="514" />
+            <TextField fx:id="donateNoteField" prefWidth="285" layoutX="158" layoutY="508" />
 
-            <CheckBox text="經辦人" layoutX="34" layoutY="566" />
-            <TextField prefWidth="135" layoutX="158" layoutY="560" />
-            <Button text="..." styleClass="btn-green" prefWidth="36" layoutX="304" layoutY="560" onAction="#onPlaceholderAction" />
+            <CheckBox fx:id="operatorFilterCheck" text="經辦人" layoutX="34" layoutY="566" />
+            <TextField fx:id="operatorField" prefWidth="135" layoutX="158" layoutY="560" />
+            <Button text="..." styleClass="btn-green" prefWidth="36" layoutX="304" layoutY="560" onAction="#onChooseOperator" />
 
-            <CheckBox text="收據編號" layoutX="34" layoutY="618" />
-            <TextField prefWidth="112" layoutX="158" layoutY="612" />
+            <CheckBox fx:id="receiptFilterCheck" text="收據編號" layoutX="34" layoutY="618" />
+            <TextField fx:id="receiptStartField" prefWidth="112" layoutX="158" layoutY="612" />
             <Label text="至" layoutX="300" layoutY="618" />
-            <TextField prefWidth="112" layoutX="330" layoutY="612" />
-            <CheckBox text="查詢補登" layoutX="460" layoutY="618" />
+            <TextField fx:id="receiptEndField" prefWidth="112" layoutX="330" layoutY="612" />
+            <CheckBox fx:id="supplementFilterCheck" text="查詢補登" layoutX="460" layoutY="618" />
 
             <Label text="資料種類" layoutX="652" layoutY="470" />
             <ComboBox fx:id="dataTypeBox" prefWidth="120" layoutX="740" layoutY="464" />
-            <Button text="開始查詢" styleClass="btn-pink" prefWidth="140" prefHeight="72" layoutX="682" layoutY="540" onAction="#onPlaceholderAction" />
+            <Button text="開始查詢" styleClass="btn-pink" prefWidth="140" prefHeight="72" layoutX="682" layoutY="540" onAction="#onStartQuery" />
         </AnchorPane>
     </center>
 </BorderPane>

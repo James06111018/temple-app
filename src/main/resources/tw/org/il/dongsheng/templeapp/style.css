@@ -149,3 +149,25 @@
     -fx-border-color: #a9a9a9;
     -fx-border-width: 0 1 1 1;
 }
+
+.query-summary > .title {
+    -fx-background-color: #f0f0f0;
+    -fx-background-radius: 0;
+    -fx-border-color: #a9a9a9;
+    -fx-border-width: 1 1 0 1;
+}
+
+.query-summary > .title > .text {
+    -fx-fill: black;
+}
+
+.query-summary > .content {
+    -fx-background-color: #f0f0f0;
+    -fx-border-color: #a9a9a9;
+    -fx-border-width: 0 1 1 1;
+}
+
+.query-summary-field[editable="false"] {
+    -fx-control-inner-background: white;
+    -fx-alignment: CENTER-RIGHT;
+}
