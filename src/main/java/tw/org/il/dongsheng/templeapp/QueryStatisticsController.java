@@ -258,7 +258,17 @@ public class QueryStatisticsController {
 
     @FXML
     private void onOpenDonationDetails() throws IOException {
-        showModal("捐款明細", "donation-details.fxml");
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("donation-details.fxml"));
+        Parent root = loader.load();
+        DonationDetailsController controller = loader.getController();
+        controller.setDonations(queryResults);
+
+        Stage stage = new Stage();
+        stage.setTitle("捐款明細");
+        stage.setScene(new Scene(root));
+        stage.initOwner(incomeCountField.getScene().getWindow());
+        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.showAndWait();
     }
 
     private void reloadCategoryDefinitions() throws SQLException {

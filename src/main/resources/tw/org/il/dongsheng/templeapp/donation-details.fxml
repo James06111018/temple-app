@@ -15,13 +15,13 @@
             <HBox spacing="8" alignment="CENTER_LEFT">
                 <Label text="排序" />
                 <ComboBox fx:id="sortBox" prefWidth="146" />
-                <Button text="款項明細表" styleClass="btn-orange" prefWidth="116" onAction="#onPlaceholderAction" />
-                <Button text="補登明細表" styleClass="btn-orange" prefWidth="116" onAction="#onPlaceholderAction" />
-                <Button text="未繳清明細表" styleClass="btn-pink" prefWidth="128" onAction="#onPlaceholderAction" />
+                <Button text="款項明細表" styleClass="btn-orange" prefWidth="116" onAction="#onShowPaymentDetails" />
+                <Button text="補登明細表" styleClass="btn-orange" prefWidth="116" onAction="#onShowSupplementDetails" />
+                <Button text="未繳清明細表" styleClass="btn-pink" prefWidth="128" onAction="#onShowUnpaidDetails" />
                 <Region HBox.hgrow="ALWAYS" />
-                <Button text="列印名冊" styleClass="btn-action" prefWidth="108" onAction="#onPlaceholderAction" />
-                <Button text="捐獻名單" styleClass="btn-action" prefWidth="108" onAction="#onPlaceholderAction" />
-                <Button text="匯出EXCEL" styleClass="btn-action" prefWidth="108" onAction="#onPlaceholderAction" />
+                <Button text="列印名冊" styleClass="btn-action" prefWidth="108" onAction="#onPrintRoster" />
+                <Button text="捐獻名單" styleClass="btn-action" prefWidth="108" onAction="#onPrintDonationList" />
+                <Button text="匯出EXCEL" styleClass="btn-action" prefWidth="108" onAction="#onExportExcel" />
             </HBox>
 
             <TableView fx:id="donationDetailsTable" prefHeight="530" VBox.vgrow="ALWAYS">
@@ -30,19 +30,19 @@
                 </columnResizePolicy>
                 <columns>
                     <TableColumn text="" prefWidth="24" />
-                    <TableColumn text="姓名" prefWidth="160" />
-                    <TableColumn text="收據編號" prefWidth="120" />
-                    <TableColumn text="日期" prefWidth="110" />
-                    <TableColumn text="金額" prefWidth="90" />
-                    <TableColumn text="摘要" prefWidth="200" />
-                    <TableColumn text="款項類別" prefWidth="124" />
-                    <TableColumn text="捐款備註" prefWidth="280" />
-                    <TableColumn text="電腦編號" prefWidth="124" />
-                    <TableColumn text="太歲燈號" prefWidth="124" />
-                    <TableColumn text="光明燈號" prefWidth="124" />
-                    <TableColumn text="應繳金額" prefWidth="124" />
-                    <TableColumn text="經辦人" prefWidth="124" />
-                    <TableColumn text="說明" prefWidth="124" />
+                    <TableColumn fx:id="nameColumn" text="姓名" prefWidth="160" />
+                    <TableColumn fx:id="receiptNoColumn" text="收據編號" prefWidth="120" />
+                    <TableColumn fx:id="donationDateColumn" text="日期" prefWidth="110" />
+                    <TableColumn fx:id="amountColumn" text="金額" prefWidth="100" />
+                    <TableColumn fx:id="summaryColumn" text="摘要" prefWidth="200" />
+                    <TableColumn fx:id="categoryColumn" text="款項類別" prefWidth="150" />
+                    <TableColumn fx:id="donationNoteColumn" text="捐款備註" prefWidth="280" />
+                    <TableColumn fx:id="memberIdColumn" text="電腦編號" prefWidth="124" />
+                    <TableColumn fx:id="taiSuiLightNoColumn" text="太歲燈號" prefWidth="124" />
+                    <TableColumn fx:id="brightLightNoColumn" text="光明燈號" prefWidth="124" />
+                    <TableColumn fx:id="amountDueColumn" text="應繳金額" prefWidth="124" />
+                    <TableColumn fx:id="operatorColumn" text="經辦人" prefWidth="124" />
+                    <TableColumn fx:id="descriptionColumn" text="說明" prefWidth="180" />
                 </columns>
             </TableView>
 
