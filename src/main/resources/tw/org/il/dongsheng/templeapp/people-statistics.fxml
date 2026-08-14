@@ -18,17 +18,17 @@
             <HBox spacing="14" alignment="CENTER_LEFT">
                 <Label text="郵遞區號" style="-fx-text-fill: blue;" />
                 <RadioButton fx:id="allZipRadio" text="全部" toggleGroup="$zipModeGroup" />
-                <RadioButton text="自訂" toggleGroup="$zipModeGroup" />
-                <TextField prefWidth="58" />
+                <RadioButton fx:id="customZipRadio" text="自訂" toggleGroup="$zipModeGroup" />
+                <TextField fx:id="zipStartField" prefWidth="58" />
                 <Label text="－" />
-                <TextField prefWidth="58" />
-                <Button text="篩選" styleClass="btn-purple" prefWidth="86" />
+                <TextField fx:id="zipEndField" prefWidth="58" />
+                <Button text="篩選" styleClass="btn-purple" prefWidth="86" onAction="#onFilter" />
                 <Region prefWidth="18" />
-                <Label text="4502 筆" style="-fx-text-fill: #c93434; -fx-font-size: 22;" />
+                <Label fx:id="totalCountLabel" text="0 筆" style="-fx-text-fill: #c93434; -fx-font-size: 22;" />
                 <Region prefWidth="18" />
                 <Label text="報表種類" />
                 <ComboBox fx:id="reportTypeBox" prefWidth="220" />
-                <Button text="列印" styleClass="btn-purple" prefWidth="88" />
+                <Button text="列印" styleClass="btn-purple" prefWidth="88" onAction="#onPrint" />
             </HBox>
 
             <TableView fx:id="peopleStatisticsTable" prefHeight="500" VBox.vgrow="ALWAYS">
@@ -37,21 +37,21 @@
                 </columnResizePolicy>
                 <columns>
                     <TableColumn text="" prefWidth="24" />
-                    <TableColumn text="電腦編號 △" prefWidth="132" />
-                    <TableColumn text="名稱" prefWidth="190" />
-                    <TableColumn text="地址" prefWidth="390" />
-                    <TableColumn text="電話" prefWidth="220" />
-                    <TableColumn text="郵遞區號" prefWidth="104" />
-                    <TableColumn text="是否郵寄" prefWidth="120" />
-                    <TableColumn text="金額" prefWidth="124" />
+                    <TableColumn fx:id="memberIdColumn" text="電腦編號 △" prefWidth="132" />
+                    <TableColumn fx:id="nameColumn" text="名稱" prefWidth="190" />
+                    <TableColumn fx:id="addressColumn" text="地址" prefWidth="390" />
+                    <TableColumn fx:id="phoneColumn" text="電話" prefWidth="220" />
+                    <TableColumn fx:id="zipCodeColumn" text="郵遞區號" prefWidth="104" />
+                    <TableColumn fx:id="mailColumn" text="是否郵寄" prefWidth="120" />
+                    <TableColumn fx:id="totalAmountColumn" text="金額" prefWidth="124" />
                 </columns>
             </TableView>
 
             <HBox alignment="CENTER_LEFT">
                 <PaginationBar fx:id="peopleStatisticsPageBar" HBox.hgrow="ALWAYS" />
-                <CheckBox text="全部郵寄" style="-fx-text-fill: blue;" />
+                <CheckBox fx:id="allMailCheck" text="全部郵寄" style="-fx-text-fill: blue;" />
                 <Region prefWidth="60" />
-                <CheckBox text="依郵遞區號排序" style="-fx-text-fill: blue;" />
+                <CheckBox fx:id="sortByZipCheck" text="依郵遞區號排序" style="-fx-text-fill: blue;" />
             </HBox>
         </VBox>
     </center>

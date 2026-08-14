@@ -243,7 +243,17 @@ public class QueryStatisticsController {
 
     @FXML
     private void onOpenPeopleStatistics() throws IOException {
-        showModal("人數統計", "people-statistics.fxml");
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("people-statistics.fxml"));
+        Parent root = loader.load();
+        PeopleStatisticsController controller = loader.getController();
+        controller.setDonations(queryResults);
+
+        Stage stage = new Stage();
+        stage.setTitle("人數統計");
+        stage.setScene(new Scene(root));
+        stage.initOwner(incomeCountField.getScene().getWindow());
+        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.showAndWait();
     }
 
     @FXML

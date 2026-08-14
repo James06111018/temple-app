@@ -15,10 +15,10 @@ import java.util.List;
 public final class PrintLabelsReportBuilder {
     private static final double PAGE_WIDTH = 794;
     private static final double PAGE_HEIGHT = 1123;
-    private static final double LABEL_SIDE_MARGIN = 22;
-    private static final double LABEL_VERTICAL_MARGIN = 20;
-    private static final double LABEL_COLUMN_GAP = 34;
-    private static final double LABEL_ROW_GAP = 8;
+    private static final double LABEL_SIDE_MARGIN = 16;
+    private static final double LABEL_VERTICAL_MARGIN = 14;
+    private static final double LABEL_COLUMN_GAP = 28;
+    private static final double LABEL_ROW_GAP = 6;
     private static final int HORIZONTAL_LABEL_COLUMNS = 2;
     private static final int HORIZONTAL_LABEL_ROWS = 7;
     private static final double HORIZONTAL_LABEL_LEFT = LABEL_SIDE_MARGIN;
