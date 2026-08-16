@@ -13,6 +13,39 @@ import java.sql.Statement;
 
 public class HouseholdCountController {
 
+    static final String HOUSEHOLD_COUNT_SQL = """
+            SELECT COUNT(DISTINCT CASE
+                WHEN normalized_address = '' THEN printf('MEMBER:%d', id)
+                ELSE normalized_address
+            END)
+            FROM (
+                SELECT id,
+                       REPLACE(
+                           REPLACE(
+                               REPLACE(
+                                   REPLACE(
+                                       REPLACE(
+                                           TRIM(COALESCE(city, '') || COALESCE(dist, '') || COALESCE(address, '')),
+                                           ' ',
+                                           ''
+                                       ),
+                                       '　',
+                                       ''
+                                   ),
+                                   CHAR(9),
+                                   ''
+                               ),
+                               CHAR(10),
+                               ''
+                           ),
+                           CHAR(13),
+                           ''
+                       ) AS normalized_address
+                FROM light_members
+                WHERE COALESCE(is_deleted, 0) = 0
+            )
+            """;
+
     @FXML private TextField householdCountField;
     @FXML private TextField memberCountField;
 
@@ -36,15 +69,7 @@ public class HouseholdCountController {
                     statement,
                     "SELECT COUNT(1) FROM light_members WHERE COALESCE(is_deleted, 0) = 0"
             )));
-            householdCountField.setText(String.valueOf(queryInt(statement, """
-                    SELECT COUNT(1)
-                    FROM (
-                        SELECT COALESCE(NULLIF(TRIM(address), ''), printf('MEMBER:%d', id)) AS household_key
-                        FROM light_members
-                        WHERE COALESCE(is_deleted, 0) = 0
-                        GROUP BY household_key
-                    )
-                    """)));
+            householdCountField.setText(String.valueOf(queryInt(statement, HOUSEHOLD_COUNT_SQL)));
         } catch (SQLException e) {
             showLoadError(e);
         }
