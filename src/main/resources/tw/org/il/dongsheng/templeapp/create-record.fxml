@@ -14,18 +14,18 @@
         <VBox spacing="10" style="-fx-padding: 16 18 16 18;">
             <HBox spacing="18" alignment="CENTER_LEFT">
                 <Label text="電腦編號" />
-                <TextField prefWidth="90" />
-                <Button text="查詢" styleClass="btn-purple" prefWidth="78" onAction="#onPlaceholderAction" />
+                <TextField fx:id="memberNumberField" prefWidth="90" />
+                <Button text="查詢" styleClass="btn-purple" prefWidth="78" onAction="#onSearchByMemberNumber" />
                 <Region prefWidth="48" />
                 <Label text="日期" />
-                <TextField text="115.05.14" prefWidth="92" />
+                <TextField fx:id="startDateField" prefWidth="92" />
                 <Label text="－" />
-                <TextField text="115.05.14" prefWidth="92" />
-                <Button text="查詢" styleClass="btn-purple" prefWidth="78" onAction="#onPlaceholderAction" />
+                <TextField fx:id="endDateField" prefWidth="92" />
+                <Button text="查詢" styleClass="btn-purple" prefWidth="78" onAction="#onSearchByDate" />
                 <Region prefWidth="48" />
                 <Label text="姓名" />
-                <TextField prefWidth="155" />
-                <Button text="查詢" styleClass="btn-purple" prefWidth="78" onAction="#onPlaceholderAction" />
+                <TextField fx:id="memberNameField" prefWidth="155" />
+                <Button text="查詢" styleClass="btn-purple" prefWidth="78" onAction="#onSearchByName" />
             </HBox>
 
             <TableView fx:id="createRecordTable" prefHeight="470" VBox.vgrow="ALWAYS">
@@ -33,27 +33,27 @@
                     <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY" />
                 </columnResizePolicy>
                 <columns>
-                    <TableColumn text="" prefWidth="24" />
-                    <TableColumn text="日期" prefWidth="92" />
-                    <TableColumn text="時間" prefWidth="76" />
-                    <TableColumn text="狀態" prefWidth="88" />
-                    <TableColumn text="經辦人" prefWidth="104" />
-                    <TableColumn text="電腦編號" prefWidth="96" />
-                    <TableColumn text="姓名" prefWidth="124" />
-                    <TableColumn text="國曆生日" prefWidth="104" />
-                    <TableColumn text="農曆生日" prefWidth="104" />
-                    <TableColumn text="生肖" prefWidth="64" />
-                    <TableColumn text="歲次" prefWidth="64" />
-                    <TableColumn text="時辰" prefWidth="64" />
-                    <TableColumn text="性別" prefWidth="64" />
-                    <TableColumn text="地址" prefWidth="380" />
-                    <TableColumn text="電話" prefWidth="154" />
-                    <TableColumn text="郵遞區號" prefWidth="104" />
-                    <TableColumn text="是否郵寄" prefWidth="104" />
-                    <TableColumn text="備註" prefWidth="104" />
-                    <TableColumn text="分類" prefWidth="104" />
-                    <TableColumn text="身分證號" prefWidth="120" />
-                    <TableColumn text="排序" prefWidth="70" />
+                    <TableColumn fx:id="selectorColumn" text="" prefWidth="24" />
+                    <TableColumn fx:id="dateColumn" text="日期" prefWidth="92" />
+                    <TableColumn fx:id="timeColumn" text="時間" prefWidth="76" />
+                    <TableColumn fx:id="statusColumn" text="狀態" prefWidth="88" />
+                    <TableColumn fx:id="operatorColumn" text="經辦人" prefWidth="104" />
+                    <TableColumn fx:id="memberNumberColumn" text="電腦編號" prefWidth="96" />
+                    <TableColumn fx:id="nameColumn" text="姓名" prefWidth="124" />
+                    <TableColumn fx:id="birthDateColumn" text="國曆生日" prefWidth="104" />
+                    <TableColumn fx:id="lunarBirthDateColumn" text="農曆生日" prefWidth="104" />
+                    <TableColumn fx:id="zodiacColumn" text="生肖" prefWidth="64" />
+                    <TableColumn fx:id="zodiacYearColumn" text="歲次" prefWidth="64" />
+                    <TableColumn fx:id="birthTimeColumn" text="時辰" prefWidth="64" />
+                    <TableColumn fx:id="genderColumn" text="性別" prefWidth="64" />
+                    <TableColumn fx:id="addressColumn" text="地址" prefWidth="380" />
+                    <TableColumn fx:id="phoneColumn" text="電話" prefWidth="154" />
+                    <TableColumn fx:id="zipCodeColumn" text="郵遞區號" prefWidth="104" />
+                    <TableColumn fx:id="isMailColumn" text="是否郵寄" prefWidth="104" />
+                    <TableColumn fx:id="noteColumn" text="備註" prefWidth="104" />
+                    <TableColumn fx:id="categoryColumn" text="分類" prefWidth="104" />
+                    <TableColumn fx:id="idNumberColumn" text="身分證號" prefWidth="120" />
+                    <TableColumn fx:id="sortOrderColumn" text="排序" prefWidth="70" />
                 </columns>
             </TableView>
 
