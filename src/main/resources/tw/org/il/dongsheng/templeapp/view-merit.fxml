@@ -38,22 +38,26 @@
             <TextField fx:id="endDateField" prefWidth="80" promptText="迄" disable="${allRadio.selected}"/>
 
             <!-- 查詢 -->
-            <Button text="查詢" styleClass="btn-purple" prefWidth="80"/>
+            <Button text="查詢" styleClass="btn-purple" prefWidth="80" onAction="#onQuery"/>
 
+            <Button text="開箱" styleClass="btn-orange" prefWidth="80" onAction="#onOpenBox"/>
         </HBox>
     </top>
 
     <!-- 🔷 中間 Table -->
     <center>
-        <TableView fx:id="tableView" styleClass="my-table">
-
+        <TableView fx:id="tableView" styleClass="my-table" VBox.vgrow="ALWAYS">
+            <columnResizePolicy>
+                <TableView fx:constant="UNCONSTRAINED_RESIZE_POLICY" />
+            </columnResizePolicy>
             <columns>
-                <TableColumn text="日期" prefWidth="80"/>
-                <TableColumn text="時間" prefWidth="80"/>
-                <TableColumn text="金額" prefWidth="80"/>
-                <TableColumn text="開箱人員" prefWidth="120"/>
-                <TableColumn text="備註" prefWidth="400"/>
-                <TableColumn text="分類" prefWidth="80"/>
+                <TableColumn fx:id="dateColumn" text="日期" prefWidth="90"/>
+                <TableColumn fx:id="serialColumn" text="序號" prefWidth="90"/>
+                <TableColumn fx:id="amountColumn" text="金額" prefWidth="100"/>
+                <TableColumn fx:id="openerColumn" text="開箱人員" prefWidth="140"/>
+                <TableColumn fx:id="noteColumn" text="備註" prefWidth="360"/>
+                <TableColumn fx:id="categoryColumn" text="分類" prefWidth="120"/>
+                <TableColumn fx:id="creatorColumn" text="登錄人員" prefWidth="140"/>
             </columns>
 
         </TableView>
@@ -64,8 +68,8 @@
         <HBox spacing="10"
               style="-fx-padding:10;">
 
-            <Button text="分類管理" prefWidth="120" styleClass="btn-purple"/>
-            <Button text="列印報表" prefWidth="120" styleClass="btn-purple"/>
+            <Button text="分類管理" prefWidth="120" styleClass="btn-purple" onAction="#onCategoryManagement"/>
+            <Button text="列印報表" prefWidth="120" styleClass="btn-purple" onAction="#onPrint"/>
 
         </HBox>
     </bottom>
