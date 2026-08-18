@@ -130,7 +130,8 @@ public final class LightReportBuilder {
                     new String[]{"日期", "收據編號", "款項類別", "摘要", "金額"},
                     new double[]{92, 100, 160, 272, 90},
                     true,
-                    true
+                    true,
+                    0
             ));
 
             for (int index = from; index < to; index++) {
@@ -145,7 +146,8 @@ public final class LightReportBuilder {
                         },
                         new double[]{92, 100, 160, 272, 90},
                         false,
-                        true
+                        true,
+                        4
                 ));
             }
             if (pageIndex == pageCount - 1) {
@@ -177,13 +179,14 @@ public final class LightReportBuilder {
                     new String[]{"款項類別", "金    額", "日    期", "收據編號", "姓    名", "經辦人", "摘      要"},
                     new double[]{105, 105, 85, 85, 90, 90, 179},
                     true,
-                    true
+                    true,
+                    0
             ));
 
             for (int index = from; index < to; index++) {
                 ClassifiedDonationRow classifiedRow = rows.get(index);
                 if (classifiedRow.subtotal()) {
-                    page.getChildren().add(categorySubtotalRow(classifiedRow.categoryName(), classifiedRow.amount()));
+                    page.getChildren().add(categorySubtotalRow(classifiedRow.amount()));
                     continue;
                 }
                 Donation donation = classifiedRow.donation();
@@ -199,7 +202,8 @@ public final class LightReportBuilder {
                         },
                         new double[]{105, 105, 85, 85, 90, 90, 179},
                         false,
-                        true
+                        true,
+                        1
                 ));
             }
             if (pageIndex == pageCount - 1) {
@@ -233,23 +237,21 @@ public final class LightReportBuilder {
             );
             VBox.setMargin(memberLabel, new Insets(0, 0, 8, 0));
             page.getChildren().add(memberLabel);
-            page.getChildren().add(row(
+            page.getChildren().add(totalAmountStatisticsRow(
                     new String[]{"款項類別", "筆數", "金額"},
                     new double[]{390, 120, 204},
-                    true,
-                    false
+                    true
             ));
 
             for (int index = from; index < to; index++) {
                 CategorySummary summary = summaries.get(index);
-                page.getChildren().add(row(
+                page.getChildren().add(totalAmountStatisticsRow(
                         new String[]{
                                 summary.categoryName(),
                                 String.valueOf(summary.count()),
                                 formatAmount(summary.amount())
                         },
                         new double[]{390, 120, 204},
-                        false,
                         false
                 ));
             }
@@ -834,7 +836,8 @@ public final class LightReportBuilder {
                 new String[]{"", "電腦編號", "姓名", "性別", "年齡", "農曆生日", "時辰", "生肖", "制化"},
                 new double[]{34, 90, 115, 50, 50, 105, 60, 60, 150},
                 true,
-                false
+                false,
+                0
         );
     }
 
@@ -853,7 +856,8 @@ public final class LightReportBuilder {
                 },
                 new double[]{34, 90, 115, 50, 50, 105, 60, 60, 150},
                 false,
-                false
+                false,
+                8
         );
     }
 
@@ -862,7 +866,8 @@ public final class LightReportBuilder {
                 new String[]{"日期", "收據編號", "姓名", "款項類別", "摘要", "金額"},
                 new double[]{92, 90, 100, 112, 230, 90},
                 true,
-                true
+                true,
+                0
         );
     }
 
@@ -882,7 +887,8 @@ public final class LightReportBuilder {
                 },
                 new double[]{92, 90, 100, 112, 230, 90},
                 false,
-                true
+                true,
+                5
         );
     }
 
@@ -906,9 +912,12 @@ public final class LightReportBuilder {
         return block;
     }
 
-    private static HBox categorySubtotalRow(String categoryName, int amount) {
+    private static HBox categorySubtotalRow(int amount) {
         Label label = tableCell("小  計", 105, Pos.CENTER_RIGHT, true, true);
         Label amountLabel = tableCell(formatAmount(amount), 105, Pos.CENTER_RIGHT, true, true);
+        label.setStyle(label.getStyle() + "-fx-background-color: #EFEFEF; -fx-background-insets: 0;");
+        amountLabel.setStyle(amountLabel.getStyle() + "-fx-background-color: #EFEFEF; -fx-background-insets: 0;");
+
         Label space = tableCell("", 529, Pos.CENTER, true, true);
         HBox row = new HBox(label, amountLabel, space);
         row.setStyle("-fx-border-color: #303030; -fx-border-width: 0 0 0 1;");
@@ -1267,13 +1276,12 @@ public final class LightReportBuilder {
         page.getChildren().addAll(spacer, label);
     }
 
-    private static HBox row(String[] values, double[] widths, boolean header, boolean boxed) {
+    private static HBox row(String[] values, double[] widths, boolean header, boolean boxed, int amountColumn) {
         HBox row = new HBox(0);
         for (int index = 0; index < values.length; index++) {
-            Pos alignment = index == values.length - 1 && boxed ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT;
-            if (header) {
-                alignment = Pos.CENTER;
-            }
+            Pos alignment = header
+                    ? Pos.CENTER
+                    : index == amountColumn ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT;
             row.getChildren().add(tableCell(values[index], widths[index], alignment, header, boxed));
         }
         if (!boxed) {
@@ -1282,6 +1290,15 @@ public final class LightReportBuilder {
             row.setStyle("-fx-border-color: #303030; -fx-border-width: "
                     + (header ? "1 0 0 1;" : "0 0 0 1;"));
         }
+        return row;
+    }
+
+    private static HBox totalAmountStatisticsRow(String[] values, double[] widths, boolean header) {
+        HBox row = new HBox(0);
+        for (int index = 0; index < values.length; index++) {
+            row.getChildren().add(tableCell(values[index], widths[index], Pos.CENTER, header, false));
+        }
+        row.setStyle("-fx-border-color: #303030; -fx-border-width: 0 0 1 0;");
         return row;
     }
 
