@@ -19,25 +19,15 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.function.Function;
 
 import static tw.org.il.dongsheng.templeapp.util.Util.parseDate;
 
-public final class LightReportBuilder {
+public final class CheckoutReportBuilder {
     private static final double PAGE_WIDTH = 794;
     private static final double PAGE_HEIGHT = 1123;
     private static final double CONTENT_WIDTH = 714;
-    private static final int ROSTER_ROWS_PER_PAGE = 30;
-    private static final int DETAIL_ROWS_PER_PAGE = 27;
-    private static final int TOTAL_DETAIL_ROWS_PER_PAGE = 24;
-    private static final int CATEGORY_ROWS_PER_PAGE = 23;
-    private static final int STATISTICS_ROWS_PER_PAGE = 25;
     private static final int INCOME_ROWS_PER_PAGE = 23;
     private static final int INCOME_SUMMARY_ROWS_PER_PAGE = 28;
     private static final int SUPPLEMENT_ROWS_PER_PAGE = 22;
@@ -46,221 +36,7 @@ public final class LightReportBuilder {
     private static final String INCOME_REPORT_FONT_FAMILY = resolveIncomeReportFontFamily();
     private static final DateTimeFormatter DOT_DATE = DateTimeFormatter.ofPattern("yyyy.M.d");
 
-    private LightReportBuilder() {
-    }
-
-    public static List<Region> buildRosterPages(List<LightMember> members, String phone, String address) {
-        List<LightMember> rows = members == null
-                ? List.of()
-                : members.stream()
-                        .sorted(Comparator.comparing(
-                                LightMember::getId,
-                                Comparator.nullsLast(Comparator.naturalOrder())
-                        ))
-                        .toList();
-        int pageCount = Math.max(1, (rows.size() + ROSTER_ROWS_PER_PAGE - 1) / ROSTER_ROWS_PER_PAGE);
-        List<Region> pages = new ArrayList<>();
-
-        for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
-            int from = pageIndex * ROSTER_ROWS_PER_PAGE;
-            int to = Math.min(rows.size(), from + ROSTER_ROWS_PER_PAGE);
-            VBox page = createPage(TEMPLE_NAME + "　香客全戶明細表");
-            page.getChildren().add(contactBlock(phone, address, false));
-            page.getChildren().add(rosterHeader());
-
-            for (int index = from; index < to; index++) {
-                page.getChildren().add(rosterRow(index + 1, rows.get(index)));
-            }
-            pages.add(page);
-        }
-        return pages;
-    }
-
-    public static List<Region> buildDonationDetailPages(
-            List<Donation> donations,
-            Map<Integer, LightMember> membersById,
-            Map<String, String> categoryNames,
-            String phone,
-            String address
-    ) {
-        List<Donation> rows = donations == null ? List.of() : donations;
-        int pageCount = Math.max(1, (rows.size() + DETAIL_ROWS_PER_PAGE - 1) / DETAIL_ROWS_PER_PAGE);
-        int totalAmount = rows.stream().mapToInt(donation -> valueOrZero(donation.getAmount())).sum();
-        List<Region> pages = new ArrayList<>();
-
-        for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
-            int from = pageIndex * DETAIL_ROWS_PER_PAGE;
-            int to = Math.min(rows.size(), from + DETAIL_ROWS_PER_PAGE);
-            VBox page = createPage(TEMPLE_NAME + "　捐款明細表");
-            page.getChildren().add(contactBlock(phone, address, true));
-            page.getChildren().add(detailHeader());
-
-            for (int index = from; index < to; index++) {
-                Donation donation = rows.get(index);
-                page.getChildren().add(detailRow(
-                        donation,
-                        membersById.get(donation.getMemberId()),
-                        categoryNames.get(donation.getDonateType())
-                ));
-            }
-            if (pageIndex == pageCount - 1) {
-                page.getChildren().add(totalRow(totalAmount));
-            }
-            pages.add(page);
-        }
-        return pages;
-    }
-
-    public static List<Region> buildTotalAmountDetailPages(
-            LightMember member,
-            List<Donation> donations,
-            Map<String, String> categoryNames
-    ) {
-        List<Donation> rows = sortDonations(donations);
-        int pageCount = Math.max(1, pageCount(rows.size(), TOTAL_DETAIL_ROWS_PER_PAGE));
-        int totalAmount = rows.stream().mapToInt(LightReportBuilder::reportAmount).sum();
-        List<Region> pages = new ArrayList<>();
-
-        for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
-            int from = pageIndex * TOTAL_DETAIL_ROWS_PER_PAGE;
-            int to = Math.min(rows.size(), from + TOTAL_DETAIL_ROWS_PER_PAGE);
-            VBox page = createBlankPage();
-            page.getChildren().add(totalMemberHeader(member));
-            page.getChildren().add(row(
-                    new String[]{"日期", "收據編號", "款項類別", "摘要", "金額"},
-                    new double[]{92, 100, 160, 272, 90},
-                    true,
-                    true
-            ));
-
-            for (int index = from; index < to; index++) {
-                Donation donation = rows.get(index);
-                page.getChildren().add(row(
-                        new String[]{
-                                toRocDate(donation.getDonateDate()),
-                                formatReceiptNo(donation.getReceiptNo()),
-                                categoryLabel(categoryNames, donation.getDonateType()),
-                                donationSummary(donation),
-                                formatAmount(reportAmount(donation))
-                        },
-                        new double[]{92, 100, 160, 272, 90},
-                        false,
-                        true
-                ));
-            }
-            if (pageIndex == pageCount - 1) {
-                page.getChildren().add(totalRow(totalAmount));
-            }
-            pages.add(page);
-        }
-        return pages;
-    }
-
-    public static List<Region> buildTotalAmountCategoryPages(
-            LightMember member,
-            List<Donation> donations,
-            Map<String, String> categoryNames
-    ) {
-        List<ClassifiedDonationRow> rows = classifiedRows(donations, categoryNames);
-        int pageCount = Math.max(1, pageCount(rows.size(), CATEGORY_ROWS_PER_PAGE));
-        int grandTotal = rows.stream()
-                .filter(row -> !row.subtotal())
-                .mapToInt(row -> reportAmount(row.donation()))
-                .sum();
-        List<Region> pages = new ArrayList<>();
-
-        for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
-            int from = pageIndex * CATEGORY_ROWS_PER_PAGE;
-            int to = Math.min(rows.size(), from + CATEGORY_ROWS_PER_PAGE);
-            VBox page = createPage(TEMPLE_NAME + "　收入明細表");
-            page.getChildren().add(row(
-                    new String[]{"款項類別", "金額", "日期", "收據編號", "姓名", "經辦人", "摘要"},
-                    new double[]{105, 80, 85, 85, 90, 90, 179},
-                    true,
-                    true
-            ));
-
-            for (int index = from; index < to; index++) {
-                ClassifiedDonationRow classifiedRow = rows.get(index);
-                if (classifiedRow.subtotal()) {
-                    page.getChildren().add(categorySubtotalRow(classifiedRow.categoryName(), classifiedRow.amount()));
-                    continue;
-                }
-                Donation donation = classifiedRow.donation();
-                page.getChildren().add(row(
-                        new String[]{
-                                classifiedRow.categoryName(),
-                                formatAmount(reportAmount(donation)),
-                                toRocDate(donation.getDonateDate()),
-                                formatReceiptNo(donation.getReceiptNo()),
-                                member == null ? "" : safe(member.getName()),
-                                safe(donation.getCreator()),
-                                donationSummary(donation)
-                        },
-                        new double[]{105, 80, 85, 85, 90, 90, 179},
-                        false,
-                        true
-                ));
-            }
-            if (pageIndex == pageCount - 1) {
-                page.getChildren().add(categoryGrandTotalRow(grandTotal));
-            }
-            page.getChildren().add(pageNumber(pageIndex + 1, pageCount));
-            pages.add(page);
-        }
-        return pages;
-    }
-
-    public static List<Region> buildTotalAmountStatisticsPages(
-            LightMember member,
-            List<Donation> donations,
-            Map<String, String> categoryNames
-    ) {
-        List<CategorySummary> summaries = categorySummaries(donations, categoryNames);
-        int pageCount = Math.max(1, pageCount(summaries.size(), STATISTICS_ROWS_PER_PAGE));
-        int totalAmount = summaries.stream().mapToInt(CategorySummary::amount).sum();
-        List<Region> pages = new ArrayList<>();
-
-        for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
-            int from = pageIndex * STATISTICS_ROWS_PER_PAGE;
-            int to = Math.min(summaries.size(), from + STATISTICS_ROWS_PER_PAGE);
-            VBox page = createPage(TEMPLE_NAME + "　捐款統計表");
-
-            Label memberLabel = textLabel(
-                    "姓名：" + (member == null ? "" : safe(member.getName())),
-                    15,
-                    false
-            );
-            VBox.setMargin(memberLabel, new Insets(0, 0, 8, 0));
-            page.getChildren().add(memberLabel);
-            page.getChildren().add(row(
-                    new String[]{"款項類別", "筆數", "金額"},
-                    new double[]{390, 120, 204},
-                    true,
-                    false
-            ));
-
-            for (int index = from; index < to; index++) {
-                CategorySummary summary = summaries.get(index);
-                page.getChildren().add(row(
-                        new String[]{
-                                summary.categoryName(),
-                                String.valueOf(summary.count()),
-                                formatAmount(summary.amount())
-                        },
-                        new double[]{390, 120, 204},
-                        false,
-                        false
-                ));
-            }
-            if (pageIndex == pageCount - 1) {
-                Label totalLabel = textLabel("總金額：" + formatAmount(totalAmount), 18, true);
-                VBox.setMargin(totalLabel, new Insets(24, 0, 0, 0));
-                page.getChildren().add(totalLabel);
-            }
-            pages.add(page);
-        }
-        return pages;
+    private CheckoutReportBuilder() {
     }
 
     public static List<Region> buildIncomeDetailPages(
@@ -270,7 +46,7 @@ public final class LightReportBuilder {
     ) {
         List<Donation> rows = sortDonations(donations);
         int pageCount = Math.max(1, pageCount(rows.size(), INCOME_ROWS_PER_PAGE));
-        int totalAmount = rows.stream().mapToInt(LightReportBuilder::incomeAmount).sum();
+        int totalAmount = rows.stream().mapToInt(CheckoutReportBuilder::incomeAmount).sum();
         List<Region> pages = new ArrayList<>();
 
         for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
@@ -301,9 +77,9 @@ public final class LightReportBuilder {
                         1
                 ));
             }
-            if (pageIndex == pageCount - 1) {
-                page.getChildren().add(incomeTotalRow("總　  計", totalAmount, 90));
-            }
+//            if (pageIndex == pageCount - 1) {
+//                page.getChildren().add(incomeTotalRow("總　  計", totalAmount, 90));
+//            }
             pages.add(page);
         }
         return pages;
@@ -323,13 +99,13 @@ public final class LightReportBuilder {
                     group.categoryName(),
                     null,
                     true,
-                    group.donations().stream().mapToInt(LightReportBuilder::incomeAmount).sum()
+                    group.donations().stream().mapToInt(CheckoutReportBuilder::incomeAmount).sum()
             ));
         }
         int pageCount = Math.max(1, pageCount(lines.size(), INCOME_ROWS_PER_PAGE));
         int totalAmount = donations == null
                 ? 0
-                : donations.stream().mapToInt(LightReportBuilder::incomeAmount).sum();
+                : donations.stream().mapToInt(CheckoutReportBuilder::incomeAmount).sum();
         List<Region> pages = new ArrayList<>();
 
         for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
@@ -379,7 +155,7 @@ public final class LightReportBuilder {
     ) {
         List<Donation> rows = sortDonations(donations);
         int pageCount = Math.max(1, pageCount(rows.size(), INCOME_ROWS_PER_PAGE));
-        int totalAmount = rows.stream().mapToInt(LightReportBuilder::incomeAmount).sum();
+        int totalAmount = rows.stream().mapToInt(CheckoutReportBuilder::incomeAmount).sum();
         List<Region> pages = new ArrayList<>();
 
         for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
@@ -509,7 +285,7 @@ public final class LightReportBuilder {
         int pageCount = Math.max(1, pageCount(lines.size(), SUPPLEMENT_ROWS_PER_PAGE));
         int totalAmount = lines.stream()
                 .map(SupplementReportLine::donation)
-                .mapToInt(LightReportBuilder::incomeAmount)
+                .mapToInt(CheckoutReportBuilder::incomeAmount)
                 .sum();
         double[] widths = {95, 90, 90, 130, 100, 90, 119};
         List<Region> pages = new ArrayList<>();
@@ -692,7 +468,7 @@ public final class LightReportBuilder {
                 .sum();
         int totalAmount = donations == null
                 ? 0
-                : donations.stream().mapToInt(LightReportBuilder::incomeAmount).sum();
+                : donations.stream().mapToInt(CheckoutReportBuilder::incomeAmount).sum();
         int reportPageNumber = 0;
         List<Region> pages = new ArrayList<>();
         for (Map.Entry<YearMonth, Map<LocalDate, Integer>> monthEntry : monthlyDailyAmounts.entrySet()) {
@@ -1442,7 +1218,7 @@ public final class LightReportBuilder {
             for (Donation donation : group.donations()) {
                 result.add(new ClassifiedDonationRow(group.categoryName(), donation, false, 0));
             }
-            int subtotal = group.donations().stream().mapToInt(LightReportBuilder::reportAmount).sum();
+            int subtotal = group.donations().stream().mapToInt(CheckoutReportBuilder::reportAmount).sum();
             result.add(new ClassifiedDonationRow(group.categoryName(), null, true, subtotal));
         }
         return result;
@@ -1456,7 +1232,7 @@ public final class LightReportBuilder {
                 .map(group -> new CategorySummary(
                         group.categoryName(),
                         group.donations().size(),
-                        group.donations().stream().mapToInt(LightReportBuilder::reportAmount).sum()
+                        group.donations().stream().mapToInt(CheckoutReportBuilder::reportAmount).sum()
                 ))
                 .toList();
     }

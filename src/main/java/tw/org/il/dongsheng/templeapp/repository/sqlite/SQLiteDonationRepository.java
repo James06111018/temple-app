@@ -334,16 +334,42 @@ public class SQLiteDonationRepository implements DonationRepository {
     }
 
     @Override
-    public List<Donation> findAll() throws SQLException {
-        String sql = "SELECT * FROM " + TABLE_NAME +
-                " WHERE COALESCE(is_deleted, 0) = 0 ORDER BY donate_date DESC, id DESC";
+    public List<Donation> findAll(String startDate, String endDate, String receiptNo, String creator) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT * FROM " + TABLE_NAME + " WHERE COALESCE(is_deleted, 0) = 0");
+        List<Object> params = new ArrayList<>();
+        if (startDate != null && !startDate.trim().isEmpty()) {
+            sql.append(" AND donate_date >= ?");
+            params.add(startDate);
+        }
+        if (endDate != null && !endDate.trim().isEmpty()) {
+            sql.append(" AND donate_date <= ?");
+            params.add(endDate);
+        }
+        if (receiptNo != null && !receiptNo.trim().isEmpty()) {
+            sql.append(" AND receipt_no >= ?");
+            params.add(receiptNo);
+        }
+        if (creator != null && !creator.trim().isEmpty()) {
+            sql.append(" AND creator = ?");
+            params.add(creator);
+        }
+
+        sql.append(" ORDER BY donate_date DESC, id DESC");
         List<Donation> donations = new ArrayList<>();
 
         try (Connection connection = databaseManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql);
-             ResultSet resultSet = statement.executeQuery()) {
-            while (resultSet.next()) {
-                donations.add(mapRow(resultSet));
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+
+            for (int i = 0; i < params.size(); i++) {
+                // JDBC 的索引是從 1 開始計算，所以是 i + 1
+                statement.setObject(i + 1, params.get(i));
+            }
+
+            // 注意 2：參數設定完後，才執行查詢取得 ResultSet
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    donations.add(mapRow(resultSet));
+                }
             }
         }
 

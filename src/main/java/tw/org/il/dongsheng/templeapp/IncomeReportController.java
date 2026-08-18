@@ -28,33 +28,29 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static tw.org.il.dongsheng.templeapp.util.Util.*;
+
 public class IncomeReportController {
 
     @FXML private TextField startDateField;
     @FXML private TextField endDateField;
 
-    private final SQLiteDonationRepository donationRepository =
-            new SQLiteDonationRepository(SQLiteDatabaseManager.getInstance());
-    private final SQLiteDictionaryRepository dictionaryRepository =
-            new SQLiteDictionaryRepository(SQLiteDatabaseManager.getInstance());
-    private final SQLiteLightMemberRepository memberRepository =
-            new SQLiteLightMemberRepository(SQLiteDatabaseManager.getInstance());
-    private final SQLiteDonationSupplementRepository supplementRepository =
-            new SQLiteDonationSupplementRepository(SQLiteDatabaseManager.getInstance());
+    private SQLiteDonationRepository donationRepository;
+    private SQLiteDictionaryRepository dictionaryRepository;
+    private SQLiteLightMemberRepository memberRepository;
+    private SQLiteDonationSupplementRepository supplementRepository;
 
     @FXML
     private void initialize() {
         String today = currentRocDate();
         startDateField.setText(today);
         endDateField.setText(today);
-        try {
-            donationRepository.createTable();
-            dictionaryRepository.migrateFromLegacy();
-            memberRepository.createTable();
-            supplementRepository.createTable();
-        } catch (SQLException e) {
-            throw new IllegalStateException("初始化收入報表失敗", e);
-        }
+
+        SQLiteDatabaseManager manager = SQLiteDatabaseManager.getInstance();
+        dictionaryRepository = new SQLiteDictionaryRepository(manager);
+        donationRepository = new SQLiteDonationRepository(manager);
+        memberRepository = new SQLiteLightMemberRepository(manager);
+        supplementRepository = new SQLiteDonationSupplementRepository(manager);
     }
 
     @FXML
@@ -192,9 +188,9 @@ public class IncomeReportController {
                         LinkedHashMap::new
                 ));
 
-        List<Donation> donations = donationRepository.findAll().stream()
+        List<Donation> donations = donationRepository.findAll(convertToDbDateString(startDate), convertToDbDateString(endDate), null, null).stream()
                 .filter(donation -> incomeCategoryIds.contains(donation.getDonateType()))
-                .filter(donation -> isWithinRange(donation, startDate, endDate))
+//                .filter(donation -> isWithinRange(donation, startDate, endDate))
                 .sorted(Comparator
                         .comparing(
                                 (Donation donation) -> parseDate(donation.getDonateDate()),
@@ -334,29 +330,6 @@ public class IncomeReportController {
         return donationDate != null
                 && !donationDate.isBefore(startDate)
                 && !donationDate.isAfter(endDate);
-    }
-
-    private LocalDate parseDate(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        String[] parts = value.trim().replace('/', '.').replace('-', '.').split("\\.");
-        if (parts.length != 3) {
-            return null;
-        }
-        try {
-            int year = Integer.parseInt(parts[0]);
-            int month = Integer.parseInt(parts[1]);
-            int day = Integer.parseInt(parts[2]);
-            return LocalDate.of(year < 1912 ? year + 1911 : year, month, day);
-        } catch (RuntimeException e) {
-            return null;
-        }
-    }
-
-    private String currentRocDate() {
-        LocalDate today = LocalDate.now();
-        return String.format("%03d.%02d.%02d", today.getYear() - 1911, today.getMonthValue(), today.getDayOfMonth());
     }
 
     private enum ReportKind {

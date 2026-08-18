@@ -50,6 +50,8 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
+import static tw.org.il.dongsheng.templeapp.util.Util.parseDate;
+
 /**
  * 信眾點燈 / 中元普渡 共用頁面
  */
@@ -1616,7 +1618,7 @@ public class LightController {
                     .filter(donation -> categoryMap.containsKey(donation.getDonateType()))
                     .filter(donation -> criteriaResult.get().matches(donation.getDonateDate()))
                     .sorted(Comparator
-                            .comparing((Donation donation) -> parseStoredDonationDate(donation.getDonateDate()),
+                            .comparing((Donation donation) -> parseDate(donation.getDonateDate()),
                                     Comparator.nullsLast(Comparator.naturalOrder()))
                             .thenComparing(Donation::getId, Comparator.nullsLast(Comparator.naturalOrder())))
                     .toList();
@@ -1725,26 +1727,8 @@ public class LightController {
                     : null;
         }
 
-        LocalDate date = parseStoredDonationDate(value);
+        LocalDate date = parseDate(value);
         return date == null ? null : DonationDateCriteria.exactDate(date);
-    }
-
-    private LocalDate parseStoredDonationDate(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        String[] parts = value.trim().replace('/', '.').replace('-', '.').split("\\.");
-        if (parts.length != 3) {
-            return null;
-        }
-        try {
-            int year = Integer.parseInt(parts[0]);
-            int month = Integer.parseInt(parts[1]);
-            int day = Integer.parseInt(parts[2]);
-            return LocalDate.of(year < 1912 ? year + 1911 : year, month, day);
-        } catch (RuntimeException ignored) {
-            return null;
-        }
     }
 
     private String currentRocDate() {

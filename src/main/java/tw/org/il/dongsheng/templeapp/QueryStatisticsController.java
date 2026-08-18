@@ -42,6 +42,9 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static tw.org.il.dongsheng.templeapp.util.Util.currentRocDate;
+import static tw.org.il.dongsheng.templeapp.util.Util.parseDate;
+
 public class QueryStatisticsController {
     @FXML private ListView<DictionaryItem> availableCategoryList, selectedCategoryList;
     @FXML private ComboBox<String> amountOperatorBox, dataTypeBox;
@@ -154,7 +157,7 @@ public class QueryStatisticsController {
                             .collect(Collectors.toSet())
                     : Set.of();
 
-            List<Donation> filtered = donationRepository.findAll().stream()
+            List<Donation> filtered = donationRepository.findAll(null, null, null, null).stream()
                     .filter(donation -> matchesBaseCondition(
                             donation, condition, membersById, supplementDonationIds
                     ))
@@ -558,29 +561,6 @@ public class QueryStatisticsController {
         stage.initOwner(incomeCountField.getScene().getWindow());
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.showAndWait();
-    }
-
-    private LocalDate parseDate(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        String[] parts = value.trim().replace('/', '.').replace('-', '.').split("\\.");
-        if (parts.length != 3) {
-            return null;
-        }
-        try {
-            int year = Integer.parseInt(parts[0]);
-            int month = Integer.parseInt(parts[1]);
-            int day = Integer.parseInt(parts[2]);
-            return LocalDate.of(year < 1912 ? year + 1911 : year, month, day);
-        } catch (RuntimeException e) {
-            return null;
-        }
-    }
-
-    private String currentRocDate() {
-        LocalDate today = LocalDate.now();
-        return String.format("%03d.%02d.%02d", today.getYear() - 1911, today.getMonthValue(), today.getDayOfMonth());
     }
 
     private int parseRankingLimit() {

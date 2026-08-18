@@ -25,7 +25,7 @@ public interface DonationRepository {
     List<Donation> findByMemberIds(List<Integer> memberIds, int limit, int offset) throws SQLException;
     int getDonationCount(List<Integer> memberIds) throws SQLException;
 
-    List<Donation> findAll() throws SQLException;
+    List<Donation> findAll(String startDate, String endDate, String receiptNo, String creator) throws SQLException;
 
     List<DonationRankingRow> findRanking(int limit) throws SQLException;
 }

@@ -41,6 +41,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static tw.org.il.dongsheng.templeapp.util.Util.currentRocDate;
+import static tw.org.il.dongsheng.templeapp.util.Util.parseDate;
+
 public class HouseholdLightController {
     @FXML private ComboBox<String> collectorBox;
     @FXML private TableView<HouseholdLightRow> householdTable;
@@ -284,21 +287,6 @@ public class HouseholdLightController {
         return new SupplementInput(date, number);
     }
 
-    private LocalDate parseDate(String value) {
-        String[] parts = value.trim().replace('/', '.').replace('-', '.').split("\\.");
-        if (parts.length != 3) {
-            return null;
-        }
-        try {
-            int year = Integer.parseInt(parts[0]);
-            int month = Integer.parseInt(parts[1]);
-            int day = Integer.parseInt(parts[2]);
-            return LocalDate.of(year < 1912 ? year + 1911 : year, month, day);
-        } catch (RuntimeException e) {
-            return null;
-        }
-    }
-
     private List<SelectedLight> collectSelectedLights(HouseholdLightRow row) {
         List<SelectedLight> selectedLights = new ArrayList<>();
         for (LightType lightType : lightTypes) {
@@ -432,11 +420,6 @@ public class HouseholdLightController {
                 "",
                 changedBy
         );
-    }
-
-    private String currentRocDate() {
-        LocalDate today = LocalDate.now();
-        return String.format("%03d.%02d.%02d", today.getYear() - 1911, today.getMonthValue(), today.getDayOfMonth());
     }
 
     @FunctionalInterface
