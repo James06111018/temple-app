@@ -91,7 +91,10 @@ public class CheckoutReportController {
     private void onOpenClassificationReport() {
         openReport(ReportKind.CLASSIFICATION);
     }
-
+    @FXML
+    private void onOpenSupplementDetailReport() {
+        openSupplementReport(SupplementReportKind.DETAIL);
+    }
 
     private void openReport(ReportKind kind) {
         LocalDate startDate = parseDate(startDateField.getText());
@@ -213,8 +216,10 @@ public class CheckoutReportController {
                     ));
             Map<String, String> categoryNames = loadAllDonationCategoryNames();
             List<? extends javafx.scene.layout.Region> pages = switch (kind) {
-                case DETAIL -> null;
-                case ALL -> LightReportBuilder.buildSupplementAllPages(
+                case DETAIL -> CheckoutReportBuilder.buildSupplementDetailPages(
+                        supplements, donationsById, membersById, categoryNames
+                );
+                case ALL -> CheckoutReportBuilder.buildSupplementAllPages(
                         supplements, donationsById, membersById, categoryNames
                 );
             };

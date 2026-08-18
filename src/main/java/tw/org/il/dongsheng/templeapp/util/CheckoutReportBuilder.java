@@ -58,6 +58,7 @@ public final class CheckoutReportBuilder {
                     new String[]{"收據編號", "金    額", "日    期", "款項類別", "姓    名", "經辦人", "摘    要"},
                     new double[]{90, 90, 90, 135, 100, 90, 119},
                     true,
+                    true,
                     1
             ));
             for (int index = from; index < to; index++) {
@@ -74,6 +75,7 @@ public final class CheckoutReportBuilder {
                                 donationSummary(donation)
                         },
                         new double[]{90, 90, 90, 135, 100, 90, 119},
+                        false,
                         false,
                         1
                 ));
@@ -175,6 +177,7 @@ public final class CheckoutReportBuilder {
                     new String[]{"款項類別", "金    額", "日    期", "收據編號", "姓    名", "經辦人", "摘    要"},
                     new double[]{135, 90, 90, 90, 100, 90, 119},
                     true,
+                    true,
                     1
             ));
             for (int index = from; index < to; index++) {
@@ -196,6 +199,7 @@ public final class CheckoutReportBuilder {
                                 donationSummary(donation)
                         },
                         new double[]{135, 90, 90, 90, 100, 90, 119},
+                        false,
                         false,
                         1
                 ));
@@ -225,6 +229,7 @@ public final class CheckoutReportBuilder {
                     new String[]{"收據編號", "金    額", "日    期", "經辦人", "收據代表人", "備    註"},
                     new double[]{90, 100, 90, 90, 170, 174},
                     true,
+                    true,
                     1
             ));
             for (int index = from; index < to; index++) {
@@ -241,11 +246,12 @@ public final class CheckoutReportBuilder {
                         },
                         new double[]{90, 100, 90, 90, 170, 174},
                         false,
+                        false,
                         1
                 ));
             }
             if (pageIndex == pageCount - 1) {
-                Label totalLabel = incomeTextLabel("現金收入：" + formatAmount(totalAmount) + "元", 18);
+                Label totalLabel = textLabel("現金收入：" + formatAmount(totalAmount) + "元", 18, true);
                 VBox.setMargin(totalLabel, new Insets(24, 0, 0, 4));
                 page.getChildren().add(totalLabel);
             }
@@ -352,10 +358,11 @@ public final class CheckoutReportBuilder {
         for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
             int from = pageIndex * SUPPLEMENT_ROWS_PER_PAGE;
             int to = Math.min(lines.size(), from + SUPPLEMENT_ROWS_PER_PAGE);
-            VBox page = createIncomePage("補登款項明細表");
+            VBox page = createIncomePage("補 登 款 項 明 細 表");
             page.getChildren().add(incomeRow(
                     new String[]{"補登號碼", "金    額", "日    期", "款項類別", "姓    名", "經辦人", "備    註"},
                     widths,
+                    true,
                     true,
                     1
             ));
@@ -372,6 +379,7 @@ public final class CheckoutReportBuilder {
                                 line.note()
                         },
                         widths,
+                        false,
                         false,
                         1
                 ));
@@ -633,7 +641,7 @@ public final class CheckoutReportBuilder {
 
     private static VBox createIncomePage(String title) {
         VBox page = createBlankPage();
-        Label titleLabel = incomeTextLabel(title, 24);
+        Label titleLabel = textLabel(title, 24, true);
         titleLabel.setMaxWidth(Double.MAX_VALUE);
         titleLabel.setAlignment(Pos.CENTER);
         VBox.setMargin(titleLabel, new Insets(0, 0, 14, 0));
@@ -766,17 +774,17 @@ public final class CheckoutReportBuilder {
     }
 
     private static HBox incomeSubtotalRow(int amount) {
-        Label label = incomeTableCell("小　  計", 135, Pos.CENTER, 16);
-        Label amountLabel = incomeTableCell(formatAmount(amount), 90, Pos.CENTER_RIGHT, 16);
-        Label remainder = incomeTableCell("", 489, Pos.CENTER_LEFT);
+        Label label = incomeTableCell("小　  計", 135, Pos.CENTER, true,16);
+        Label amountLabel = incomeTableCell(formatAmount(amount), 90, Pos.CENTER_RIGHT, true, 16);
+        Label remainder = incomeTableCell("", 489, Pos.CENTER_LEFT, false);
         HBox row = new HBox(label, amountLabel, remainder);
         row.setStyle("-fx-border-color: #303030; -fx-border-width: 0 0 0 1;");
         return row;
     }
 
     private static HBox incomeTotalRow(String labelText, int amount, double labelWidth) {
-        Label label = incomeTableCell(labelText, labelWidth, Pos.CENTER, 16);
-        Label amountLabel = incomeTableCell(formatAmount(amount), 90, Pos.CENTER_RIGHT, 16);
+        Label label = incomeTableCell(labelText, labelWidth, Pos.CENTER, true, 16);
+        Label amountLabel = incomeTableCell(formatAmount(amount), 90, Pos.CENTER_RIGHT, true,16);
         HBox row = new HBox(label, amountLabel);
         row.setStyle("-fx-border-color: #303030; -fx-border-width: 0 0 0 1;");
         return row;
@@ -931,7 +939,7 @@ public final class CheckoutReportBuilder {
                     break;
                 }
             }
-            Label cell = incomeTextLabel(safe(values[index]), fontSize);
+            Label cell = textLabel(safe(values[index]), fontSize, false);
             cell.setPrefWidth(widths[index]);
             cell.setMinWidth(widths[index]);
             cell.setMaxWidth(widths[index]);
@@ -959,7 +967,7 @@ public final class CheckoutReportBuilder {
         return category.isBlank() ? firstNonBlank(donation.getSummary(), "未分類") : category;
     }
 
-    private static HBox incomeRow(String[] values, double[] widths, boolean header, int amountColumn) {
+    private static HBox incomeRow(String[] values, double[] widths, boolean header, boolean bold, int amountColumn) {
         HBox row = new HBox(0);
         for (int index = 0; index < values.length; index++) {
             Pos alignment = header
@@ -969,6 +977,7 @@ public final class CheckoutReportBuilder {
                     values[index],
                     widths[index],
                     alignment,
+                    bold,
                     header ? 16 : 14
             ));
         }
@@ -1012,7 +1021,7 @@ public final class CheckoutReportBuilder {
             Pos alignment,
             double fontSize
     ) {
-        Label label = incomeTextLabel(safe(text), fontSize);
+        Label label = textLabel(safe(text), fontSize, true);
         label.setPrefWidth(width);
         label.setMinWidth(width);
         label.setMaxWidth(width);
@@ -1042,7 +1051,7 @@ public final class CheckoutReportBuilder {
         line.setMaxWidth(Double.MAX_VALUE);
         line.setStyle("-fx-background-color: #303030;");
 
-        Label pageLabel = incomeTextLabel("Page " + pageNumber + " of " + pageCount, 11);
+        Label pageLabel = textLabel("Page " + pageNumber + " of " + pageCount, 11, false);
         pageLabel.setMaxWidth(Double.MAX_VALUE);
         pageLabel.setAlignment(Pos.CENTER_RIGHT);
         VBox.setMargin(pageLabel, new Insets(6, 4, 0, 0));
@@ -1053,19 +1062,19 @@ public final class CheckoutReportBuilder {
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        Label pageLabel = incomeTextLabel("Page " + pageNumber + " of " + pageCount, 11);
+        Label pageLabel = textLabel("Page " + pageNumber + " of " + pageCount, 11, false);
         pageLabel.setMaxWidth(Double.MAX_VALUE);
         pageLabel.setAlignment(Pos.CENTER_RIGHT);
         VBox.setMargin(pageLabel, new Insets(6, 4, 0, 0));
         page.getChildren().addAll(spacer, pageLabel);
     }
 
-    private static Label incomeTableCell(String text, double width, Pos alignment) {
-        return incomeTableCell(text, width, alignment, 14);
+    private static Label incomeTableCell(String text, double width, Pos alignment, boolean bold) {
+        return incomeTableCell(text, width, alignment, bold,14);
     }
 
-    private static Label incomeTableCell(String text, double width, Pos alignment, double fontSize) {
-        Label label = incomeTextLabel(safe(text), fontSize);
+    private static Label incomeTableCell(String text, double width, Pos alignment, boolean bold, double fontSize) {
+        Label label = textLabel(safe(text), fontSize, bold);
         label.setPrefWidth(width);
         label.setMinWidth(width);
         label.setMaxWidth(width);
@@ -1078,13 +1087,13 @@ public final class CheckoutReportBuilder {
         return label;
     }
 
-    private static Label incomeTextLabel(String text, double size) {
-        Label label = new Label(safe(text));
-        label.setFont(Font.font(INCOME_REPORT_FONT_FAMILY, FontWeight.BOLD, size));
-        label.setStyle("-fx-font-weight: bold;");
-        label.setMaxWidth(CONTENT_WIDTH);
-        return label;
-    }
+//    private static Label incomeTextLabel(String text, double size) {
+//        Label label = new Label(safe(text));
+//        label.setFont(Font.font(INCOME_REPORT_FONT_FAMILY, FontWeight.BOLD, size));
+//        label.setStyle("-fx-font-weight: bold;");
+//        label.setMaxWidth(CONTENT_WIDTH);
+//        return label;
+//    }
 
     private static String resolveIncomeReportFontFamily() {
         List<String> available = Font.getFamilies();
