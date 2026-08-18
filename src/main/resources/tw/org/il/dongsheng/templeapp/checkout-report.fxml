@@ -30,9 +30,9 @@
             <Button text="明細表" styleClass="btn-action" prefWidth="94" prefHeight="28"
                     layoutX="88" layoutY="156" onAction="#onOpenDetailReport" />
             <Button text="全" styleClass="btn-action" prefWidth="35" prefHeight="28"
-                    layoutX="188" layoutY="156" onAction="#onPlaceholderAction" />
+                    layoutX="188" layoutY="156" onAction="#onOpenAllReport" />
             <Button text="分類表" styleClass="btn-action" prefWidth="94" prefHeight="28"
-                    layoutX="88" layoutY="196" onAction="#onPlaceholderAction" />
+                    layoutX="88" layoutY="196" onAction="#onOpenClassificationReport" />
             <Button text="統計表" styleClass="btn-purple" prefWidth="94" prefHeight="28"
                     layoutX="88" layoutY="236" onAction="#onPlaceholderAction" />
             <Button text="月報表" styleClass="btn-purple" prefWidth="94" prefHeight="28"

@@ -7,13 +7,11 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import tw.org.il.dongsheng.templeapp.model.AppUser;
-import tw.org.il.dongsheng.templeapp.model.DictionaryItem;
-import tw.org.il.dongsheng.templeapp.model.Donation;
-import tw.org.il.dongsheng.templeapp.model.LightMember;
+import tw.org.il.dongsheng.templeapp.model.*;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.*;
 import tw.org.il.dongsheng.templeapp.util.AlertDialog;
 import tw.org.il.dongsheng.templeapp.util.CheckoutReportBuilder;
+import tw.org.il.dongsheng.templeapp.util.LightReportBuilder;
 import tw.org.il.dongsheng.templeapp.util.PrintPreview;
 
 import java.sql.SQLException;
@@ -82,9 +80,18 @@ public class CheckoutReportController {
     }
 
     @FXML
-    public void onOpenDetailReport() {
+    private void onOpenDetailReport() {
         openReport(ReportKind.DETAIL);
     }
+    @FXML
+    private void onOpenAllReport() {
+//        openSupplementReport(SupplementReportKind.ALL);
+    }
+    @FXML
+    private void onOpenClassificationReport() {
+        openReport(ReportKind.CLASSIFICATION);
+    }
+
 
     private void openReport(ReportKind kind) {
         LocalDate startDate = parseDate(startDateField.getText());
@@ -108,8 +115,9 @@ public class CheckoutReportController {
                 case DETAIL -> CheckoutReportBuilder.buildIncomeDetailPages(
                         data.donations(), data.membersById(), data.categoryNames()
                 );
-                case ALL -> null;
-                case CLASSIFICATION -> null;
+                case CLASSIFICATION -> CheckoutReportBuilder.buildClassificationPages(
+                        data.membersById(), data.donations(), data.categoryNames
+                );
                 case DAILY_CATEGORY -> null;
                 case MONTHLY_DAILY -> null;
                 case SUPPLEMENT_DETAIL -> null;
@@ -145,7 +153,6 @@ public class CheckoutReportController {
 
         List<Donation> donations = donationRepository.findAll(convertToDbDateString(startDate), convertToDbDateString(endDate), receiptNo, operator).stream()
                 .filter(donation -> incomeCategoryIds.contains(donation.getDonateType()))
-//                .filter(donation -> isWithinRange(donation, startDate, endDate))
                 .sorted(Comparator
                         .comparing(
                                 (Donation donation) -> parseDate(donation.getDonateDate()),
@@ -163,16 +170,78 @@ public class CheckoutReportController {
         return new ReportData(donations, membersById, categoryNames);
     }
 
-    private boolean isWithinRange(Donation donation, LocalDate startDate, LocalDate endDate) {
-        LocalDate donationDate = parseDate(donation.getDonateDate());
-        return donationDate != null
-                && !donationDate.isBefore(startDate)
-                && !donationDate.isAfter(endDate);
+    private void openSupplementReport(SupplementReportKind kind) {
+        LocalDate startDate = parseDate(startDateField.getText());
+        LocalDate endDate = parseDate(endDateField.getText());
+        if (startDate != null && endDate != null) {
+            if (startDate.isAfter(endDate)) {
+                AlertDialog.showWarning(TITLE, "起始日期不可晚於結束日期");
+                return;
+            }
+        }
+        String operator = operatorField.getText();
+        String receiptNo = receiptNoField.getText();
+
+        try {
+            List<DonationSupplement> supplements = supplementRepository.findByDateRange(startDate, endDate);
+            List<Integer> donationIds = supplements.stream()
+                    .map(DonationSupplement::getDonationId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .toList();
+            Map<Integer, Donation> donationsById = donationRepository.findByIds(donationIds).stream()
+                    .collect(Collectors.toMap(
+                            Donation::getId,
+                            Function.identity(),
+                            (left, right) -> left,
+                            LinkedHashMap::new
+                    ));
+            supplements = supplements.stream()
+                    .filter(supplement -> donationsById.containsKey(supplement.getDonationId()))
+                    .toList();
+            if (supplements.isEmpty()) {
+                AlertDialog.showInfo("補登款項", "查無指定補登日期內的資料");
+                return;
+            }
+
+            Map<Integer, LightMember> membersById = memberRepository.findAllIncludingDeleted().stream()
+                    .collect(Collectors.toMap(
+                            LightMember::getId,
+                            Function.identity(),
+                            (left, right) -> left,
+                            LinkedHashMap::new
+                    ));
+            Map<String, String> categoryNames = loadAllDonationCategoryNames();
+            List<? extends javafx.scene.layout.Region> pages = switch (kind) {
+                case DETAIL -> null;
+                case ALL -> LightReportBuilder.buildSupplementAllPages(
+                        supplements, donationsById, membersById, categoryNames
+                );
+            };
+            PrintPreview.show(startDateField.getScene().getWindow(), kind.title, pages);
+        } catch (SQLException e) {
+            AlertDialog.showError(TITLE, "讀取補登資料失敗：" + e.getMessage());
+        }
+    }
+
+    private Map<String, String> loadAllDonationCategoryNames() throws SQLException {
+        List<DictionaryItem> categoryItems = new ArrayList<>();
+        categoryItems.addAll(dictionaryRepository.findItemsByType(
+                SQLiteDictionaryRepository.TYPE_DONATION_LIGHT
+        ));
+        categoryItems.addAll(dictionaryRepository.findItemsByType(
+                SQLiteDictionaryRepository.TYPE_DONATION_GHOST
+        ));
+        return categoryItems.stream().collect(Collectors.toMap(
+                item -> String.valueOf(item.getId()),
+                DictionaryItem::getName,
+                (left, right) -> left,
+                LinkedHashMap::new
+        ));
     }
 
     private enum ReportKind {
         DETAIL("結帳報表－明細表"),
-        ALL("結帳報表－明細表（全）"),
         CLASSIFICATION("分類表"),
         DAILY_CATEGORY("統計表"),
         MONTHLY_DAILY("月報表"),
@@ -181,6 +250,17 @@ public class CheckoutReportController {
         private final String title;
 
         ReportKind(String title) {
+            this.title = title;
+        }
+    }
+
+    private enum SupplementReportKind {
+        DETAIL("補登款項明細表"),
+        ALL("結帳報表－明細表（全）");
+
+        private final String title;
+
+        SupplementReportKind(String title) {
             this.title = title;
         }
     }

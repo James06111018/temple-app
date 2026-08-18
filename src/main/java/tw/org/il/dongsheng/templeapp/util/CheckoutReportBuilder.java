@@ -32,6 +32,7 @@ public final class CheckoutReportBuilder {
     private static final int INCOME_SUMMARY_ROWS_PER_PAGE = 28;
     private static final int SUPPLEMENT_ROWS_PER_PAGE = 22;
     private static final int AUDIT_ROWS_PER_PAGE = 25;
+    private static final int CATEGORY_ROWS_PER_PAGE = 23;
     private static final String TEMPLE_NAME = "五結東聖宮";
     private static final String INCOME_REPORT_FONT_FAMILY = resolveIncomeReportFontFamily();
     private static final DateTimeFormatter DOT_DATE = DateTimeFormatter.ofPattern("yyyy.M.d");
@@ -46,7 +47,7 @@ public final class CheckoutReportBuilder {
     ) {
         List<Donation> rows = sortDonations(donations);
         int pageCount = Math.max(1, pageCount(rows.size(), INCOME_ROWS_PER_PAGE));
-        int totalAmount = rows.stream().mapToInt(CheckoutReportBuilder::incomeAmount).sum();
+//        int totalAmount = rows.stream().mapToInt(CheckoutReportBuilder::incomeAmount).sum();
         List<Region> pages = new ArrayList<>();
 
         for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
@@ -80,6 +81,64 @@ public final class CheckoutReportBuilder {
 //            if (pageIndex == pageCount - 1) {
 //                page.getChildren().add(incomeTotalRow("總　  計", totalAmount, 90));
 //            }
+            pages.add(page);
+        }
+        return pages;
+    }
+
+    public static List<Region> buildClassificationPages(
+            Map<Integer, LightMember> membersById,
+            List<Donation> donations,
+            Map<String, String> categoryNames
+    ) {
+        List<ClassifiedDonationRow> rows = classifiedRows(donations, categoryNames);
+        int pageCount = Math.max(1, pageCount(rows.size(), CATEGORY_ROWS_PER_PAGE));
+        int grandTotal = rows.stream()
+                .filter(row -> !row.subtotal())
+                .mapToInt(row -> reportAmount(row.donation()))
+                .sum();
+        List<Region> pages = new ArrayList<>();
+
+        for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+            int from = pageIndex * CATEGORY_ROWS_PER_PAGE;
+            int to = Math.min(rows.size(), from + CATEGORY_ROWS_PER_PAGE);
+            VBox page = createPage(TEMPLE_NAME + "　收入明細表");
+            page.getChildren().add(row(
+                    new String[]{"款項類別", "金    額", "日    期", "收據編號", "姓    名", "經辦人", "摘        要"},
+                    new double[]{105, 105, 85, 85, 90, 90, 179},
+                    true,
+                    true,
+                    0
+            ));
+
+            for (int index = from; index < to; index++) {
+                ClassifiedDonationRow classifiedRow = rows.get(index);
+                if (classifiedRow.subtotal()) {
+                    page.getChildren().add(categorySubtotalRow(classifiedRow.amount()));
+                    continue;
+                }
+                Donation donation = classifiedRow.donation();
+                LightMember member = membersById.get(donation.getMemberId());
+                page.getChildren().add(row(
+                        new String[]{
+                                classifiedRow.categoryName(),
+                                formatAmount(reportAmount(donation)),
+                                toRocDate(donation.getDonateDate()),
+                                formatReceiptNo(donation.getReceiptNo()),
+                                member == null ? "" : safe(member.getName()),
+                                safe(donation.getCreator()),
+                                donationSummary(donation)
+                        },
+                        new double[]{105, 105, 85, 85, 90, 90, 179},
+                        false,
+                        true,
+                        1
+                ));
+            }
+            if (pageIndex == pageCount - 1) {
+                page.getChildren().add(categoryGrandTotalRow(grandTotal));
+            }
+            pageNumber(page, pageIndex + 1, pageCount);
             pages.add(page);
         }
         return pages;
@@ -610,7 +669,8 @@ public final class CheckoutReportBuilder {
                 new String[]{"", "電腦編號", "姓名", "性別", "年齡", "農曆生日", "時辰", "生肖", "制化"},
                 new double[]{34, 90, 115, 50, 50, 105, 60, 60, 150},
                 true,
-                false
+                false,
+                0
         );
     }
 
@@ -629,7 +689,8 @@ public final class CheckoutReportBuilder {
                 },
                 new double[]{34, 90, 115, 50, 50, 105, 60, 60, 150},
                 false,
-                false
+                false,
+                0
         );
     }
 
@@ -638,7 +699,8 @@ public final class CheckoutReportBuilder {
                 new String[]{"日期", "收據編號", "姓名", "款項類別", "摘要", "金額"},
                 new double[]{92, 90, 100, 112, 230, 90},
                 true,
-                true
+                true,
+                0
         );
     }
 
@@ -658,7 +720,8 @@ public final class CheckoutReportBuilder {
                 },
                 new double[]{92, 90, 100, 112, 230, 90},
                 false,
-                true
+                true,
+                0
         );
     }
 
@@ -682,16 +745,24 @@ public final class CheckoutReportBuilder {
         return block;
     }
 
-    private static HBox categorySubtotalRow(String categoryName, int amount) {
-        Label label = tableCell(categoryName + "　小  計", 624, Pos.CENTER, true, true);
-        Label amountLabel = tableCell(formatAmount(amount), 90, Pos.CENTER_RIGHT, true, true);
-        return new HBox(label, amountLabel);
+    private static HBox categorySubtotalRow(int amount) {
+        Label label = tableCell("小  計", 105, Pos.CENTER_RIGHT, true, true);
+        Label amountLabel = tableCell(formatAmount(amount), 105, Pos.CENTER_RIGHT, true, true);
+        label.setStyle(label.getStyle() + "-fx-background-color: #EFEFEF; -fx-background-insets: 0;");
+        amountLabel.setStyle(amountLabel.getStyle() + "-fx-background-color: #EFEFEF; -fx-background-insets: 0;");
+
+        Label space = tableCell("", 529, Pos.CENTER, true, true);
+        HBox row = new HBox(label, amountLabel, space);
+        row.setStyle("-fx-border-color: #303030; -fx-border-width: 0 0 0 1;");
+        return row;
     }
 
     private static HBox categoryGrandTotalRow(int amount) {
-        Label label = tableCell("總  計", 105, Pos.CENTER, true, true);
-        Label amountLabel = tableCell(formatAmount(amount), 185, Pos.CENTER_RIGHT, true, true);
-        return new HBox(label, amountLabel);
+        Label label = tableCell("總  計", 105, Pos.CENTER_RIGHT, true, true);
+        Label amountLabel = tableCell(formatAmount(amount), 105, Pos.CENTER_RIGHT, true, true);
+        HBox row = new HBox(label, amountLabel);
+        row.setStyle("-fx-border-color: #303030; -fx-border-width: 0 0 0 1;");
+        return row;
     }
 
     private static HBox incomeSubtotalRow(int amount) {
@@ -1026,21 +1097,25 @@ public final class CheckoutReportBuilder {
         return "Serif";
     }
 
-    private static Label pageNumber(int page, int pageCount) {
-        Label label = textLabel("Page " + page + " of " + pageCount, 12, false);
+    private static void pageNumber(VBox page, int pageIndex, int pageCount) {
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
+        Label label = textLabel("Page " + pageIndex + " of " + pageCount, 12, false);
         label.setMaxWidth(Double.MAX_VALUE);
         label.setAlignment(Pos.CENTER_RIGHT);
         VBox.setMargin(label, new Insets(16, 0, 0, 0));
-        return label;
+
+        page.getChildren().addAll(spacer, label);
     }
 
-    private static HBox row(String[] values, double[] widths, boolean header, boolean boxed) {
+    private static HBox row(String[] values, double[] widths, boolean header, boolean boxed, int amountColumn) {
         HBox row = new HBox(0);
         for (int index = 0; index < values.length; index++) {
-            Pos alignment = index == values.length - 1 && boxed ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT;
-            if (header) {
-                alignment = Pos.CENTER;
-            }
+            Pos alignment = header
+                    ? Pos.CENTER
+                    : index == amountColumn ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT;
+
             row.getChildren().add(tableCell(values[index], widths[index], alignment, header, boxed));
         }
         if (!boxed) {
