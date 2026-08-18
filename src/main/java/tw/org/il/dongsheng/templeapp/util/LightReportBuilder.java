@@ -174,8 +174,8 @@ public final class LightReportBuilder {
             int to = Math.min(rows.size(), from + CATEGORY_ROWS_PER_PAGE);
             VBox page = createPage(TEMPLE_NAME + "　收入明細表");
             page.getChildren().add(row(
-                    new String[]{"款項類別", "金額", "日期", "收據編號", "姓名", "經辦人", "摘要"},
-                    new double[]{105, 80, 85, 85, 90, 90, 179},
+                    new String[]{"款項類別", "金    額", "日    期", "收據編號", "姓    名", "經辦人", "摘      要"},
+                    new double[]{105, 105, 85, 85, 90, 90, 179},
                     true,
                     true
             ));
@@ -197,7 +197,7 @@ public final class LightReportBuilder {
                                 safe(donation.getCreator()),
                                 donationSummary(donation)
                         },
-                        new double[]{105, 80, 85, 85, 90, 90, 179},
+                        new double[]{105, 105, 85, 85, 90, 90, 179},
                         false,
                         true
                 ));
@@ -205,7 +205,7 @@ public final class LightReportBuilder {
             if (pageIndex == pageCount - 1) {
                 page.getChildren().add(categoryGrandTotalRow(grandTotal));
             }
-            page.getChildren().add(pageNumber(pageIndex + 1, pageCount));
+            pageNumber(page, pageIndex + 1, pageCount);
             pages.add(page);
         }
         return pages;
@@ -907,15 +907,20 @@ public final class LightReportBuilder {
     }
 
     private static HBox categorySubtotalRow(String categoryName, int amount) {
-        Label label = tableCell(categoryName + "　小  計", 624, Pos.CENTER, true, true);
-        Label amountLabel = tableCell(formatAmount(amount), 90, Pos.CENTER_RIGHT, true, true);
-        return new HBox(label, amountLabel);
+        Label label = tableCell("小  計", 105, Pos.CENTER_RIGHT, true, true);
+        Label amountLabel = tableCell(formatAmount(amount), 105, Pos.CENTER_RIGHT, true, true);
+        Label space = tableCell("", 529, Pos.CENTER, true, true);
+        HBox row = new HBox(label, amountLabel, space);
+        row.setStyle("-fx-border-color: #303030; -fx-border-width: 0 0 0 1;");
+        return row;
     }
 
     private static HBox categoryGrandTotalRow(int amount) {
-        Label label = tableCell("總  計", 105, Pos.CENTER, true, true);
-        Label amountLabel = tableCell(formatAmount(amount), 185, Pos.CENTER_RIGHT, true, true);
-        return new HBox(label, amountLabel);
+        Label label = tableCell("總  計", 105, Pos.CENTER_RIGHT, true, true);
+        Label amountLabel = tableCell(formatAmount(amount), 105, Pos.CENTER_RIGHT, true, true);
+        HBox row = new HBox(label, amountLabel);
+        row.setStyle("-fx-border-color: #303030; -fx-border-width: 0 0 0 1;");
+        return row;
     }
 
     private static HBox incomeSubtotalRow(int amount) {
@@ -1250,12 +1255,16 @@ public final class LightReportBuilder {
         return "Serif";
     }
 
-    private static Label pageNumber(int page, int pageCount) {
-        Label label = textLabel("Page " + page + " of " + pageCount, 12, false);
+    private static void pageNumber(VBox page, int pageIndex, int pageCount) {
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
+        Label label = textLabel("Page " + pageIndex + " of " + pageCount, 12, false);
         label.setMaxWidth(Double.MAX_VALUE);
         label.setAlignment(Pos.CENTER_RIGHT);
         VBox.setMargin(label, new Insets(16, 0, 0, 0));
-        return label;
+
+        page.getChildren().addAll(spacer, label);
     }
 
     private static HBox row(String[] values, double[] widths, boolean header, boolean boxed) {
