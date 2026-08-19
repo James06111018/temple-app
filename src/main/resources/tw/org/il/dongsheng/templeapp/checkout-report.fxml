@@ -40,11 +40,11 @@
             <Button text="補登款項" styleClass="btn-green" prefWidth="94" prefHeight="28"
                     layoutX="88" layoutY="316" onAction="#onOpenSupplementDetailReport" />
             <Button text="刪除記錄" styleClass="btn-orange" prefWidth="94" prefHeight="28"
-                    layoutX="88" layoutY="356" onAction="#onPlaceholderAction" />
+                    layoutX="88" layoutY="356" onAction="#onOpenDeleteAuditReport" />
             <Button text="修改記錄" styleClass="btn-pink" prefWidth="94" prefHeight="28"
-                    layoutX="88" layoutY="396" onAction="#onPlaceholderAction" />
+                    layoutX="88" layoutY="396" onAction="#onOpenUpdateAuditReport" />
             <Button text="補據記錄" styleClass="btn-action" prefWidth="94" prefHeight="28"
-                    layoutX="88" layoutY="436" onAction="#onPlaceholderAction" />
+                    layoutX="88" layoutY="436" onAction="#onOpenReceiptSupplementAuditReport" />
         </AnchorPane>
     </center>
 </BorderPane>

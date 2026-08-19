@@ -19,6 +19,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static tw.org.il.dongsheng.templeapp.util.Util.convertToDbDateString;
+
 public class SQLiteDonationRepository implements DonationRepository {
     private static final String TABLE_NAME = "donations";
     public static final String AUDIT_ACTION_UPDATE = "UPDATE";
@@ -334,16 +336,16 @@ public class SQLiteDonationRepository implements DonationRepository {
     }
 
     @Override
-    public List<Donation> findAll(String startDate, String endDate, String receiptNo, String creator) throws SQLException {
+    public List<Donation> findAll(LocalDate startDate, LocalDate endDate, String receiptNo, String creator) throws SQLException {
         StringBuilder sql = new StringBuilder("SELECT * FROM " + TABLE_NAME + " WHERE COALESCE(is_deleted, 0) = 0");
         List<Object> params = new ArrayList<>();
-        if (startDate != null && !startDate.trim().isEmpty()) {
+        if (startDate != null) {
             sql.append(" AND donate_date >= ?");
-            params.add(startDate);
+            params.add(convertToDbDateString(startDate));
         }
-        if (endDate != null && !endDate.trim().isEmpty()) {
+        if (endDate != null) {
             sql.append(" AND donate_date <= ?");
-            params.add(endDate);
+            params.add(convertToDbDateString(endDate));
         }
         if (receiptNo != null && !receiptNo.trim().isEmpty()) {
             sql.append(" AND receipt_no >= ?");
@@ -445,59 +447,83 @@ public class SQLiteDonationRepository implements DonationRepository {
     public List<DonationAuditRecord> findAuditRecordsByDateRange(
             String action,
             LocalDate startDate,
-            LocalDate endDate
+            LocalDate endDate,
+            String receiptNo,
+            String creator
     ) throws SQLException {
         createTable();
-        String sql = """
+        StringBuilder sql = new StringBuilder("""
                 SELECT a.id AS audit_id,
-                       a.donation_id,
-                       a.member_id AS audit_member_id,
-                       a.action,
-                       a.changed_by,
-                       a.changed_at,
-                       a.snapshot,
-                       a.reason,
-                       a.supplement_receipt_no,
-                       COALESCE(a.member_name_at_change, m.name) AS member_name,
-                       a.before_recorded,
-                       a.before_receipt_no,
-                       a.before_donate_date,
-                       a.before_amount,
-                       a.before_donate_type,
-                       a.before_creator,
-                       a.after_recorded,
-                       a.after_receipt_no,
-                       a.after_donate_date,
-                       a.after_amount,
-                       a.after_donate_type,
-                       a.after_creator,
-                       d.id AS current_id,
-                       d.member_id AS current_member_id,
-                       d.receipt_no AS current_receipt_no,
-                       d.donate_date AS current_donate_date,
-                       d.extra_no AS current_extra_no,
-                       d.amount AS current_amount,
-                       d.summary AS current_summary,
-                       d.donate_note AS current_donate_note,
-                       d.other_note AS current_other_note,
-                       d.donor_no AS current_donor_no,
-                       d.light_no AS current_light_no,
-                       d.should_pay AS current_should_pay,
-                       d.donate_type AS current_donate_type,
-                       d.creator AS current_creator
+                a.donation_id,
+                a.member_id AS audit_member_id,
+                a.action,
+                a.changed_by,
+                a.changed_at,
+                a.snapshot,
+                a.reason,
+                a.supplement_receipt_no,
+                COALESCE(a.member_name_at_change, m.name) AS member_name,
+                a.before_recorded,
+                a.before_receipt_no,
+                a.before_donate_date,
+                a.before_amount,
+                a.before_donate_type,
+                a.before_creator,
+                a.after_recorded,
+                a.after_receipt_no,
+                a.after_donate_date,
+                a.after_amount,
+                a.after_donate_type,
+                a.after_creator,
+                d.id AS current_id,
+                d.member_id AS current_member_id,
+                d.receipt_no AS current_receipt_no,
+                d.donate_date AS current_donate_date,
+                d.extra_no AS current_extra_no,
+                d.amount AS current_amount,
+                d.summary AS current_summary,
+                d.donate_note AS current_donate_note,
+                d.other_note AS current_other_note,
+                d.donor_no AS current_donor_no,
+                d.light_no AS current_light_no,
+                d.should_pay AS current_should_pay,
+                d.donate_type AS current_donate_type,
+                d.creator AS current_creator
                 FROM donation_audits a
                 LEFT JOIN donations d ON d.id = a.donation_id
-                LEFT JOIN light_members m ON m.id = a.member_id
-                WHERE a.action = ?
-                  AND date(a.changed_at) BETWEEN ? AND ?
-                ORDER BY a.changed_at, a.id
-                """;
+                LEFT JOIN light_members m ON m.id = a.member_id """);
+
+        List<Object> params = new ArrayList<>();
+        sql.append(" WHERE a.action = ?");
+        params.add(action);
+
+        if (startDate != null) {
+            sql.append(" AND date(a.changed_at) >= ?");
+            params.add(startDate);
+        }
+        if (endDate != null) {
+            sql.append(" AND date(a.changed_at) <= ?");
+            params.add(endDate);
+        }
+        if (receiptNo != null && !receiptNo.trim().isEmpty()) {
+            sql.append(" AND a.before_receipt_no >= ?");
+            params.add(receiptNo);
+        }
+        if (creator != null && !creator.trim().isEmpty()) {
+            sql.append(" AND (a.before_creator = ? OR  a.after_creator = ?)");
+            params.add(creator);
+            params.add(creator);
+        }
+        sql.append(" ORDER BY a.changed_at, a.id");
         List<DonationAuditRecord> records = new ArrayList<>();
         try (Connection connection = databaseManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, action);
-            statement.setString(2, startDate.toString());
-            statement.setString(3, endDate.toString());
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+
+            for (int i = 0; i < params.size(); i++) {
+                // JDBC 的索引是從 1 開始計算，所以是 i + 1
+                statement.setObject(i + 1, params.get(i));
+            }
+
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
                     String snapshot = resultSet.getString("snapshot");

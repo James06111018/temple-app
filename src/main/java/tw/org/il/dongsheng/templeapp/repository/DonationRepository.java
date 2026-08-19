@@ -4,6 +4,7 @@ import tw.org.il.dongsheng.templeapp.model.Donation;
 import tw.org.il.dongsheng.templeapp.model.DonationRankingRow;
 
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,7 +26,7 @@ public interface DonationRepository {
     List<Donation> findByMemberIds(List<Integer> memberIds, int limit, int offset) throws SQLException;
     int getDonationCount(List<Integer> memberIds) throws SQLException;
 
-    List<Donation> findAll(String startDate, String endDate, String receiptNo, String creator) throws SQLException;
+    List<Donation> findAll(LocalDate startDate, LocalDate endDate, String receiptNo, String creator) throws SQLException;
 
     List<DonationRankingRow> findRanking(int limit) throws SQLException;
 }

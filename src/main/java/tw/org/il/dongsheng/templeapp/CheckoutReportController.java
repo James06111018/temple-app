@@ -95,6 +95,18 @@ public class CheckoutReportController {
     private void onOpenSupplementDetailReport() {
         openSupplementReport(SupplementReportKind.DETAIL);
     }
+    @FXML
+    private void onOpenDeleteAuditReport() {
+        openAuditReport(AuditReportKind.DELETE);
+    }
+    @FXML
+    private void onOpenUpdateAuditReport() {
+        openAuditReport(AuditReportKind.UPDATE);
+    }
+    @FXML
+    private void onOpenReceiptSupplementAuditReport() {
+        openAuditReport(AuditReportKind.RECEIPT_SUPPLEMENT);
+    }
 
     private void openReport(ReportKind kind) {
         LocalDate startDate = parseDate(startDateField.getText());
@@ -154,7 +166,7 @@ public class CheckoutReportController {
                         LinkedHashMap::new
                 ));
 
-        List<Donation> donations = donationRepository.findAll(convertToDbDateString(startDate), convertToDbDateString(endDate), receiptNo, operator).stream()
+        List<Donation> donations = donationRepository.findAll(startDate, endDate, receiptNo, operator).stream()
                 .filter(donation -> incomeCategoryIds.contains(donation.getDonateType()))
                 .sorted(Comparator
                         .comparing(
@@ -226,6 +238,48 @@ public class CheckoutReportController {
             PrintPreview.show(startDateField.getScene().getWindow(), kind.title, pages);
         } catch (SQLException e) {
             AlertDialog.showError(TITLE, "讀取補登資料失敗：" + e.getMessage());
+        }
+    }
+
+    private void openAuditReport(AuditReportKind kind) {
+        LocalDate startDate = parseDate(startDateField.getText());
+        LocalDate endDate = parseDate(endDateField.getText());
+        if (startDate != null && endDate != null) {
+            if (startDate.isAfter(endDate)) {
+                AlertDialog.showWarning(TITLE, "起始日期不可晚於結束日期");
+                return;
+            }
+        }
+        String operator = operatorField.getText();
+        String receiptNo = receiptNoField.getText();
+
+        try {
+            List<DonationAuditRecord> records = switch (kind) {
+                case DELETE -> donationRepository.findAuditRecordsByDateRange(
+                        SQLiteDonationRepository.AUDIT_ACTION_DELETE, startDate, endDate, receiptNo, operator
+                );
+                case UPDATE -> donationRepository.findAuditRecordsByDateRange(
+                        SQLiteDonationRepository.AUDIT_ACTION_UPDATE, startDate, endDate, receiptNo, operator
+                );
+                case RECEIPT_SUPPLEMENT -> donationRepository.findAuditRecordsByDateRange(
+                        SQLiteDonationRepository.AUDIT_ACTION_RECEIPT_SUPPLEMENT, startDate, endDate, receiptNo, operator
+                );
+            };
+            Map<String, String> categoryNames = loadAllDonationCategoryNames();
+            List<? extends javafx.scene.layout.Region> pages = switch (kind) {
+                case DELETE -> LightReportBuilder.buildDonationDeleteAuditPages(
+                        records, categoryNames
+                );
+                case UPDATE -> LightReportBuilder.buildDonationUpdateAuditPages(
+                        records, categoryNames
+                );
+                case RECEIPT_SUPPLEMENT -> LightReportBuilder.buildDonationReceiptSupplementAuditPages(
+                        records, categoryNames
+                );
+            };
+            PrintPreview.show(startDateField.getScene().getWindow(), kind.title, pages);
+        } catch (SQLException e) {
+            AlertDialog.showError(kind.title, "讀取捐款記錄失敗：" + e.getMessage());
         }
     }
 

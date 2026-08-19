@@ -188,7 +188,7 @@ public class IncomeReportController {
                         LinkedHashMap::new
                 ));
 
-        List<Donation> donations = donationRepository.findAll(convertToDbDateString(startDate), convertToDbDateString(endDate), null, null).stream()
+        List<Donation> donations = donationRepository.findAll(startDate, endDate, null, null).stream()
                 .filter(donation -> incomeCategoryIds.contains(donation.getDonateType()))
 //                .filter(donation -> isWithinRange(donation, startDate, endDate))
                 .sorted(Comparator
@@ -298,13 +298,13 @@ public class IncomeReportController {
         try {
             List<DonationAuditRecord> records = switch (kind) {
                 case DELETE -> donationRepository.findAuditRecordsByDateRange(
-                        SQLiteDonationRepository.AUDIT_ACTION_DELETE, startDate, endDate
+                        SQLiteDonationRepository.AUDIT_ACTION_DELETE, startDate, endDate, null, null
                 );
                 case UPDATE -> donationRepository.findAuditRecordsByDateRange(
-                        SQLiteDonationRepository.AUDIT_ACTION_UPDATE, startDate, endDate
+                        SQLiteDonationRepository.AUDIT_ACTION_UPDATE, startDate, endDate, null, null
                 );
                 case RECEIPT_SUPPLEMENT -> donationRepository.findAuditRecordsByDateRange(
-                        SQLiteDonationRepository.AUDIT_ACTION_RECEIPT_SUPPLEMENT, startDate, endDate
+                        SQLiteDonationRepository.AUDIT_ACTION_RECEIPT_SUPPLEMENT, startDate, endDate, null, null
                 );
             };
             Map<String, String> categoryNames = loadAllDonationCategoryNames();
