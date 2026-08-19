@@ -92,6 +92,14 @@ public class CheckoutReportController {
         openReport(ReportKind.CLASSIFICATION);
     }
     @FXML
+    private void onOpenDailyReport() {
+        openReport(ReportKind.DAILY_CATEGORY);
+    }
+    @FXML
+    private void onOpenMonthlyReport() {
+        openReport(ReportKind.MONTHLY_DAILY);
+    }
+    @FXML
     private void onOpenSupplementDetailReport() {
         openSupplementReport(SupplementReportKind.DETAIL);
     }
@@ -111,13 +119,19 @@ public class CheckoutReportController {
     private void openReport(ReportKind kind) {
         LocalDate startDate = parseDate(startDateField.getText());
         LocalDate endDate = parseDate(endDateField.getText());
-        if (startDate != null && endDate != null) {
-            if (startDate.isAfter(endDate)) {
-                AlertDialog.showWarning(TITLE, "起始日期不可晚於結束日期");
-                return;
-            }
+        if (startDate == null || endDate == null) {
+            AlertDialog.showWarning(TITLE, "日期請輸入民國 115.05.14 或西元 2026-05-14 格式");
+            return;
+        }
+        if (startDate.isAfter(endDate)) {
+            AlertDialog.showWarning(TITLE, "起始日期不可晚於結束日期");
+            return;
         }
         String operator = operatorField.getText();
+        if (operator == null || operator.isEmpty()) {
+            AlertDialog.showWarning(TITLE, "請選取或輸入經辦人");
+            return;
+        }
         String receiptNo = receiptNoField.getText();
 
         try {
@@ -133,14 +147,38 @@ public class CheckoutReportController {
                 case CLASSIFICATION -> CheckoutReportBuilder.buildClassificationPages(
                         data.membersById(), data.donations(), data.categoryNames
                 );
-                case DAILY_CATEGORY -> null;
-                case MONTHLY_DAILY -> null;
-                case SUPPLEMENT_DETAIL -> null;
+                case DAILY_CATEGORY -> CheckoutReportBuilder.buildIncomeDailyCategoryPages(
+                        data.donations(), data.categoryNames(), processTitleStr()
+                );
+                case MONTHLY_DAILY -> CheckoutReportBuilder.buildIncomeMonthlyDailyPages(data.donations, operator);
             };
             PrintPreview.show(startDateField.getScene().getWindow(), kind.title, pages);
         } catch (SQLException e) {
             AlertDialog.showError(TITLE, "讀取結帳資料失敗：" + e.getMessage());
         }
+    }
+
+    private String processTitleStr() {
+        String ret = "";
+        String start = startDateField.getText();
+        String end = endDateField.getText();
+        String creator = operatorField.getText();
+        if (!start.isEmpty()) {
+            ret += start;
+        }
+        if (!end.isEmpty()) {
+            if (!ret.isEmpty()) {
+                ret += " - ";
+            }
+            ret += end;
+        }
+        if (!creator.isEmpty()) {
+            if (!ret.isEmpty()) {
+                ret += " ";
+            }
+            ret += creator;
+        }
+        return ret;
     }
 
     private ReportData loadReportData(LocalDate startDate, LocalDate endDate, String operator, String receiptNo) throws SQLException {
@@ -188,13 +226,19 @@ public class CheckoutReportController {
     private void openSupplementReport(SupplementReportKind kind) {
         LocalDate startDate = parseDate(startDateField.getText());
         LocalDate endDate = parseDate(endDateField.getText());
-        if (startDate != null && endDate != null) {
-            if (startDate.isAfter(endDate)) {
-                AlertDialog.showWarning(TITLE, "起始日期不可晚於結束日期");
-                return;
-            }
+        if (startDate == null || endDate == null) {
+            AlertDialog.showWarning(TITLE, "日期請輸入民國 115.05.14 或西元 2026-05-14 格式");
+            return;
+        }
+        if (startDate.isAfter(endDate)) {
+            AlertDialog.showWarning(TITLE, "起始日期不可晚於結束日期");
+            return;
         }
         String operator = operatorField.getText();
+        if (operator == null) {
+            AlertDialog.showWarning(TITLE, "請選取或輸入經辦人");
+            return;
+        }
         String receiptNo = receiptNoField.getText();
 
         try {
@@ -244,13 +288,19 @@ public class CheckoutReportController {
     private void openAuditReport(AuditReportKind kind) {
         LocalDate startDate = parseDate(startDateField.getText());
         LocalDate endDate = parseDate(endDateField.getText());
-        if (startDate != null && endDate != null) {
-            if (startDate.isAfter(endDate)) {
-                AlertDialog.showWarning(TITLE, "起始日期不可晚於結束日期");
-                return;
-            }
+        if (startDate == null || endDate == null) {
+            AlertDialog.showWarning(TITLE, "日期請輸入民國 115.05.14 或西元 2026-05-14 格式");
+            return;
+        }
+        if (startDate.isAfter(endDate)) {
+            AlertDialog.showWarning(TITLE, "起始日期不可晚於結束日期");
+            return;
         }
         String operator = operatorField.getText();
+        if (operator == null) {
+            AlertDialog.showWarning(TITLE, "請選取或輸入經辦人");
+            return;
+        }
         String receiptNo = receiptNoField.getText();
 
         try {
@@ -303,8 +353,7 @@ public class CheckoutReportController {
         DETAIL("結帳報表－明細表"),
         CLASSIFICATION("分類表"),
         DAILY_CATEGORY("統計表"),
-        MONTHLY_DAILY("月報表"),
-        SUPPLEMENT_DETAIL("補登款項");
+        MONTHLY_DAILY("月報表");
 
         private final String title;
 

@@ -499,26 +499,27 @@ public final class CheckoutReportBuilder {
         );
     }
 
-    public static List<Region> buildIncomeDailyOperatorPages(List<Donation> donations) {
-        List<IncomeSummaryLine> summaries = summarizeDailyIncome(
-                donations,
-                donation -> firstNonBlank(donation.getCreator(), "未指定")
-        );
-        return buildIncomeDailySummaryPages("收入日報表", "經辦人", summaries);
-    }
+//    public static List<Region> buildIncomeDailyOperatorPages(List<Donation> donations) {
+//        List<IncomeSummaryLine> summaries = summarizeDailyIncome(
+//                donations,
+//                donation -> firstNonBlank(donation.getCreator(), "未指定")
+//        );
+//        return buildIncomeDailySummaryPages("收入日報表", "經辦人", summaries);
+//    }
 
     public static List<Region> buildIncomeDailyCategoryPages(
             List<Donation> donations,
-            Map<String, String> categoryNames
+            Map<String, String> categoryNames,
+            String firstTitle
     ) {
         List<IncomeSummaryLine> summaries = summarizeDailyIncome(
                 donations,
                 donation -> categoryLabel(categoryNames, donation.getDonateType())
         );
-        return buildIncomeDailySummaryPages("收入日統計表", "款項類別", summaries);
+        return buildIncomeDailySummaryPages("收入統計表", firstTitle, summaries);
     }
 
-    public static List<Region> buildIncomeMonthlyDailyPages(List<Donation> donations) {
+    public static List<Region> buildIncomeMonthlyDailyPages(List<Donation> donations, String creator) {
         Map<YearMonth, Map<LocalDate, Integer>> monthlyDailyAmounts = new TreeMap<>();
         for (Donation donation : sortDonations(donations)) {
             LocalDate date = parseDate(donation.getDonateDate());
@@ -547,7 +548,7 @@ public final class CheckoutReportBuilder {
                 int to = Math.min(rows.size(), from + INCOME_SUMMARY_ROWS_PER_PAGE);
                 VBox page = createIncomePage(TEMPLE_NAME + "　收入月報表");
                 page.getChildren().add(incomeSummaryRow(
-                        new String[]{"資料月份：" + toRocMonth(monthEntry.getKey()), "日  期", "金額"},
+                        new String[]{"月份：" + toRocMonth(monthEntry.getKey()) + " " + creator, "日  期", "金額"},
                         new double[]{200, 132, 132},
                         true,
                         2
@@ -556,7 +557,7 @@ public final class CheckoutReportBuilder {
                     Map.Entry<LocalDate, Integer> row = rows.get(index);
                     page.getChildren().add(incomeSummaryRow(
                             new String[]{"", toRocDate(row.getKey()), formatAmount(row.getValue())},
-                            new double[]{240, 75, 102},
+                            new double[]{240, 102, 102},
                             false,
                             2
                     ));
@@ -801,15 +802,12 @@ public final class CheckoutReportBuilder {
         List<Region> pages = new ArrayList<>();
         for (int pageIndex = 0; pageIndex < pageCount; pageIndex++) {
             VBox page = createIncomePage(TEMPLE_NAME + "　" + title);
+            page.getChildren().add(incomeSummaryRow(
+                    new String[]{groupHeading, "款項類別", "筆數", "金額"},
+                    new double[]{220, 215, 130, 184},
+                    true
+            ));
             for (IncomeDailyDisplayLine line : pageLines.get(pageIndex)) {
-                if (line.header()) {
-                    page.getChildren().add(incomeSummaryRow(
-                            new String[]{toRocDate(line.date()), groupHeading, "筆數", "金額"},
-                            new double[]{170, 250, 110, 184},
-                            true
-                    ));
-                    continue;
-                }
                 IncomeSummaryLine summary = line.summary();
                 page.getChildren().add(incomeSummaryRow(
                         new String[]{
@@ -818,14 +816,14 @@ public final class CheckoutReportBuilder {
                                 String.valueOf(summary.count()),
                                 formatAmount(summary.amount())
                         },
-                        new double[]{260, 195, 140, 184},
+                        new double[]{290, 195, 140, 184},
                         false
                 ));
             }
             if (pageIndex == pageCount - 1) {
                 page.getChildren().add(incomeSummaryTotalRow(totalAmount));
             }
-            addIncomePageFooter(page, pageIndex + 1, pageCount);
+//            addIncomePageFooter(page, pageIndex + 1, pageCount);
             pages.add(page);
         }
         return pages;
@@ -836,23 +834,14 @@ public final class CheckoutReportBuilder {
     ) {
         List<List<IncomeDailyDisplayLine>> pages = new ArrayList<>();
         List<IncomeDailyDisplayLine> currentPage = new ArrayList<>();
-        LocalDate currentDate = null;
 
         for (IncomeSummaryLine summary : summaries) {
-            boolean needsHeader = !summary.date().equals(currentDate);
-            int requiredLines = needsHeader ? 2 : 1;
             if (!currentPage.isEmpty()
-                    && currentPage.size() + requiredLines > INCOME_SUMMARY_ROWS_PER_PAGE) {
+                    && currentPage.size() > INCOME_SUMMARY_ROWS_PER_PAGE) {
                 pages.add(List.copyOf(currentPage));
                 currentPage = new ArrayList<>();
-                currentDate = null;
-                needsHeader = true;
             }
-            if (needsHeader) {
-                currentPage.add(new IncomeDailyDisplayLine(summary.date(), null, true));
-                currentDate = summary.date();
-            }
-            currentPage.add(new IncomeDailyDisplayLine(summary.date(), summary, false));
+            currentPage.add(new IncomeDailyDisplayLine(summary, false));
         }
 
         if (!currentPage.isEmpty()) {
@@ -868,30 +857,22 @@ public final class CheckoutReportBuilder {
             List<Donation> donations,
             Function<Donation, String> labelProvider
     ) {
-        Map<LocalDate, Map<String, int[]>> grouped = new TreeMap<>();
+        Map<String, int[]> grouped = new TreeMap<>();
         for (Donation donation : sortDonations(donations)) {
-            LocalDate date = parseDate(donation.getDonateDate());
-            if (date == null) {
-                continue;
-            }
             String label = firstNonBlank(labelProvider.apply(donation), "未指定");
             int[] summary = grouped
-                    .computeIfAbsent(date, ignored -> new LinkedHashMap<>())
                     .computeIfAbsent(label, ignored -> new int[2]);
             summary[0]++;
             summary[1] += incomeAmount(donation);
         }
 
         List<IncomeSummaryLine> result = new ArrayList<>();
-        for (Map.Entry<LocalDate, Map<String, int[]>> dateEntry : grouped.entrySet()) {
-            for (Map.Entry<String, int[]> groupEntry : dateEntry.getValue().entrySet()) {
-                result.add(new IncomeSummaryLine(
-                        dateEntry.getKey(),
-                        groupEntry.getKey(),
-                        groupEntry.getValue()[0],
-                        groupEntry.getValue()[1]
-                ));
-            }
+        for (Map.Entry<String, int[]> groupEntry : grouped.entrySet()) {
+            result.add(new IncomeSummaryLine(
+                    groupEntry.getKey(),
+                    groupEntry.getValue()[0],
+                    groupEntry.getValue()[1]
+            ));
         }
         return result;
     }
@@ -1444,11 +1425,10 @@ public final class CheckoutReportBuilder {
     ) {
     }
 
-    private record IncomeSummaryLine(LocalDate date, String label, int count, int amount) {
+    private record IncomeSummaryLine(String label, int count, int amount) {
     }
 
     private record IncomeDailyDisplayLine(
-            LocalDate date,
             IncomeSummaryLine summary,
             boolean header
     ) {
