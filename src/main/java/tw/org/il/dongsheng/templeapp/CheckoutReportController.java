@@ -85,7 +85,7 @@ public class CheckoutReportController {
     }
     @FXML
     private void onOpenAllReport() {
-//        openSupplementReport(SupplementReportKind.ALL);
+        openReportSupplementReport(ReportSupplementReportKind.ALL);
     }
     @FXML
     private void onOpenClassificationReport() {
@@ -223,6 +223,46 @@ public class CheckoutReportController {
         return new ReportData(donations, membersById, categoryNames);
     }
 
+    private void openReportSupplementReport(ReportSupplementReportKind kind) {
+        LocalDate startDate = parseDate(startDateField.getText());
+        LocalDate endDate = parseDate(endDateField.getText());
+        if (startDate == null || endDate == null) {
+            AlertDialog.showWarning(TITLE, "日期請輸入民國 115.05.14 或西元 2026-05-14 格式");
+            return;
+        }
+        if (startDate.isAfter(endDate)) {
+            AlertDialog.showWarning(TITLE, "起始日期不可晚於結束日期");
+            return;
+        }
+        String operator = operatorField.getText();
+        if (operator == null || operator.isEmpty()) {
+            AlertDialog.showWarning(TITLE, "請選取或輸入經辦人");
+            return;
+        }
+        String receiptNo = receiptNoField.getText();
+
+        try {
+            ReportData data = loadReportData(startDate, endDate, operator, receiptNo);
+            if (data.donations().isEmpty()) {
+                AlertDialog.showInfo("TITLE", "查無指定條件內的點燈或中元普渡結帳資料");
+                return;
+            }
+            List<Integer> donationIds = data.donations.stream()
+                    .map(Donation::getId)
+                    .toList();
+            Map<Integer, String> supplements = supplementRepository.findSupplementNosByDonationIds(donationIds);
+
+            List<? extends javafx.scene.layout.Region> pages = switch (kind) {
+                case ALL -> CheckoutReportBuilder.buildIncomeAllPages(
+                    data.donations, data.membersById, supplements
+                );
+            };
+            PrintPreview.show(startDateField.getScene().getWindow(), kind.title, pages);
+        } catch (SQLException e) {
+            AlertDialog.showError(TITLE, "讀取結帳資料失敗：" + e.getMessage());
+        }
+    }
+
     private void openSupplementReport(SupplementReportKind kind) {
         LocalDate startDate = parseDate(startDateField.getText());
         LocalDate endDate = parseDate(endDateField.getText());
@@ -273,9 +313,6 @@ public class CheckoutReportController {
             Map<String, String> categoryNames = loadAllDonationCategoryNames();
             List<? extends javafx.scene.layout.Region> pages = switch (kind) {
                 case DETAIL -> CheckoutReportBuilder.buildSupplementDetailPages(
-                        supplements, donationsById, membersById, categoryNames
-                );
-                case ALL -> CheckoutReportBuilder.buildSupplementAllPages(
                         supplements, donationsById, membersById, categoryNames
                 );
             };
@@ -362,9 +399,15 @@ public class CheckoutReportController {
         }
     }
 
-    private enum SupplementReportKind {
-        DETAIL("補登款項明細表"),
+    private enum ReportSupplementReportKind {
         ALL("結帳報表－明細表（全）");
+        private final String title;
+
+        ReportSupplementReportKind(String title) { this.title = title; }
+    }
+
+    private enum SupplementReportKind {
+        DETAIL("補登款項明細表");
 
         private final String title;
 

@@ -214,7 +214,8 @@ public final class CheckoutReportBuilder {
 
     public static List<Region> buildIncomeAllPages(
             List<Donation> donations,
-            Map<Integer, LightMember> membersById
+            Map<Integer, LightMember> membersById,
+            Map<Integer, String> supplements
     ) {
         List<Donation> rows = sortDonations(donations);
         int pageCount = Math.max(1, pageCount(rows.size(), INCOME_ROWS_PER_PAGE));
@@ -226,28 +227,28 @@ public final class CheckoutReportBuilder {
             int to = Math.min(rows.size(), from + INCOME_ROWS_PER_PAGE);
             VBox page = createIncomePage(TEMPLE_NAME + "　收入明細表");
             page.getChildren().add(incomeRow(
-                    new String[]{"收據編號", "金    額", "日    期", "經辦人", "收據代表人", "備    註"},
-                    new double[]{90, 100, 90, 90, 170, 174},
+                    new String[]{"收據編號", "補登號碼", "金    額", "日    期", "經辦人", "備    註"},
+                    new double[]{100, 100, 100, 100, 90, 224},
                     true,
                     true,
-                    1
+                    2
             ));
             for (int index = from; index < to; index++) {
                 Donation donation = rows.get(index);
-                LightMember member = membersById.get(donation.getMemberId());
+//                LightMember member = membersById.get(donation.getMemberId());
                 page.getChildren().add(incomeRow(
                         new String[]{
                                 formatReceiptNo(donation.getReceiptNo()),
+                                supplements.get(donation.getId()),
                                 formatAmount(incomeAmount(donation)),
                                 toRocDate(donation.getDonateDate()),
                                 safe(donation.getCreator()),
-                                member == null ? "" : safe(member.getName()),
                                 donationSummary(donation)
                         },
-                        new double[]{90, 100, 90, 90, 170, 174},
+                        new double[]{100, 100, 100, 100, 90, 224},
                         false,
                         false,
-                        1
+                        2
                 ));
             }
             if (pageIndex == pageCount - 1) {
@@ -273,12 +274,12 @@ public final class CheckoutReportBuilder {
 
     public static List<Region> buildSupplementAllPages(
             List<DonationSupplement> supplements,
-            Map<Integer, Donation> donationsById,
+            Map<Integer, Donation> donations,
             Map<Integer, LightMember> membersById,
             Map<String, String> categoryNames
     ) {
         return buildSupplementDetailPages(
-                supplements, donationsById, membersById, categoryNames, false
+                supplements, donations, membersById, categoryNames, false
         );
     }
 

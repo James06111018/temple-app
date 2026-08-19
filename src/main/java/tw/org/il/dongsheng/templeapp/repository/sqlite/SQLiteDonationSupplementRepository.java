@@ -9,7 +9,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class SQLiteDonationSupplementRepository {
     public static final String SOURCE_HOUSEHOLD_LIGHT = "HOUSEHOLD_LIGHT";
@@ -163,6 +165,45 @@ public class SQLiteDonationSupplementRepository {
                 return resultSet.next() ? resultSet.getInt("id") : null;
             }
         }
+    }
+
+    public Map<Integer, String> findSupplementNosByDonationIds(List<Integer> donationIds) throws SQLException {
+        // 防呆：如果傳入的 ID 清單是空的，直接回傳空 Map，不走資料庫
+        if (donationIds == null || donationIds.isEmpty()) {
+            return new HashMap<>();
+        }
+
+        // 1. 動態組裝 IN (?, ?, ?) 語法
+        StringBuilder sql = new StringBuilder("SELECT donation_id, supplement_no FROM donation_supplements WHERE donation_id IN (");
+        for (int i = 0; i < donationIds.size(); i++) {
+            sql.append("?");
+            if (i < donationIds.size() - 1) {
+                sql.append(", ");
+            }
+        }
+        sql.append(")");
+
+        Map<Integer, String> resultMap = new HashMap<>();
+
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+
+            // 2. 依序綁定多筆 donationId 參數
+            for (int i = 0; i < donationIds.size(); i++) {
+                statement.setInt(i + 1, donationIds.get(i));
+            }
+
+            // 3. 執行查詢並將結果包裝成 Map
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    int donationId = resultSet.getInt("donation_id");
+                    String supplementNo = resultSet.getString("supplement_no");
+                    resultMap.put(donationId, supplementNo);
+                }
+            }
+        }
+
+        return resultMap;
     }
 
     private DonationSupplement mapRow(ResultSet resultSet) throws SQLException {
