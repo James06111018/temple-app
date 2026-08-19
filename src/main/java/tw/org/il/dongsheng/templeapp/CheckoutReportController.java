@@ -235,20 +235,20 @@ public class CheckoutReportController {
             return;
         }
         String operator = operatorField.getText();
-        if (operator == null) {
+        if (operator == null || operator.isEmpty()) {
             AlertDialog.showWarning(TITLE, "請選取或輸入經辦人");
             return;
         }
         String receiptNo = receiptNoField.getText();
 
         try {
-            List<DonationSupplement> supplements = supplementRepository.findByDateRange(startDate, endDate);
+            List<DonationSupplement> supplements = supplementRepository.findByDateRange(startDate, endDate, operator);
             List<Integer> donationIds = supplements.stream()
                     .map(DonationSupplement::getDonationId)
                     .filter(java.util.Objects::nonNull)
                     .distinct()
                     .toList();
-            Map<Integer, Donation> donationsById = donationRepository.findByIds(donationIds).stream()
+            Map<Integer, Donation> donationsById = donationRepository.findByIds(donationIds, receiptNo).stream()
                     .collect(Collectors.toMap(
                             Donation::getId,
                             Function.identity(),
@@ -297,7 +297,7 @@ public class CheckoutReportController {
             return;
         }
         String operator = operatorField.getText();
-        if (operator == null) {
+        if (operator == null || operator.isEmpty()) {
             AlertDialog.showWarning(TITLE, "請選取或輸入經辦人");
             return;
         }

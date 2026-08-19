@@ -416,7 +416,7 @@ public class SQLiteDonationRepository implements DonationRepository {
         return rows;
     }
 
-    public List<Donation> findByIds(List<Integer> donationIds) throws SQLException {
+    public List<Donation> findByIds(List<Integer> donationIds, String receiptNo) throws SQLException {
         if (donationIds == null || donationIds.isEmpty()) {
             return List.of();
         }
@@ -424,16 +424,28 @@ public class SQLiteDonationRepository implements DonationRepository {
         String placeholders = donationIds.stream()
                 .map(id -> "?")
                 .collect(Collectors.joining(", "));
-        String sql = "SELECT * FROM " + TABLE_NAME
-                + " WHERE id IN (" + placeholders + ")"
-                + " AND COALESCE(is_deleted, 0) = 0 ORDER BY id";
+        StringBuilder sql = new StringBuilder("SELECT * FROM " + TABLE_NAME
+                + " WHERE id IN (" + placeholders + ")");
+
+        List<Object> params = new ArrayList<>();
+        if (receiptNo != null && !receiptNo.trim().isEmpty()) {
+            sql.append(" AND receipt_no >= ?");
+            params.add(receiptNo);
+        }
+
+        sql.append(" AND COALESCE(is_deleted, 0) = 0 ORDER BY id");
+
         List<Donation> donations = new ArrayList<>();
 
         try (Connection connection = databaseManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
             int index = 1;
             for (Integer donationId : donationIds) {
                 statement.setInt(index++, donationId);
+            }
+            for (int i = index; i < (index+params.size()); i++) {
+                // JDBC 的索引是從 1 開始計算，所以是 i + 1
+                statement.setObject(i + 1, params.get(i));
             }
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {

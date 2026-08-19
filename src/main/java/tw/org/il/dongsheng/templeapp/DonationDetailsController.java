@@ -232,7 +232,7 @@ public class DonationDetailsController {
                 ));
         Map<Integer, DonationSupplement> supplementsByDonationId =
                 new SQLiteDonationSupplementRepository(manager)
-                        .findByDateRange(LocalDate.of(1912, 1, 1), LocalDate.of(9999, 12, 31))
+                        .findByDateRange(LocalDate.of(1912, 1, 1), LocalDate.of(9999, 12, 31), null)
                         .stream()
                         .collect(Collectors.toMap(
                                 DonationSupplement::getDonationId,

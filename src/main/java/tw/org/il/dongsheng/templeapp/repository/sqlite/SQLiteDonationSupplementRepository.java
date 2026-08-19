@@ -92,22 +92,35 @@ public class SQLiteDonationSupplementRepository {
         return supplement;
     }
 
-    public List<DonationSupplement> findByDateRange(LocalDate startDate, LocalDate endDate)
+    public List<DonationSupplement> findByDateRange(LocalDate startDate, LocalDate endDate, String creator)
             throws SQLException {
         createTable();
-        String sql = """
+        StringBuilder sql = new StringBuilder("""
                 SELECT id, donation_id, supplement_date, supplement_no, source_type,
                        created_by, created_at, updated_by, updated_at, is_deleted
                 FROM donation_supplements
                 WHERE COALESCE(is_deleted, 0) = 0
                   AND supplement_date BETWEEN ? AND ?
-                ORDER BY supplement_date, supplement_no, id
-                """;
+                """);
+
+        List<Object> params = new ArrayList<>();
+        params.add(startDate);
+        params.add(endDate);
+        if (creator != null && !creator.trim().isEmpty()) {
+            sql.append(" AND created_by = ? OR updated_by = ?");
+            params.add(creator);
+            params.add(creator);
+        }
+        sql.append(" ORDER BY supplement_date, supplement_no, id");
+
         List<DonationSupplement> result = new ArrayList<>();
         try (Connection connection = databaseManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, startDate.toString());
-            statement.setString(2, endDate.toString());
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                // JDBC 的索引是從 1 開始計算，所以是 i + 1
+                statement.setObject(i + 1, params.get(i));
+            }
+
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
                     result.add(mapRow(resultSet));

@@ -221,13 +221,13 @@ public class IncomeReportController {
         }
 
         try {
-            List<DonationSupplement> supplements = supplementRepository.findByDateRange(startDate, endDate);
+            List<DonationSupplement> supplements = supplementRepository.findByDateRange(startDate, endDate, null);
             List<Integer> donationIds = supplements.stream()
                     .map(DonationSupplement::getDonationId)
                     .filter(java.util.Objects::nonNull)
                     .distinct()
                     .toList();
-            Map<Integer, Donation> donationsById = donationRepository.findByIds(donationIds).stream()
+            Map<Integer, Donation> donationsById = donationRepository.findByIds(donationIds, null).stream()
                     .collect(Collectors.toMap(
                             Donation::getId,
                             Function.identity(),

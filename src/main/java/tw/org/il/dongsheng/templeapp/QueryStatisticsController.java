@@ -151,7 +151,7 @@ public class QueryStatisticsController {
                             LinkedHashMap::new
                     ));
             Set<Integer> supplementDonationIds = condition.supplementOnly()
-                    ? supplementRepository.findByDateRange(LocalDate.of(1912, 1, 1), LocalDate.of(9999, 12, 31))
+                    ? supplementRepository.findByDateRange(LocalDate.of(1912, 1, 1), LocalDate.of(9999, 12, 31), null)
                             .stream()
                             .map(DonationSupplement::getDonationId)
                             .collect(Collectors.toSet())
