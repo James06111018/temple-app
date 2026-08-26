@@ -24,6 +24,12 @@ public class LightMember {
     private Integer kou;
     private String isMail;
     private String gender;
+    private String uuid;
+    private String updatedAt;
+    private String deletedAt;
+    private Integer version;
+    private String deviceId;
+    private String syncStatus;
 
     public LightMember() {}
     // 建構子 (Constructor)
@@ -47,7 +53,13 @@ public class LightMember {
                        Integer ding,
                        Integer kou,
                        String isMail,
-                       String gender) {
+                       String gender,
+                       String uuid,
+                       String updatedAt,
+                       String deletedAt,
+                       Integer version,
+                       String deviceId,
+                       String syncStatus) {
         this.id = id;
         this.name = name;
         this.phone = phone;
@@ -69,6 +81,12 @@ public class LightMember {
         this.kou = kou;
         this.isMail = isMail;
         this.gender = gender;
+        this.uuid = uuid;
+        this.updatedAt = updatedAt;
+        this.deletedAt = deletedAt;
+        this.version = version;
+        this.deviceId = deviceId;
+        this.syncStatus = syncStatus;
     }
 
     // Getter 必須要有，TableView 才能抓到資料
@@ -240,6 +258,54 @@ public class LightMember {
         this.gender = gender;
     }
 
+    public String getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
+    }
+
+    public String getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(String updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public String getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(String deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
+    public Integer getVersion() {
+        return version;
+    }
+
+    public void setVersion(Integer version) {
+        this.version = version;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
+    }
+
+    public String getSyncStatus() {
+        return syncStatus;
+    }
+
+    public void setSyncStatus(String syncStatus) {
+        this.syncStatus = syncStatus;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -281,6 +347,12 @@ public class LightMember {
                 ", kou=" + kou +
                 ", isMail='" + isMail + '\'' +
                 ", gender='" + gender + '\'' +
+                ", uuid='" + uuid + '\'' +
+                ", updatedAt='" + updatedAt + '\'' +
+                ", deletedAt='" + deletedAt + '\'' +
+                ", version=" + version +
+                ", deviceId='" + deviceId + '\'' +
+                ", syncStatus='" + syncStatus + '\'' +
                 '}';
     }
 }

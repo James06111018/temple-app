@@ -418,7 +418,13 @@ public class HouseholdLightController {
                 "",
                 incenseAmount,
                 "",
-                changedBy
+                changedBy,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
         );
     }
 

@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.UUID;
 
 import static tw.org.il.dongsheng.templeapp.util.Util.convertToDbDateString;
 
@@ -31,6 +32,10 @@ public class SQLiteDonationRepository implements DonationRepository {
 
     public SQLiteDonationRepository(SQLiteDatabaseManager databaseManager) {
         this.databaseManager = databaseManager;
+    }
+
+    public SQLiteDatabaseManager getDatabaseManager() {
+        return databaseManager;
     }
 
     @Override
@@ -52,6 +57,12 @@ public class SQLiteDonationRepository implements DonationRepository {
                 "donate_type TEXT," +
                 "creator TEXT," +
                 "is_deleted INTEGER NOT NULL DEFAULT 0," +
+                "uuid TEXT UNIQUE," +
+                "updated_at TEXT," +
+                "deleted_at TEXT," +
+                "version INTEGER NOT NULL DEFAULT 1," +
+                "device_id TEXT," +
+                "sync_status TEXT NOT NULL DEFAULT 'clean'," +
                 "FOREIGN KEY(member_id) REFERENCES light_members(id) ON DELETE CASCADE" +
                 ")";
 
@@ -61,6 +72,12 @@ public class SQLiteDonationRepository implements DonationRepository {
             statement.execute("PRAGMA foreign_keys = ON");
             statement.execute(sql);
             addColumnIfMissing(connection, "is_deleted", "INTEGER NOT NULL DEFAULT 0");
+            addColumnIfMissing(connection, "uuid", "TEXT UNIQUE");
+            addColumnIfMissing(connection, "updated_at", "TEXT");
+            addColumnIfMissing(connection, "deleted_at", "TEXT");
+            addColumnIfMissing(connection, "version", "INTEGER NOT NULL DEFAULT 1");
+            addColumnIfMissing(connection, "device_id", "TEXT");
+            addColumnIfMissing(connection, "sync_status", "TEXT NOT NULL DEFAULT 'clean'");
             statement.execute("CREATE INDEX IF NOT EXISTS idx_donations_is_deleted ON donations(is_deleted)");
             statement.execute("""
                     CREATE TABLE IF NOT EXISTS donation_audits (
@@ -95,12 +112,15 @@ public class SQLiteDonationRepository implements DonationRepository {
     public Donation save(Donation donation) throws SQLException {
         String sql = "INSERT INTO " + TABLE_NAME + " (" +
                 "member_id, receipt_no, donate_date, extra_no, amount, summary, donate_note, other_note, donor_no, light_no, should_pay, donate_type, creator" +
-                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                ", uuid, updated_at, deleted_at, version, device_id, sync_status" +
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             connection.createStatement().execute("PRAGMA foreign_keys = ON");
             setCommonFields(statement, donation);
+            applySyncDefaults(donation);
+            setSyncFields(statement, donation);
             statement.executeUpdate();
 
             try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
@@ -124,6 +144,7 @@ public class SQLiteDonationRepository implements DonationRepository {
         String sql = "UPDATE " + TABLE_NAME + " SET " +
                 "member_id = ?, receipt_no = ?, donate_date = ?, extra_no = ?, amount = ?, summary = ?, donate_note = ?, other_note = ?, donor_no = ?, " +
                 "light_no = ?, should_pay = ?, donate_type = ?, creator = ? " +
+                ", updated_at = ?, deleted_at = ?, version = ?, device_id = ?, sync_status = ? " +
                 "WHERE id = ? AND COALESCE(is_deleted, 0) = 0";
 
         try (Connection connection = databaseManager.getConnection()) {
@@ -139,7 +160,9 @@ public class SQLiteDonationRepository implements DonationRepository {
                 boolean updated;
                 try (PreparedStatement statement = connection.prepareStatement(sql)) {
                     setCommonFields(statement, donation);
-                    statement.setObject(14, donation.getId());
+                    bumpSyncVersion(donation);
+                    setSyncFields(statement, donation);
+                    statement.setObject(19, donation.getId());
                     updated = statement.executeUpdate() > 0;
                 }
                 if (updated) {
@@ -167,7 +190,7 @@ public class SQLiteDonationRepository implements DonationRepository {
         requireReason(reason);
         createTable();
         String sql = "UPDATE " + TABLE_NAME +
-                " SET is_deleted = 1 WHERE id = ? AND COALESCE(is_deleted, 0) = 0";
+                " SET is_deleted = 1, deleted_at = ?, updated_at = ?, version = COALESCE(version, 1) + 1, sync_status = 'deleted' WHERE id = ? AND COALESCE(is_deleted, 0) = 0";
 
         try (Connection connection = databaseManager.getConnection()) {
             connection.setAutoCommit(false);
@@ -180,7 +203,9 @@ public class SQLiteDonationRepository implements DonationRepository {
 
                 boolean deleted;
                 try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                    statement.setInt(1, id);
+                    statement.setString(1, tw.org.il.dongsheng.templeapp.util.Util.nowUtc());
+                    statement.setString(2, tw.org.il.dongsheng.templeapp.util.Util.nowUtc());
+                    statement.setInt(3, id);
                     deleted = statement.executeUpdate() > 0;
                 }
                 if (deleted) {
@@ -765,7 +790,49 @@ public class SQLiteDonationRepository implements DonationRepository {
         donation.setShouldPay((Integer) resultSet.getObject("should_pay"));
         donation.setDonateType(resultSet.getString("donate_type"));
         donation.setCreator(resultSet.getString("creator"));
+        donation.setUuid(resultSet.getString("uuid"));
+        donation.setUpdatedAt(resultSet.getString("updated_at"));
+        donation.setDeletedAt(resultSet.getString("deleted_at"));
+        donation.setVersion((Integer) resultSet.getObject("version"));
+        donation.setDeviceId(resultSet.getString("device_id"));
+        donation.setSyncStatus(resultSet.getString("sync_status"));
         return donation;
+    }
+
+    private void setSyncFields(PreparedStatement statement, Donation donation) throws SQLException {
+        statement.setString(14, donation.getUuid());
+        statement.setString(15, donation.getUpdatedAt());
+        statement.setString(16, donation.getDeletedAt());
+        statement.setObject(17, donation.getVersion());
+        statement.setString(18, donation.getDeviceId());
+        statement.setString(19, donation.getSyncStatus());
+    }
+
+    private void applySyncDefaults(Donation donation) {
+        if (donation.getUuid() == null || donation.getUuid().isBlank()) {
+            donation.setUuid(UUID.randomUUID().toString());
+        }
+        donation.setUpdatedAt(tw.org.il.dongsheng.templeapp.util.Util.nowUtc());
+        donation.setDeletedAt(null);
+        if (donation.getVersion() == null || donation.getVersion() < 1) {
+            donation.setVersion(1);
+        }
+        if (donation.getDeviceId() == null || donation.getDeviceId().isBlank()) {
+            donation.setDeviceId("local");
+        }
+        if (donation.getSyncStatus() == null || donation.getSyncStatus().isBlank()) {
+            donation.setSyncStatus("dirty");
+        }
+    }
+
+    private void bumpSyncVersion(Donation donation) {
+        donation.setVersion(donation.getVersion() == null ? 1 : donation.getVersion() + 1);
+        donation.setUpdatedAt(tw.org.il.dongsheng.templeapp.util.Util.nowUtc());
+        donation.setDeletedAt(null);
+        if (donation.getDeviceId() == null || donation.getDeviceId().isBlank()) {
+            donation.setDeviceId("local");
+        }
+        donation.setSyncStatus("dirty");
     }
 
     private Donation mapCurrentDonation(ResultSet resultSet) throws SQLException {

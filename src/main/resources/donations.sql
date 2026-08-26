@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS donations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    uuid TEXT UNIQUE,
     member_id INTEGER NOT NULL,
     receipt_no TEXT,
     donate_date TEXT,
@@ -14,5 +15,10 @@ CREATE TABLE IF NOT EXISTS donations (
     donate_type TEXT,
     creator TEXT,
     is_deleted INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT,
+    deleted_at TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
+    device_id TEXT,
+    sync_status TEXT NOT NULL DEFAULT 'clean',
     FOREIGN KEY(member_id) REFERENCES light_members(id) ON DELETE CASCADE
 );

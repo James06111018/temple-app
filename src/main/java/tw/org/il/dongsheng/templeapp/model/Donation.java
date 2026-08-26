@@ -17,6 +17,12 @@ public class Donation {
     private Integer shouldPay;
     private String donateType;
     private String creator;
+    private String uuid;
+    private String updatedAt;
+    private String deletedAt;
+    private Integer version;
+    private String deviceId;
+    private String syncStatus;
 
     public Donation() {
     }
@@ -35,7 +41,13 @@ public class Donation {
             String lightNo,
             Integer shouldPay,
             String donateType,
-            String creator
+            String creator,
+            String uuid,
+            String updatedAt,
+            String deletedAt,
+            Integer version,
+            String deviceId,
+            String syncStatus
     ) {
         this.id = id;
         this.memberId = memberId;
@@ -51,6 +63,12 @@ public class Donation {
         this.shouldPay = shouldPay;
         this.donateType = donateType;
         this.creator = creator;
+        this.uuid = uuid;
+        this.updatedAt = updatedAt;
+        this.deletedAt = deletedAt;
+        this.version = version;
+        this.deviceId = deviceId;
+        this.syncStatus = syncStatus;
     }
 
     public Integer getId() {
@@ -165,6 +183,54 @@ public class Donation {
         this.creator = creator;
     }
 
+    public String getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
+    }
+
+    public String getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(String updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public String getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(String deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
+    public Integer getVersion() {
+        return version;
+    }
+
+    public void setVersion(Integer version) {
+        this.version = version;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
+    }
+
+    public String getSyncStatus() {
+        return syncStatus;
+    }
+
+    public void setSyncStatus(String syncStatus) {
+        this.syncStatus = syncStatus;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -199,6 +265,12 @@ public class Donation {
                 ", shouldPay=" + shouldPay +
                 ", donateType='" + donateType + '\'' +
                 ", creator='" + creator + '\'' +
+                ", uuid='" + uuid + '\'' +
+                ", updatedAt='" + updatedAt + '\'' +
+                ", deletedAt='" + deletedAt + '\'' +
+                ", version=" + version +
+                ", deviceId='" + deviceId + '\'' +
+                ", syncStatus='" + syncStatus + '\'' +
                 '}';
     }
 }

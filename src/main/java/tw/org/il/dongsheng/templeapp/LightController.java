@@ -516,7 +516,13 @@ public class LightController {
                 Util.parseInteger(aField.getText()),
                 Util.parseInteger(bField.getText()),
                 mailBox.getValue(),
-                genderBox.getValue()
+                genderBox.getValue(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
         );
 
         try {
@@ -967,7 +973,13 @@ public class LightController {
                 lightNoField.getText(),
                 Util.parseInteger(shouldPayField.getText()),
                 String.valueOf(donateTypeField.getValue().getId()),
-                AuthSession.getCurrentOperatorName()
+                AuthSession.getCurrentOperatorName(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
         );
 
         try {

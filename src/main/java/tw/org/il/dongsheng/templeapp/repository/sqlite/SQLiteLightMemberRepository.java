@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 
 public class SQLiteLightMemberRepository implements LightMemberRepository {
     private static final String TABLE_NAME = "light_members";
@@ -22,6 +23,10 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
 
     public SQLiteLightMemberRepository(SQLiteDatabaseManager databaseManager) {
         this.databaseManager = databaseManager;
+    }
+
+    public SQLiteDatabaseManager getDatabaseManager() {
+        return databaseManager;
     }
 
     @Override
@@ -49,7 +54,13 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
                 "kou INTEGER," +
                 "is_mail TEXT," +
                 "gender TEXT," +
-                "is_deleted INTEGER NOT NULL DEFAULT 0" +
+                "is_deleted INTEGER NOT NULL DEFAULT 0," +
+                "uuid TEXT UNIQUE," +
+                "updated_at TEXT," +
+                "deleted_at TEXT," +
+                "version INTEGER NOT NULL DEFAULT 1," +
+                "device_id TEXT," +
+                "sync_status TEXT NOT NULL DEFAULT 'clean'" +
                 ")";
 
         try (Connection connection = databaseManager.getConnection();
@@ -57,6 +68,12 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
 //            statement.execute(dropSql);
             statement.execute(sql);
             addColumnIfMissing(connection, "is_deleted", "INTEGER NOT NULL DEFAULT 0");
+            addColumnIfMissing(connection, "uuid", "TEXT UNIQUE");
+            addColumnIfMissing(connection, "updated_at", "TEXT");
+            addColumnIfMissing(connection, "deleted_at", "TEXT");
+            addColumnIfMissing(connection, "version", "INTEGER NOT NULL DEFAULT 1");
+            addColumnIfMissing(connection, "device_id", "TEXT");
+            addColumnIfMissing(connection, "sync_status", "TEXT NOT NULL DEFAULT 'clean'");
             statement.execute("CREATE INDEX IF NOT EXISTS idx_light_members_is_deleted ON light_members(is_deleted)");
             statement.execute("""
                     CREATE TABLE IF NOT EXISTS light_member_audits (
@@ -76,11 +93,14 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
         String sql = "INSERT INTO " + TABLE_NAME + " (" +
                 "name, phone, city, dist, address, zip_code, birth_date, lunar_birth_date, age, zodiac, zodiac_year, " +
                 "birth_time, note, contact_person, id_number, sort_order, ding, kou, is_mail, gender" +
-                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                ", uuid, updated_at, deleted_at, version, device_id, sync_status" +
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             setCommonFields(statement, member);
+            applySyncDefaults(member);
+            setSyncFields(statement, member);
             statement.executeUpdate();
 
             try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
@@ -104,13 +124,16 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
                 "name = ?, phone = ?, city = ?, dist = ?, address = ?, zip_code = ?, birth_date = ?, lunar_birth_date = ?, age = ?, " +
                 "zodiac = ?, zodiac_year = ?, birth_time = ?, note = ?, contact_person = ?, id_number = ?, sort_order = ?, " +
                 "ding = ?, kou = ?, is_mail = ?, gender = ? " +
+                ", updated_at = ?, deleted_at = ?, version = ?, device_id = ?, sync_status = ?" +
                 "WHERE id = ? AND COALESCE(is_deleted, 0) = 0";
 
         Optional<LightMember> before = findById(member.getId());
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             setCommonFields(statement, member);
-            statement.setObject(21, member.getId());
+            bumpSyncVersion(member);
+            setSyncFields(statement, member);
+            statement.setObject(27, member.getId());
             boolean updated = statement.executeUpdate() > 0;
             if (updated) {
                 saveAudit(member.getId(), "UPDATE", AuthSession.getCurrentOperatorName(),
@@ -123,11 +146,13 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
     @Override
     public boolean deleteById(int id) throws SQLException {
         Optional<LightMember> before = findById(id);
-        String sql = "UPDATE " + TABLE_NAME + " SET is_deleted = 1 WHERE id = ? AND COALESCE(is_deleted, 0) = 0";
+        String sql = "UPDATE " + TABLE_NAME + " SET is_deleted = 1, deleted_at = ?, updated_at = ?, version = COALESCE(version, 1) + 1, sync_status = 'deleted' WHERE id = ? AND COALESCE(is_deleted, 0) = 0";
 
         try (Connection connection = databaseManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, id);
+            PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, Util.nowUtc());
+            statement.setString(2, Util.nowUtc());
+            statement.setInt(3, id);
             boolean deleted = statement.executeUpdate() > 0;
             if (deleted) {
                 saveAudit(id, "DELETE", AuthSession.getCurrentOperatorName(),
@@ -470,6 +495,42 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
         statement.setString(20, member.getGender());
     }
 
+    private void setSyncFields(PreparedStatement statement, LightMember member) throws SQLException {
+        statement.setString(21, member.getUuid());
+        statement.setString(22, member.getUpdatedAt());
+        statement.setString(23, member.getDeletedAt());
+        statement.setObject(24, member.getVersion());
+        statement.setString(25, member.getDeviceId());
+        statement.setString(26, member.getSyncStatus());
+    }
+
+    private void applySyncDefaults(LightMember member) {
+        if (member.getUuid() == null || member.getUuid().isBlank()) {
+            member.setUuid(UUID.randomUUID().toString());
+        }
+        member.setUpdatedAt(Util.nowUtc());
+        member.setDeletedAt(null);
+        if (member.getVersion() == null || member.getVersion() < 1) {
+            member.setVersion(1);
+        }
+        if (member.getDeviceId() == null || member.getDeviceId().isBlank()) {
+            member.setDeviceId("local");
+        }
+        if (member.getSyncStatus() == null || member.getSyncStatus().isBlank()) {
+            member.setSyncStatus("dirty");
+        }
+    }
+
+    private void bumpSyncVersion(LightMember member) {
+        member.setVersion(member.getVersion() == null ? 1 : member.getVersion() + 1);
+        member.setUpdatedAt(Util.nowUtc());
+        member.setDeletedAt(null);
+        if (member.getDeviceId() == null || member.getDeviceId().isBlank()) {
+            member.setDeviceId("local");
+        }
+        member.setSyncStatus("dirty");
+    }
+
     private void saveAudit(Integer memberId, String action, String changedBy, String snapshot) throws SQLException {
         try (Connection connection = databaseManager.getConnection()) {
             saveAudit(connection, memberId, action, changedBy, snapshot);
@@ -517,7 +578,9 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
                 source.getAddress(), source.getZipCode(), source.getBirthDate(), source.getLunarBirthDate(),
                 source.getAge(), source.getZodiac(), source.getZodiacYear(), source.getBirthTime(),
                 source.getNote(), source.getContactPerson(), source.getIdNumber(), source.getSortOrder(),
-                source.getDing(), source.getKou(), source.getIsMail(), source.getGender()
+                source.getDing(), source.getKou(), source.getIsMail(), source.getGender(),
+                source.getUuid(), source.getUpdatedAt(), source.getDeletedAt(), source.getVersion(),
+                source.getDeviceId(), source.getSyncStatus()
         );
         if (request.updatePhone()) {
             copy.setPhone(request.phone());
@@ -550,6 +613,7 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
     private LightMember mapRow(ResultSet resultSet) throws SQLException {
         LightMember member = new LightMember();
         member.setId(resultSet.getInt("id"));
+        member.setUuid(resultSet.getString("uuid"));
         member.setName(resultSet.getString("name"));
         member.setPhone(resultSet.getString("phone"));
         member.setCity(resultSet.getString("city"));
@@ -570,6 +634,11 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
         member.setKou((Integer) resultSet.getObject("kou"));
         member.setIsMail(resultSet.getString("is_mail"));
         member.setGender(resultSet.getString("gender"));
+        member.setUpdatedAt(resultSet.getString("updated_at"));
+        member.setDeletedAt(resultSet.getString("deleted_at"));
+        member.setVersion((Integer) resultSet.getObject("version"));
+        member.setDeviceId(resultSet.getString("device_id"));
+        member.setSyncStatus(resultSet.getString("sync_status"));
         return member;
     }
 }

@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS light_members (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    uuid TEXT UNIQUE,
     name TEXT,
     phone TEXT,
     city TEXT,
@@ -20,5 +21,10 @@ CREATE TABLE IF NOT EXISTS light_members (
     kou INTEGER,
     is_mail TEXT,
     gender TEXT,
-    is_deleted INTEGER NOT NULL DEFAULT 0
+    is_deleted INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT,
+    deleted_at TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
+    device_id TEXT,
+    sync_status TEXT NOT NULL DEFAULT 'clean'
 );

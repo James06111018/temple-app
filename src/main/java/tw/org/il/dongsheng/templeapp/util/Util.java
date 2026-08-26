@@ -4,14 +4,19 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.chrono.MinguoDate;
 import java.time.format.DateTimeFormatter;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.List;
 import java.util.Optional;
 
 public final class Util {
 
     private static final DateTimeFormatter DB_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd");
+    private static final DateTimeFormatter UTC_TIMESTAMP_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private Util(){}
 
@@ -90,5 +95,9 @@ public final class Util {
             return null;
         }
         return date.format(DB_DATE_FORMATTER);
+    }
+
+    public static String nowUtc() {
+        return LocalDateTime.now(ZoneOffset.UTC).format(UTC_TIMESTAMP_FORMATTER);
     }
 }
