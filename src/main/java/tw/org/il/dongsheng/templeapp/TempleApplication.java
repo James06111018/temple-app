@@ -10,9 +10,11 @@ import javafx.stage.Stage;
 import tw.org.il.dongsheng.templeapp.model.AppUser;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteAuthRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
+import tw.org.il.dongsheng.templeapp.sync.SyncConfig;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.Properties;
 import java.util.HashSet;
 import java.util.ResourceBundle;
 
@@ -23,6 +25,7 @@ public class TempleApplication extends Application {
     public void start(Stage stage) throws Exception {
         ResourceBundle bundle = ResourceBundle.getBundle("tw.org.il.dongsheng.templeapp.strings");
         initializeAuthTables();
+        ensureSyncSettings(stage);
 
         if (!shouldSkipLogin()) {
             LoginResult loginResult = showLogin(stage);
@@ -97,6 +100,28 @@ public class TempleApplication extends Application {
 
         LoginController controller = loader.getController();
         return new LoginResult(controller.getAuthenticatedUser(), controller.getLoginRecordId());
+    }
+
+    private void ensureSyncSettings(Stage owner) throws IOException {
+        Properties properties = SyncConfig.load();
+        if (SyncConfig.hasRequiredSettings(properties)) {
+            return;
+        }
+
+        FXMLLoader loader = new FXMLLoader(TempleApplication.class.getResource("sync-settings.fxml"));
+        Parent root = loader.load();
+        Stage settingsStage = new Stage();
+        settingsStage.setTitle("同步設定");
+        settingsStage.setScene(new Scene(root));
+        settingsStage.initModality(Modality.APPLICATION_MODAL);
+        settingsStage.initOwner(owner);
+        settingsStage.showAndWait();
+
+        SyncSettingsController controller = loader.getController();
+        if (!controller.isSaved()) {
+            javafx.application.Platform.exit();
+            throw new IllegalStateException("Sync settings are required before starting the app.");
+        }
     }
 
     private void finishLoginRecord() {

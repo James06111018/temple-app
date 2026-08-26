@@ -20,6 +20,7 @@
 <!--                <SeparatorMenuItem />-->
 <!--                <MenuItem text="印表機設定(_P)" mnemonicParsing="true"/>-->
 <!--                <SeparatorMenuItem />-->
+                <SeparatorMenuItem />
                 <CheckMenuItem fx:id="menuItemParameterSettings" text="參數設定(_C)" mnemonicParsing="true" onAction="#handleParameterSettings"/>
             </Menu>
             <Menu fx:id="menuTools" text="工具(_T)" mnemonicParsing="true">
@@ -47,6 +48,8 @@
                 <CheckMenuItem fx:id="menuItemRoleManagement" text="角色管理" onAction="#handleRoleManagement" />
                 <SeparatorMenuItem />
                 <CheckMenuItem fx:id="menuItemFunctionManagement" text="功能管理" onAction="#handleFunctionManagement" />
+                <SeparatorMenuItem />
+                <CheckMenuItem fx:id="menuItemSyncSettings" text="同步設定" onAction="#handleSyncSettings" />
                 <SeparatorMenuItem />
                 <CheckMenuItem fx:id="menuItemUserAudit" text="使用者異動紀錄" onAction="#handleUserAudit" />
             </Menu>

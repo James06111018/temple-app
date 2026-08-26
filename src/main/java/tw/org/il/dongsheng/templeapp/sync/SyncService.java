@@ -13,6 +13,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 public class SyncService {
     private final SQLiteLightMemberRepository lightMemberRepository;
@@ -20,6 +21,7 @@ public class SyncService {
     private final SQLiteSyncStateRepository syncStateRepository;
     private final RemoteSyncGateway remoteSyncGateway;
     private final SyncState syncState;
+    private final Properties syncProperties;
 
     public SyncService(
             SQLiteLightMemberRepository lightMemberRepository,
@@ -27,13 +29,31 @@ public class SyncService {
             SQLiteSyncStateRepository syncStateRepository,
             RemoteSyncGateway remoteSyncGateway
     ) throws SQLException {
+        this(lightMemberRepository, donationRepository, syncStateRepository, remoteSyncGateway, SyncConfig.load());
+    }
+
+    public SyncService(
+            SQLiteLightMemberRepository lightMemberRepository,
+            SQLiteDonationRepository donationRepository,
+            SQLiteSyncStateRepository syncStateRepository,
+            RemoteSyncGateway remoteSyncGateway,
+            Properties syncProperties
+    ) throws SQLException {
         this.lightMemberRepository = lightMemberRepository;
         this.donationRepository = donationRepository;
         this.syncStateRepository = syncStateRepository;
         this.remoteSyncGateway = remoteSyncGateway;
+        this.syncProperties = syncProperties == null ? new Properties() : syncProperties;
         this.syncState = syncStateRepository.load();
         if (this.syncState.getDeviceId() == null || this.syncState.getDeviceId().isBlank()) {
             this.syncState.setDeviceId("local");
+        }
+        String remoteBaseUrl = firstNonBlank(
+                this.syncProperties.getProperty("sync.remote.baseUrl"),
+                this.syncState.getRemoteBaseUrl()
+        );
+        if (remoteBaseUrl != null && !remoteBaseUrl.isBlank()) {
+            this.syncState.setRemoteBaseUrl(remoteBaseUrl);
         }
     }
 
@@ -472,5 +492,12 @@ public class SyncService {
 
     private boolean safeEquals(String left, String right) {
         return left == null ? right == null : left.equals(right);
+    }
+
+    private String firstNonBlank(String primary, String fallback) {
+        if (primary != null && !primary.isBlank()) {
+            return primary;
+        }
+        return fallback;
     }
 }

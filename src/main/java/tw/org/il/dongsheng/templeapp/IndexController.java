@@ -32,6 +32,7 @@ public class IndexController {
     @FXML private Menu menuSystemAdmin;
     @FXML private Menu menuAbout;
     @FXML private MenuItem menuItemExit;
+    @FXML private MenuItem menuItemSyncSettings;
     @FXML private CheckMenuItem menuItemParameterSettings, menuItemQueryStatistics, menuItemEmptyNumberQuery, menuItemDictionary,
             menuItemCheckoutReport, menuItemDataMerge, menuItemMergeRecord, menuItemCreateRecord,
             menuItemLoginRecord, menuItemHouseholdCount, menuItemUserManagement, menuItemRoleManagement,
@@ -327,6 +328,11 @@ public class IndexController {
     }
 
     @FXML
+    public void handleSyncSettings() throws IOException {
+        showModal("同步設定", "sync-settings.fxml");
+    }
+
+    @FXML
     public void handleQueryStatistics() throws IOException {
         showCheckedModal(menuItemQueryStatistics, "查詢統計", "query-statistics.fxml");
     }
@@ -392,6 +398,7 @@ public class IndexController {
         menuItemUserAudit.setVisible(AuthSession.hasFunction("USER_AUDIT_QUERY"));
         menuItemRoleManagement.setVisible(AuthSession.isAdmin() && AuthSession.hasFunction("ROLE_MANAGEMENT"));
         menuItemFunctionManagement.setVisible(AuthSession.isAdmin() && AuthSession.hasFunction("FUNCTION_MANAGEMENT"));
+        menuItemSyncSettings.setVisible(AuthSession.canManageSystem());
     }
 
     private void showModal(String title, String fxmlFile) throws IOException {
@@ -401,6 +408,9 @@ public class IndexController {
         stage.setTitle(title);
         stage.setScene(new Scene(root));
         stage.initModality(Modality.APPLICATION_MODAL);
+        if (mainTabPane.getScene() != null && mainTabPane.getScene().getWindow() != null) {
+            stage.initOwner(mainTabPane.getScene().getWindow());
+        }
         stage.showAndWait();
     }
 

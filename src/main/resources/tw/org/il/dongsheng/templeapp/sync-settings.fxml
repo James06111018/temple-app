@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tw.org.il.dongsheng.templeapp.SyncSettingsController"
+            prefWidth="700" prefHeight="360"
+            stylesheets="@style.css"
+            style="-fx-background-color: #f5f0e8;">
+    <center>
+        <GridPane hgap="12" vgap="12" style="-fx-padding: 24;">
+            <columnConstraints>
+                <ColumnConstraints minWidth="150" halignment="RIGHT" />
+                <ColumnConstraints hgrow="ALWAYS" />
+            </columnConstraints>
+
+            <Label text="同步主機名稱" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+            <TextField fx:id="remoteBaseUrlField" promptText="可選，例如 https://api.example.com" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+            <Label text="JDBC URL" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+            <TextField fx:id="jdbcUrlField" promptText="jdbc:postgresql://..." GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+            <Label text="使用者名稱" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+            <TextField fx:id="usernameField" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+            <Label text="密碼" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+            <PasswordField fx:id="passwordField" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+
+            <Label text="此為首次安裝，需由管理者填入資訊"
+                   style="-fx-text-fill: #b00020; -fx-font-size: 14px; -fx-font-weight: bold;"
+                   GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+
+            <HBox spacing="12" alignment="CENTER_RIGHT" GridPane.rowIndex="5" GridPane.columnIndex="1">
+                <Button text="測試連線" styleClass="btn-blue" onAction="#onTestConnection"/>
+                <Button text="儲存" styleClass="btn-purple" onAction="#onSave"/>
+                <Button text="取消" styleClass="btn-orange" onAction="#onCancel"/>
+            </HBox>
+        </GridPane>
+    </center>
+</BorderPane>
