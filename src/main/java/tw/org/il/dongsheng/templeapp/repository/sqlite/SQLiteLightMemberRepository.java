@@ -68,13 +68,14 @@ public class SQLiteLightMemberRepository implements LightMemberRepository {
 //            statement.execute(dropSql);
             statement.execute(sql);
             addColumnIfMissing(connection, "is_deleted", "INTEGER NOT NULL DEFAULT 0");
-            addColumnIfMissing(connection, "uuid", "TEXT UNIQUE");
+            addColumnIfMissing(connection, "uuid", "TEXT");
             addColumnIfMissing(connection, "updated_at", "TEXT");
             addColumnIfMissing(connection, "deleted_at", "TEXT");
             addColumnIfMissing(connection, "version", "INTEGER NOT NULL DEFAULT 1");
             addColumnIfMissing(connection, "device_id", "TEXT");
             addColumnIfMissing(connection, "sync_status", "TEXT NOT NULL DEFAULT 'clean'");
             statement.execute("CREATE INDEX IF NOT EXISTS idx_light_members_is_deleted ON light_members(is_deleted)");
+            statement.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_light_members_uuid_unique ON light_members(uuid)");
             statement.execute("""
                     CREATE TABLE IF NOT EXISTS light_member_audits (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,

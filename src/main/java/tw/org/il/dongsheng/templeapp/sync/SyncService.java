@@ -14,6 +14,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.UUID;
 
 public class SyncService {
     private final SQLiteLightMemberRepository lightMemberRepository;
@@ -42,7 +43,6 @@ public class SyncService {
         this.lightMemberRepository = lightMemberRepository;
         this.donationRepository = donationRepository;
         this.syncStateRepository = syncStateRepository;
-        this.remoteSyncGateway = remoteSyncGateway;
         this.syncProperties = syncProperties == null ? new Properties() : syncProperties;
         this.syncState = syncStateRepository.load();
         if (this.syncState.getDeviceId() == null || this.syncState.getDeviceId().isBlank()) {
@@ -55,6 +55,9 @@ public class SyncService {
         if (remoteBaseUrl != null && !remoteBaseUrl.isBlank()) {
             this.syncState.setRemoteBaseUrl(remoteBaseUrl);
         }
+        this.remoteSyncGateway = remoteSyncGateway != null
+                ? remoteSyncGateway
+                : buildRemoteGateway(this.syncProperties);
     }
 
     public SyncResult syncNow() {
@@ -97,20 +100,20 @@ public class SyncService {
 
     public SyncResult push() {
         try {
-            List<LightMember> dirtyMembers = loadDirtyMembers();
-            List<Donation> dirtyDonations = loadDirtyDonations();
+            List<LightMember> membersToPush = loadDirtyMembers();
+            List<Donation> donationsToPush = loadDirtyDonations();
 
             if (remoteSyncGateway != null) {
-                if (!dirtyMembers.isEmpty()) {
-                    remoteSyncGateway.pushMembers(dirtyMembers);
+                if (!membersToPush.isEmpty()) {
+                    remoteSyncGateway.pushMembers(membersToPush);
                 }
-                if (!dirtyDonations.isEmpty()) {
-                    remoteSyncGateway.pushDonations(dirtyDonations);
+                if (!donationsToPush.isEmpty()) {
+                    remoteSyncGateway.pushDonations(donationsToPush);
                 }
             }
 
-            markMembersSynced(dirtyMembers);
-            markDonationsSynced(dirtyDonations);
+            markMembersSynced(membersToPush);
+            markDonationsSynced(donationsToPush);
 
             syncState.setLastPushAt(Util.nowUtc());
             syncState.setLastSyncAt(Util.nowUtc());
@@ -499,5 +502,15 @@ public class SyncService {
             return primary;
         }
         return fallback;
+    }
+
+    private RemoteSyncGateway buildRemoteGateway(Properties properties) {
+        if (!SyncConfig.hasRequiredSettings(properties)) {
+            return null;
+        }
+        String jdbcUrl = properties.getProperty("sync.remote.jdbcUrl");
+        String username = properties.getProperty("sync.remote.username");
+        String password = properties.getProperty("sync.remote.password");
+        return new PostgresRemoteSyncGateway(jdbcUrl, username, password);
     }
 }

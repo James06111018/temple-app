@@ -30,7 +30,13 @@ public class SQLiteDatabaseManager {
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
-        return DriverManager.getConnection(url);
+        Connection connection = DriverManager.getConnection(url);
+        try (var statement = connection.createStatement()) {
+            statement.execute("PRAGMA foreign_keys = ON");
+            statement.execute("PRAGMA journal_mode = WAL");
+            statement.execute("PRAGMA busy_timeout = 5000");
+        }
+        return connection;
     }
 
     private static Path getDatabasePath() {

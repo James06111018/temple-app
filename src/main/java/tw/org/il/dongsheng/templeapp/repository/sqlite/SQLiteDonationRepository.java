@@ -72,13 +72,14 @@ public class SQLiteDonationRepository implements DonationRepository {
             statement.execute("PRAGMA foreign_keys = ON");
             statement.execute(sql);
             addColumnIfMissing(connection, "is_deleted", "INTEGER NOT NULL DEFAULT 0");
-            addColumnIfMissing(connection, "uuid", "TEXT UNIQUE");
+            addColumnIfMissing(connection, "uuid", "TEXT");
             addColumnIfMissing(connection, "updated_at", "TEXT");
             addColumnIfMissing(connection, "deleted_at", "TEXT");
             addColumnIfMissing(connection, "version", "INTEGER NOT NULL DEFAULT 1");
             addColumnIfMissing(connection, "device_id", "TEXT");
             addColumnIfMissing(connection, "sync_status", "TEXT NOT NULL DEFAULT 'clean'");
             statement.execute("CREATE INDEX IF NOT EXISTS idx_donations_is_deleted ON donations(is_deleted)");
+            statement.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_donations_uuid_unique ON donations(uuid)");
             statement.execute("""
                     CREATE TABLE IF NOT EXISTS donation_audits (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,

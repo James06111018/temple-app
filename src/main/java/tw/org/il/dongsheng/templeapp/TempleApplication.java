@@ -1,25 +1,41 @@
 package tw.org.il.dongsheng.templeapp;
 
 import javafx.application.Application;
+import javafx.animation.PauseTransition;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Label;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.application.Platform;
+import javafx.util.Duration;
 import tw.org.il.dongsheng.templeapp.model.AppUser;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteAuthRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteLightMemberRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteSyncStateRepository;
+import tw.org.il.dongsheng.templeapp.sync.SyncResult;
+import tw.org.il.dongsheng.templeapp.sync.SyncService;
 import tw.org.il.dongsheng.templeapp.sync.SyncConfig;
+import tw.org.il.dongsheng.templeapp.util.AlertDialog;
 
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Properties;
 import java.util.HashSet;
 import java.util.ResourceBundle;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class TempleApplication extends Application {
     private boolean loginRecordFinished = false;
+    private final AtomicBoolean syncing = new AtomicBoolean(false);
+    private final AtomicReference<Stage> syncProgressStageRef = new AtomicReference<>();
+    private SyncService syncService;
 
     @Override
     public void start(Stage stage) throws Exception {
@@ -43,6 +59,8 @@ public class TempleApplication extends Application {
                     .findFunctionCodesByRole(SQLiteAuthRepository.ROLE_ADMIN)));
         }
 
+        syncService = createSyncService();
+
         FXMLLoader fxmlLoader = new FXMLLoader(TempleApplication.class.getResource("view-index.fxml"), bundle);
         Parent root = fxmlLoader.load();
 
@@ -52,8 +70,12 @@ public class TempleApplication extends Application {
         stage.setMaximized(true);
 //        stage.setMinHeight(1000);
 //        stage.setMinWidth(700);
-        stage.setOnCloseRequest(event -> finishLoginRecord());
+        stage.setOnCloseRequest(event -> {
+            event.consume();
+            runShutdownSyncAndClose(stage);
+        });
         stage.show();
+        runInitialSync(stage);
     }
 
     @Override
@@ -133,6 +155,102 @@ public class TempleApplication extends Application {
             new SQLiteAuthRepository(SQLiteDatabaseManager.getInstance()).finishLoginRecord(AuthSession.getLoginRecordId());
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void runInitialSync(Stage stage) {
+        PauseTransition delay = new PauseTransition(Duration.millis(800));
+        delay.setOnFinished(event -> runSyncInBackground(false, stage));
+        delay.play();
+    }
+
+    private void runShutdownSyncAndClose(Stage stage) {
+        runSyncInBackground(true, stage);
+    }
+
+    private void runSyncInBackground(boolean closeAfter, Stage stage) {
+        if (syncService == null || !syncing.compareAndSet(false, true)) {
+            if (closeAfter && stage != null) {
+                Platform.runLater(stage::close);
+            }
+            return;
+        }
+
+        Platform.runLater(() -> showSyncProgress(stage, closeAfter));
+        Thread syncThread = new Thread(() -> {
+            try {
+                SyncResult result = syncService.syncNow();
+                if (!result.isSuccess()) {
+                    Platform.runLater(() -> AlertDialog.showWarning("同步", result.getMessage()));
+                }
+            } catch (Exception e) {
+                Platform.runLater(() -> AlertDialog.showWarning("同步", "自動同步失敗：" + e.getMessage()));
+            } finally {
+                syncing.set(false);
+                Platform.runLater(this::hideSyncProgress);
+                if (closeAfter && stage != null) {
+                    Platform.runLater(() -> {
+                        finishLoginRecord();
+                        stage.setOnCloseRequest(null);
+                        stage.close();
+                    });
+                }
+            }
+        }, closeAfter ? "sync-shutdown" : "sync-startup");
+        syncThread.setDaemon(true);
+        syncThread.start();
+    }
+
+    private void showSyncProgress(Stage owner, boolean closing) {
+        if (syncProgressStageRef.get() != null) {
+            return;
+        }
+        Stage progressStage = new Stage();
+        progressStage.initModality(Modality.APPLICATION_MODAL);
+        if (owner != null) {
+            progressStage.initOwner(owner);
+        }
+        progressStage.setResizable(false);
+        progressStage.setAlwaysOnTop(true);
+        progressStage.setTitle("同步中");
+
+        Label title = new Label(closing ? "關閉前同步資料中..." : "登入後同步資料中...");
+        title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+        Label message = new Label("請稍候，資料正在與雲端同步。");
+
+        VBox box = new VBox(10, title, message);
+        box.setStyle("-fx-padding: 20; -fx-alignment: center; -fx-background-color: white;");
+        Scene scene = new Scene(box, 320, 120);
+        progressStage.setScene(scene);
+        syncProgressStageRef.set(progressStage);
+        progressStage.show();
+    }
+
+    private void hideSyncProgress() {
+        Stage progressStage = syncProgressStageRef.getAndSet(null);
+        if (progressStage != null) {
+            progressStage.close();
+        }
+    }
+
+    private SyncService createSyncService() {
+        try {
+            SQLiteDatabaseManager databaseManager = SQLiteDatabaseManager.getInstance();
+            SQLiteLightMemberRepository lightMemberRepository = new SQLiteLightMemberRepository(databaseManager);
+            SQLiteDonationRepository donationRepository = new SQLiteDonationRepository(databaseManager);
+            SQLiteSyncStateRepository syncStateRepository = new SQLiteSyncStateRepository(databaseManager);
+            lightMemberRepository.createTable();
+            donationRepository.createTable();
+            syncStateRepository.createTable();
+            return new SyncService(
+                    lightMemberRepository,
+                    donationRepository,
+                    syncStateRepository,
+                    null
+            );
+        } catch (Exception e) {
+            AlertDialog.showWarning("同步", "建立同步服務失敗：" + e.getMessage());
+            return null;
         }
     }
 
