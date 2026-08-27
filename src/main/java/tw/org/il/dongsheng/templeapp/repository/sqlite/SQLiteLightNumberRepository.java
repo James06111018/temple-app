@@ -296,6 +296,45 @@ public class SQLiteLightNumberRepository {
         }
     }
 
+    public boolean releaseAssignment(
+            String managementType,
+            String lightType,
+            String displayNumber,
+            String changedBy
+    ) throws SQLException {
+        createTable();
+        if (displayNumber == null || displayNumber.isBlank()) {
+            return false;
+        }
+        Integer serialNumber = parseSerialNumber(displayNumber);
+        if (serialNumber == null) {
+            return false;
+        }
+        String sql = """
+                UPDATE light_numbers
+                SET member_id = NULL,
+                    principal_name = NULL,
+                    status = 'N',
+                    updated_by = ?,
+                    updated_at = CURRENT_TIMESTAMP,
+                    registered_at = NULL,
+                    deleted_by = NULL,
+                    deleted_at = NULL
+                WHERE management_type = ?
+                  AND light_type = ?
+                  AND serial_number = ?
+                  AND status = 'A'
+                """;
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, changedBy);
+            statement.setString(2, managementType);
+            statement.setString(3, lightType);
+            statement.setInt(4, serialNumber);
+            return statement.executeUpdate() > 0;
+        }
+    }
+
     public int addRange(
             String managementType,
             String lightType,
@@ -704,6 +743,18 @@ public class SQLiteLightNumberRepository {
         }
         try (Statement statement = connection.createStatement()) {
             statement.execute("ALTER TABLE light_numbers ADD COLUMN " + columnName + " " + definition);
+        }
+    }
+
+    private Integer parseSerialNumber(String displayNumber) {
+        String digits = displayNumber.replaceAll("\\D", "");
+        if (digits.isEmpty()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(digits);
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 

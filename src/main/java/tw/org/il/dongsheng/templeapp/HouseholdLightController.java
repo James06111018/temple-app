@@ -238,8 +238,12 @@ public class HouseholdLightController {
 
         String changedBy = AuthSession.getCurrentOperatorName();
         try {
+            List<SelectedLight> deselectedLights = findDeselectedLights(selectedRow, selectedLights);
             for (SelectedLight selectedLight : selectedLights) {
                 saveSelectedLight(selectedLight, changedBy);
+            }
+            for (SelectedLight deselectedLight : deselectedLights) {
+                cancelSelectedLight(deselectedLight, changedBy);
             }
             Donation donation = donationService.save(
                     buildIncenseDonation(representative, incenseAmount, changedBy)
@@ -295,6 +299,18 @@ public class HouseholdLightController {
             }
         }
         return selectedLights;
+    }
+
+    private List<SelectedLight> findDeselectedLights(HouseholdLightRow row, List<SelectedLight> selectedLights) {
+        List<SelectedLight> deselectedLights = new ArrayList<>();
+        for (LightType lightType : lightTypes) {
+            boolean selected = row.lightProperty(lightType.getId()).get();
+            HouseholdLightRecord existingRecord = existingRecord(new SelectedLight(row, lightType));
+            if (!selected && existingRecord != null) {
+                deselectedLights.add(new SelectedLight(row, lightType));
+            }
+        }
+        return deselectedLights;
     }
 
     private List<String> findInventoryShortages(List<SelectedLight> selectedLights) throws SQLException {
@@ -369,6 +385,28 @@ public class HouseholdLightController {
             lightNumberRepository.releaseAssignment(assignedNumber.getId(), changedBy);
             throw e;
         }
+    }
+
+    private void cancelSelectedLight(SelectedLight selectedLight, String changedBy) throws SQLException {
+        HouseholdLightRecord existingRecord = existingRecord(selectedLight);
+        if (existingRecord == null) {
+            return;
+        }
+        InventoryKey key = inventoryKey(selectedLight.lightType());
+        if (!Util.isBlank(existingRecord.getLightNo())) {
+            lightNumberRepository.releaseAssignment(
+                    key.managementType(),
+                    key.lightType(),
+                    existingRecord.getLightNo(),
+                    changedBy
+            );
+        }
+        repository.deleteRecord(
+                selectedLight.row().member().getId(),
+                selectedLight.lightType().getId(),
+                rocYear,
+                changedBy
+        );
     }
 
     private boolean requiresLightNumber(SelectedLight selectedLight) {

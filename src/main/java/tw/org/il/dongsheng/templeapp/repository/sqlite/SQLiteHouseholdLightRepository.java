@@ -32,6 +32,9 @@ public class SQLiteHouseholdLightRepository {
                         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                         updated_by TEXT,
                         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        is_deleted INTEGER NOT NULL DEFAULT 0,
+                        deleted_by TEXT,
+                        deleted_at TEXT,
                         UNIQUE(member_id, light_type_id, roc_year),
                         FOREIGN KEY(member_id) REFERENCES light_members(id) ON DELETE CASCADE
                     )
@@ -49,6 +52,7 @@ public class SQLiteHouseholdLightRepository {
                     """);
             statement.execute("CREATE INDEX IF NOT EXISTS idx_household_light_records_year ON household_light_records(roc_year)");
             statement.execute("CREATE INDEX IF NOT EXISTS idx_household_light_records_member ON household_light_records(member_id)");
+            statement.execute("CREATE INDEX IF NOT EXISTS idx_household_light_records_deleted ON household_light_records(is_deleted)");
         }
     }
 
@@ -64,6 +68,7 @@ public class SQLiteHouseholdLightRepository {
                 SELECT id, member_id, light_type_id, roc_year, light_no, note, created_by, created_at, updated_by, updated_at
                 FROM household_light_records
                 WHERE roc_year = ?
+                  AND COALESCE(is_deleted, 0) = 0
                   AND member_id IN (%s)
                 ORDER BY member_id, light_type_id
                 """.formatted(placeholders);
@@ -93,7 +98,10 @@ public class SQLiteHouseholdLightRepository {
                 DO UPDATE SET light_no = excluded.light_no,
                               note = excluded.note,
                               updated_by = excluded.updated_by,
-                              updated_at = CURRENT_TIMESTAMP
+                              updated_at = CURRENT_TIMESTAMP,
+                              is_deleted = 0,
+                              deleted_by = NULL,
+                              deleted_at = NULL
                 """;
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -114,21 +122,30 @@ public class SQLiteHouseholdLightRepository {
     public boolean deleteRecord(int memberId, int lightTypeId, int rocYear, String changedBy) throws SQLException {
         createTable();
         String sql = """
-                DELETE FROM household_light_records
+                UPDATE household_light_records
+                SET is_deleted = 1,
+                    deleted_by = ?,
+                    deleted_at = CURRENT_TIMESTAMP,
+                    updated_by = ?,
+                    updated_at = CURRENT_TIMESTAMP,
+                    light_no = NULL
                 WHERE member_id = ?
                   AND light_type_id = ?
                   AND roc_year = ?
+                  AND COALESCE(is_deleted, 0) = 0
                 """;
         boolean deleted;
         try (Connection connection = databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, memberId);
-            statement.setInt(2, lightTypeId);
-            statement.setInt(3, rocYear);
+            statement.setString(1, changedBy);
+            statement.setString(2, changedBy);
+            statement.setInt(3, memberId);
+            statement.setInt(4, lightTypeId);
+            statement.setInt(5, rocYear);
             deleted = statement.executeUpdate() > 0;
         }
         if (deleted) {
-            saveAudit("household_light_records", null, "DELETE", changedBy,
+            saveAudit("household_light_records", null, "CANCEL", changedBy,
                     "member=" + memberId + ", type=" + lightTypeId + ", year=" + rocYear);
         }
         return deleted;
