@@ -32,8 +32,11 @@ public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
         try (Connection connection = openConnection()) {
             List<LightMember> members = fetchMembers(connection, sinceToken);
             List<Donation> donations = fetchDonations(connection, sinceToken);
-            String nextToken = latestToken(members, donations, sinceToken);
-            return new RemoteSnapshot(nextToken, members, donations);
+            List<LightNumberSyncRow> lightNumbers = fetchLightNumbers(connection, sinceToken);
+            List<HouseholdLightSyncRow> householdLightRecords = fetchHouseholdLightRecords(connection, sinceToken);
+            List<DonationSupplementSyncRow> donationSupplements = fetchDonationSupplements(connection, sinceToken);
+            String nextToken = latestToken(members, donations, lightNumbers, householdLightRecords, donationSupplements, sinceToken);
+            return new RemoteSnapshot(nextToken, members, donations, lightNumbers, householdLightRecords, donationSupplements);
         } catch (SQLException ex) {
             throw new IllegalStateException("Failed to fetch remote changes.", ex);
         }
@@ -152,6 +155,121 @@ public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
         }
     }
 
+    @Override
+    public void pushLightNumbers(List<LightNumberSyncRow> lightNumbers) {
+        if (lightNumbers == null || lightNumbers.isEmpty()) {
+            return;
+        }
+        String sql = """
+                INSERT INTO light_numbers (
+                    id, management_type, light_type, serial_number, member_id, principal_name, status,
+                    created_by, created_at, updated_by, updated_at, registered_at, deleted_by, deleted_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (management_type, light_type, serial_number) DO UPDATE SET
+                    member_id = EXCLUDED.member_id,
+                    principal_name = EXCLUDED.principal_name,
+                    status = EXCLUDED.status,
+                    created_by = EXCLUDED.created_by,
+                    created_at = EXCLUDED.created_at,
+                    updated_by = EXCLUDED.updated_by,
+                    updated_at = EXCLUDED.updated_at,
+                    registered_at = EXCLUDED.registered_at,
+                    deleted_by = EXCLUDED.deleted_by,
+                    deleted_at = EXCLUDED.deleted_at
+                """;
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            for (LightNumberSyncRow row : lightNumbers) {
+                try {
+                    bindLightNumber(statement, row);
+                    statement.executeUpdate();
+                } catch (SQLException ex) {
+                    throw new IllegalStateException("Failed to push light number id=" + row.getId()
+                            + ", managementType=" + row.getManagementType()
+                            + ", lightType=" + row.getLightType()
+                            + ", serialNumber=" + row.getSerialNumber()
+                            + ": " + ex.getMessage(), ex);
+                }
+            }
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to push light numbers.", ex);
+        }
+    }
+
+    @Override
+    public void pushHouseholdLightRecords(List<HouseholdLightSyncRow> records) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+        String sql = """
+                INSERT INTO household_light_records (
+                    id, member_id, light_type_id, roc_year, light_no, note,
+                    created_by, created_at, updated_by, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (member_id, light_type_id, roc_year) DO UPDATE SET
+                    light_no = EXCLUDED.light_no,
+                    note = EXCLUDED.note,
+                    created_by = EXCLUDED.created_by,
+                    created_at = EXCLUDED.created_at,
+                    updated_by = EXCLUDED.updated_by,
+                    updated_at = EXCLUDED.updated_at
+                """;
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            for (HouseholdLightSyncRow row : records) {
+                try {
+                    bindHouseholdLight(statement, row);
+                    statement.executeUpdate();
+                } catch (SQLException ex) {
+                    throw new IllegalStateException("Failed to push household light record id=" + row.getId()
+                            + ", memberId=" + row.getMemberId()
+                            + ", lightTypeId=" + row.getLightTypeId()
+                            + ", rocYear=" + row.getRocYear()
+                            + ": " + ex.getMessage(), ex);
+                }
+            }
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to push household light records.", ex);
+        }
+    }
+
+    @Override
+    public void pushDonationSupplements(List<DonationSupplementSyncRow> supplements) {
+        if (supplements == null || supplements.isEmpty()) {
+            return;
+        }
+        String sql = """
+                INSERT INTO donation_supplements (
+                    id, donation_id, supplement_date, supplement_no, source_type,
+                    created_by, created_at, updated_by, updated_at, is_deleted
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (donation_id) DO UPDATE SET
+                    supplement_date = EXCLUDED.supplement_date,
+                    supplement_no = EXCLUDED.supplement_no,
+                    source_type = EXCLUDED.source_type,
+                    created_by = EXCLUDED.created_by,
+                    created_at = EXCLUDED.created_at,
+                    updated_by = EXCLUDED.updated_by,
+                    updated_at = EXCLUDED.updated_at,
+                    is_deleted = EXCLUDED.is_deleted
+                """;
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            for (DonationSupplementSyncRow row : supplements) {
+                try {
+                    bindDonationSupplement(statement, row);
+                    statement.executeUpdate();
+                } catch (SQLException ex) {
+                    throw new IllegalStateException("Failed to push donation supplement id=" + row.getId()
+                            + ", donationId=" + row.getDonationId()
+                            + ": " + ex.getMessage(), ex);
+                }
+            }
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to push donation supplements.", ex);
+        }
+    }
+
     private Connection openConnection() throws SQLException {
         try {
             Class.forName("org.postgresql.Driver");
@@ -201,13 +319,89 @@ public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
         return donations;
     }
 
-    private String latestToken(List<LightMember> members, List<Donation> donations, String fallback) {
+    private List<LightNumberSyncRow> fetchLightNumbers(Connection connection, String sinceToken) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT * FROM light_numbers");
+        List<Object> params = new ArrayList<>();
+        if (sinceToken != null && !sinceToken.isBlank()) {
+            sql.append(" WHERE updated_at > ?::timestamptz");
+            params.add(sinceToken);
+        }
+        sql.append(" ORDER BY updated_at ASC NULLS FIRST, id ASC");
+        List<LightNumberSyncRow> rows = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+            bindParams(statement, params);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    rows.add(mapLightNumber(resultSet));
+                }
+            }
+        }
+        return rows;
+    }
+
+    private List<HouseholdLightSyncRow> fetchHouseholdLightRecords(Connection connection, String sinceToken) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT * FROM household_light_records");
+        List<Object> params = new ArrayList<>();
+        if (sinceToken != null && !sinceToken.isBlank()) {
+            sql.append(" WHERE updated_at > ?::timestamptz");
+            params.add(sinceToken);
+        }
+        sql.append(" ORDER BY updated_at ASC NULLS FIRST, id ASC");
+        List<HouseholdLightSyncRow> rows = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+            bindParams(statement, params);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    rows.add(mapHouseholdLight(resultSet));
+                }
+            }
+        }
+        return rows;
+    }
+
+    private List<DonationSupplementSyncRow> fetchDonationSupplements(Connection connection, String sinceToken) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT * FROM donation_supplements");
+        List<Object> params = new ArrayList<>();
+        if (sinceToken != null && !sinceToken.isBlank()) {
+            sql.append(" WHERE updated_at > ?::timestamptz");
+            params.add(sinceToken);
+        }
+        sql.append(" ORDER BY updated_at ASC NULLS FIRST, id ASC");
+        List<DonationSupplementSyncRow> rows = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+            bindParams(statement, params);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    rows.add(mapDonationSupplement(resultSet));
+                }
+            }
+        }
+        return rows;
+    }
+
+    private String latestToken(
+            List<LightMember> members,
+            List<Donation> donations,
+            List<LightNumberSyncRow> lightNumbers,
+            List<HouseholdLightSyncRow> householdLightRecords,
+            List<DonationSupplementSyncRow> donationSupplements,
+            String fallback
+    ) {
         String latest = fallback;
         for (LightMember member : members) {
             latest = latestToken(latest, member.getUpdatedAt());
         }
         for (Donation donation : donations) {
             latest = latestToken(latest, donation.getUpdatedAt());
+        }
+        for (LightNumberSyncRow row : lightNumbers) {
+            latest = latestToken(latest, row.getUpdatedAt());
+        }
+        for (HouseholdLightSyncRow row : householdLightRecords) {
+            latest = latestToken(latest, row.getUpdatedAt());
+        }
+        for (DonationSupplementSyncRow row : donationSupplements) {
+            latest = latestToken(latest, row.getUpdatedAt());
         }
         return latest;
     }
@@ -281,6 +475,49 @@ public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
         statement.setString(20, donation.getSyncStatus());
     }
 
+    private void bindLightNumber(PreparedStatement statement, LightNumberSyncRow row) throws SQLException {
+        statement.setObject(1, row.getId());
+        statement.setString(2, row.getManagementType());
+        statement.setString(3, row.getLightType());
+        statement.setObject(4, row.getSerialNumber());
+        statement.setObject(5, row.getMemberId());
+        statement.setString(6, row.getPrincipalName());
+        statement.setString(7, row.getStatus());
+        statement.setString(8, row.getCreatedBy());
+        statement.setTimestamp(9, toTimestamp(row.getCreatedAt()));
+        statement.setString(10, row.getUpdatedBy());
+        statement.setTimestamp(11, toTimestamp(row.getUpdatedAt()));
+        statement.setTimestamp(12, toTimestamp(row.getRegisteredAt()));
+        statement.setString(13, row.getDeletedBy());
+        statement.setTimestamp(14, toTimestamp(row.getDeletedAt()));
+    }
+
+    private void bindHouseholdLight(PreparedStatement statement, HouseholdLightSyncRow row) throws SQLException {
+        statement.setObject(1, row.getId());
+        statement.setObject(2, row.getMemberId());
+        statement.setObject(3, row.getLightTypeId());
+        statement.setObject(4, row.getRocYear());
+        statement.setString(5, row.getLightNo());
+        statement.setString(6, row.getNote());
+        statement.setString(7, row.getCreatedBy());
+        statement.setTimestamp(8, toTimestamp(row.getCreatedAt()));
+        statement.setString(9, row.getUpdatedBy());
+        statement.setTimestamp(10, toTimestamp(row.getUpdatedAt()));
+    }
+
+    private void bindDonationSupplement(PreparedStatement statement, DonationSupplementSyncRow row) throws SQLException {
+        statement.setObject(1, row.getId());
+        statement.setObject(2, row.getDonationId());
+        statement.setString(3, row.getSupplementDate());
+        statement.setString(4, row.getSupplementNo());
+        statement.setString(5, row.getSourceType());
+        statement.setString(6, row.getCreatedBy());
+        statement.setTimestamp(7, toTimestamp(row.getCreatedAt()));
+        statement.setString(8, row.getUpdatedBy());
+        statement.setTimestamp(9, toTimestamp(row.getUpdatedAt()));
+        statement.setObject(10, row.getDeleted() == null ? 0 : row.getDeleted());
+    }
+
     private Timestamp toTimestamp(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -343,5 +580,55 @@ public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
         donation.setDeviceId(resultSet.getString("device_id"));
         donation.setSyncStatus(resultSet.getString("sync_status"));
         return donation;
+    }
+
+    private LightNumberSyncRow mapLightNumber(ResultSet resultSet) throws SQLException {
+        LightNumberSyncRow row = new LightNumberSyncRow();
+        row.setId(resultSet.getInt("id"));
+        row.setManagementType(resultSet.getString("management_type"));
+        row.setLightType(resultSet.getString("light_type"));
+        row.setSerialNumber(resultSet.getInt("serial_number"));
+        int memberId = resultSet.getInt("member_id");
+        row.setMemberId(resultSet.wasNull() ? null : memberId);
+        row.setPrincipalName(resultSet.getString("principal_name"));
+        row.setStatus(resultSet.getString("status"));
+        row.setCreatedBy(resultSet.getString("created_by"));
+        row.setCreatedAt(resultSet.getString("created_at"));
+        row.setUpdatedBy(resultSet.getString("updated_by"));
+        row.setUpdatedAt(resultSet.getString("updated_at"));
+        row.setRegisteredAt(resultSet.getString("registered_at"));
+        row.setDeletedBy(resultSet.getString("deleted_by"));
+        row.setDeletedAt(resultSet.getString("deleted_at"));
+        return row;
+    }
+
+    private HouseholdLightSyncRow mapHouseholdLight(ResultSet resultSet) throws SQLException {
+        HouseholdLightSyncRow row = new HouseholdLightSyncRow();
+        row.setId(resultSet.getInt("id"));
+        row.setMemberId(resultSet.getInt("member_id"));
+        row.setLightTypeId(resultSet.getInt("light_type_id"));
+        row.setRocYear(resultSet.getInt("roc_year"));
+        row.setLightNo(resultSet.getString("light_no"));
+        row.setNote(resultSet.getString("note"));
+        row.setCreatedBy(resultSet.getString("created_by"));
+        row.setCreatedAt(resultSet.getString("created_at"));
+        row.setUpdatedBy(resultSet.getString("updated_by"));
+        row.setUpdatedAt(resultSet.getString("updated_at"));
+        return row;
+    }
+
+    private DonationSupplementSyncRow mapDonationSupplement(ResultSet resultSet) throws SQLException {
+        DonationSupplementSyncRow row = new DonationSupplementSyncRow();
+        row.setId(resultSet.getInt("id"));
+        row.setDonationId(resultSet.getInt("donation_id"));
+        row.setSupplementDate(resultSet.getString("supplement_date"));
+        row.setSupplementNo(resultSet.getString("supplement_no"));
+        row.setSourceType(resultSet.getString("source_type"));
+        row.setCreatedBy(resultSet.getString("created_by"));
+        row.setCreatedAt(resultSet.getString("created_at"));
+        row.setUpdatedBy(resultSet.getString("updated_by"));
+        row.setUpdatedAt(resultSet.getString("updated_at"));
+        row.setDeleted(resultSet.getInt("is_deleted"));
+        return row;
     }
 }

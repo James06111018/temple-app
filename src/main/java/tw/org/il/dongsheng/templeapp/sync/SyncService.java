@@ -87,6 +87,9 @@ public class SyncService {
 
             applyRemoteMembers(snapshot.getMembers());
             applyRemoteDonations(snapshot.getDonations());
+            applyRemoteLightNumbers(snapshot.getLightNumbers());
+            applyRemoteHouseholdLightRecords(snapshot.getHouseholdLightRecords());
+            applyRemoteDonationSupplements(snapshot.getDonationSupplements());
 
             syncState.setLastPullAt(Util.nowUtc());
             syncState.setLastSyncAt(Util.nowUtc());
@@ -102,6 +105,9 @@ public class SyncService {
         try {
             List<LightMember> membersToPush = loadDirtyMembers();
             List<Donation> donationsToPush = loadDirtyDonations();
+            List<LightNumberSyncRow> lightNumbersToPush = loadDirtyLightNumbers();
+            List<HouseholdLightSyncRow> householdLightRecordsToPush = loadDirtyHouseholdLightRecords();
+            List<DonationSupplementSyncRow> donationSupplementsToPush = loadDirtyDonationSupplements();
 
             if (remoteSyncGateway != null) {
                 if (!membersToPush.isEmpty()) {
@@ -110,10 +116,22 @@ public class SyncService {
                 if (!donationsToPush.isEmpty()) {
                     remoteSyncGateway.pushDonations(donationsToPush);
                 }
+                if (!lightNumbersToPush.isEmpty()) {
+                    remoteSyncGateway.pushLightNumbers(lightNumbersToPush);
+                }
+                if (!householdLightRecordsToPush.isEmpty()) {
+                    remoteSyncGateway.pushHouseholdLightRecords(householdLightRecordsToPush);
+                }
+                if (!donationSupplementsToPush.isEmpty()) {
+                    remoteSyncGateway.pushDonationSupplements(donationSupplementsToPush);
+                }
             }
 
             markMembersSynced(membersToPush);
             markDonationsSynced(donationsToPush);
+            markLightNumbersSynced(lightNumbersToPush);
+            markHouseholdLightRecordsSynced(householdLightRecordsToPush);
+            markDonationSupplementsSynced(donationSupplementsToPush);
 
             syncState.setLastPushAt(Util.nowUtc());
             syncState.setLastSyncAt(Util.nowUtc());
@@ -157,6 +175,117 @@ public class SyncService {
             try {
                 for (Donation remote : remoteDonations) {
                     mergeDonation(connection, remote);
+                }
+                connection.commit();
+            } catch (SQLException ex) {
+                connection.rollback();
+                throw ex;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        }
+    }
+
+    private void applyRemoteLightNumbers(List<LightNumberSyncRow> remoteRows) throws SQLException {
+        if (remoteRows == null || remoteRows.isEmpty()) {
+            return;
+        }
+        String sql = """
+                INSERT INTO light_numbers (
+                    id, management_type, light_type, serial_number, member_id, principal_name, status,
+                    created_by, created_at, updated_by, updated_at, registered_at, deleted_by, deleted_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(management_type, light_type, serial_number) DO UPDATE SET
+                    member_id = excluded.member_id,
+                    principal_name = excluded.principal_name,
+                    status = excluded.status,
+                    created_by = excluded.created_by,
+                    created_at = excluded.created_at,
+                    updated_by = excluded.updated_by,
+                    updated_at = excluded.updated_at,
+                    registered_at = excluded.registered_at,
+                    deleted_by = excluded.deleted_by,
+                    deleted_at = excluded.deleted_at
+                """;
+        try (Connection connection = lightMemberRepository.getDatabaseManager().getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            connection.setAutoCommit(false);
+            try {
+                for (LightNumberSyncRow row : remoteRows) {
+                    bindLightNumber(statement, row);
+                    statement.executeUpdate();
+                }
+                connection.commit();
+            } catch (SQLException ex) {
+                connection.rollback();
+                throw ex;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        }
+    }
+
+    private void applyRemoteHouseholdLightRecords(List<HouseholdLightSyncRow> remoteRows) throws SQLException {
+        if (remoteRows == null || remoteRows.isEmpty()) {
+            return;
+        }
+        String sql = """
+                INSERT INTO household_light_records (
+                    id, member_id, light_type_id, roc_year, light_no, note,
+                    created_by, created_at, updated_by, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(member_id, light_type_id, roc_year) DO UPDATE SET
+                    light_no = excluded.light_no,
+                    note = excluded.note,
+                    created_by = excluded.created_by,
+                    created_at = excluded.created_at,
+                    updated_by = excluded.updated_by,
+                    updated_at = excluded.updated_at
+                """;
+        try (Connection connection = donationRepository.getDatabaseManager().getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            connection.setAutoCommit(false);
+            try {
+                for (HouseholdLightSyncRow row : remoteRows) {
+                    bindHouseholdLight(statement, row);
+                    statement.executeUpdate();
+                }
+                connection.commit();
+            } catch (SQLException ex) {
+                connection.rollback();
+                throw ex;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        }
+    }
+
+    private void applyRemoteDonationSupplements(List<DonationSupplementSyncRow> remoteRows) throws SQLException {
+        if (remoteRows == null || remoteRows.isEmpty()) {
+            return;
+        }
+        String sql = """
+                INSERT INTO donation_supplements (
+                    id, donation_id, supplement_date, supplement_no, source_type,
+                    created_by, created_at, updated_by, updated_at, is_deleted
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(donation_id) DO UPDATE SET
+                    supplement_date = excluded.supplement_date,
+                    supplement_no = excluded.supplement_no,
+                    source_type = excluded.source_type,
+                    created_by = excluded.created_by,
+                    created_at = excluded.created_at,
+                    updated_by = excluded.updated_by,
+                    updated_at = excluded.updated_at,
+                    is_deleted = excluded.is_deleted
+                """;
+        try (Connection connection = donationRepository.getDatabaseManager().getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            connection.setAutoCommit(false);
+            try {
+                for (DonationSupplementSyncRow row : remoteRows) {
+                    bindDonationSupplement(statement, row);
+                    statement.executeUpdate();
                 }
                 connection.commit();
             } catch (SQLException ex) {
@@ -235,6 +364,63 @@ public class SyncService {
         return donations;
     }
 
+    private List<LightNumberSyncRow> loadDirtyLightNumbers() throws SQLException {
+        List<LightNumberSyncRow> rows = new ArrayList<>();
+        String lastPushAt = syncState.getLastPushAt();
+        if (lastPushAt == null || lastPushAt.isBlank()) {
+            return rows;
+        }
+        String sql = "SELECT * FROM light_numbers WHERE updated_at > ?";
+        try (Connection connection = lightMemberRepository.getDatabaseManager().getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, lastPushAt);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    rows.add(mapLightNumber(resultSet));
+                }
+            }
+        }
+        return rows;
+    }
+
+    private List<HouseholdLightSyncRow> loadDirtyHouseholdLightRecords() throws SQLException {
+        List<HouseholdLightSyncRow> rows = new ArrayList<>();
+        String lastPushAt = syncState.getLastPushAt();
+        if (lastPushAt == null || lastPushAt.isBlank()) {
+            return rows;
+        }
+        String sql = "SELECT * FROM household_light_records WHERE updated_at > ?";
+        try (Connection connection = donationRepository.getDatabaseManager().getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, lastPushAt);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    rows.add(mapHouseholdLight(resultSet));
+                }
+            }
+        }
+        return rows;
+    }
+
+    private List<DonationSupplementSyncRow> loadDirtyDonationSupplements() throws SQLException {
+        List<DonationSupplementSyncRow> rows = new ArrayList<>();
+        String lastPushAt = syncState.getLastPushAt();
+        if (lastPushAt == null || lastPushAt.isBlank()) {
+            return rows;
+        }
+        String sql = "SELECT * FROM donation_supplements WHERE updated_at > ?";
+        try (Connection connection = donationRepository.getDatabaseManager().getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, lastPushAt);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    rows.add(mapDonationSupplement(resultSet));
+                }
+            }
+        }
+        return rows;
+    }
+
     private void markMembersSynced(List<LightMember> members) throws SQLException {
         if (members.isEmpty()) {
             return;
@@ -269,6 +455,15 @@ public class SyncService {
             }
             statement.executeBatch();
         }
+    }
+
+    private void markLightNumbersSynced(List<LightNumberSyncRow> rows) {
+    }
+
+    private void markHouseholdLightRecordsSynced(List<HouseholdLightSyncRow> rows) {
+    }
+
+    private void markDonationSupplementsSynced(List<DonationSupplementSyncRow> rows) {
     }
 
     private LightMember findMemberByUuid(Connection connection, String uuid) throws SQLException {
@@ -491,6 +686,99 @@ public class SyncService {
         donation.setDeviceId(resultSet.getString("device_id"));
         donation.setSyncStatus(resultSet.getString("sync_status"));
         return donation;
+    }
+
+    private LightNumberSyncRow mapLightNumber(ResultSet resultSet) throws SQLException {
+        LightNumberSyncRow row = new LightNumberSyncRow();
+        row.setId(resultSet.getInt("id"));
+        row.setManagementType(resultSet.getString("management_type"));
+        row.setLightType(resultSet.getString("light_type"));
+        row.setSerialNumber(resultSet.getInt("serial_number"));
+        int memberId = resultSet.getInt("member_id");
+        row.setMemberId(resultSet.wasNull() ? null : memberId);
+        row.setPrincipalName(resultSet.getString("principal_name"));
+        row.setStatus(resultSet.getString("status"));
+        row.setCreatedBy(resultSet.getString("created_by"));
+        row.setCreatedAt(resultSet.getString("created_at"));
+        row.setUpdatedBy(resultSet.getString("updated_by"));
+        row.setUpdatedAt(resultSet.getString("updated_at"));
+        row.setRegisteredAt(resultSet.getString("registered_at"));
+        row.setDeletedBy(resultSet.getString("deleted_by"));
+        row.setDeletedAt(resultSet.getString("deleted_at"));
+        return row;
+    }
+
+    private HouseholdLightSyncRow mapHouseholdLight(ResultSet resultSet) throws SQLException {
+        HouseholdLightSyncRow row = new HouseholdLightSyncRow();
+        row.setId(resultSet.getInt("id"));
+        row.setMemberId(resultSet.getInt("member_id"));
+        row.setLightTypeId(resultSet.getInt("light_type_id"));
+        row.setRocYear(resultSet.getInt("roc_year"));
+        row.setLightNo(resultSet.getString("light_no"));
+        row.setNote(resultSet.getString("note"));
+        row.setCreatedBy(resultSet.getString("created_by"));
+        row.setCreatedAt(resultSet.getString("created_at"));
+        row.setUpdatedBy(resultSet.getString("updated_by"));
+        row.setUpdatedAt(resultSet.getString("updated_at"));
+        return row;
+    }
+
+    private DonationSupplementSyncRow mapDonationSupplement(ResultSet resultSet) throws SQLException {
+        DonationSupplementSyncRow row = new DonationSupplementSyncRow();
+        row.setId(resultSet.getInt("id"));
+        row.setDonationId(resultSet.getInt("donation_id"));
+        row.setSupplementDate(resultSet.getString("supplement_date"));
+        row.setSupplementNo(resultSet.getString("supplement_no"));
+        row.setSourceType(resultSet.getString("source_type"));
+        row.setCreatedBy(resultSet.getString("created_by"));
+        row.setCreatedAt(resultSet.getString("created_at"));
+        row.setUpdatedBy(resultSet.getString("updated_by"));
+        row.setUpdatedAt(resultSet.getString("updated_at"));
+        row.setDeleted(resultSet.getInt("is_deleted"));
+        return row;
+    }
+
+    private void bindLightNumber(PreparedStatement statement, LightNumberSyncRow row) throws SQLException {
+        statement.setObject(1, row.getId());
+        statement.setString(2, row.getManagementType());
+        statement.setString(3, row.getLightType());
+        statement.setObject(4, row.getSerialNumber());
+        statement.setObject(5, row.getMemberId());
+        statement.setString(6, row.getPrincipalName());
+        statement.setString(7, row.getStatus());
+        statement.setString(8, row.getCreatedBy());
+        statement.setString(9, row.getCreatedAt());
+        statement.setString(10, row.getUpdatedBy());
+        statement.setString(11, row.getUpdatedAt());
+        statement.setString(12, row.getRegisteredAt());
+        statement.setString(13, row.getDeletedBy());
+        statement.setString(14, row.getDeletedAt());
+    }
+
+    private void bindHouseholdLight(PreparedStatement statement, HouseholdLightSyncRow row) throws SQLException {
+        statement.setObject(1, row.getId());
+        statement.setObject(2, row.getMemberId());
+        statement.setObject(3, row.getLightTypeId());
+        statement.setObject(4, row.getRocYear());
+        statement.setString(5, row.getLightNo());
+        statement.setString(6, row.getNote());
+        statement.setString(7, row.getCreatedBy());
+        statement.setString(8, row.getCreatedAt());
+        statement.setString(9, row.getUpdatedBy());
+        statement.setString(10, row.getUpdatedAt());
+    }
+
+    private void bindDonationSupplement(PreparedStatement statement, DonationSupplementSyncRow row) throws SQLException {
+        statement.setObject(1, row.getId());
+        statement.setObject(2, row.getDonationId());
+        statement.setString(3, row.getSupplementDate());
+        statement.setString(4, row.getSupplementNo());
+        statement.setString(5, row.getSourceType());
+        statement.setString(6, row.getCreatedBy());
+        statement.setString(7, row.getCreatedAt());
+        statement.setString(8, row.getUpdatedBy());
+        statement.setString(9, row.getUpdatedAt());
+        statement.setObject(10, row.getDeleted() == null ? 0 : row.getDeleted());
     }
 
     private boolean safeEquals(String left, String right) {

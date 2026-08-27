@@ -11,4 +11,10 @@ public interface RemoteSyncGateway {
     void pushMembers(List<LightMember> members);
 
     void pushDonations(List<Donation> donations);
+
+    void pushLightNumbers(List<LightNumberSyncRow> lightNumbers);
+
+    void pushHouseholdLightRecords(List<HouseholdLightSyncRow> records);
+
+    void pushDonationSupplements(List<DonationSupplementSyncRow> supplements);
 }
