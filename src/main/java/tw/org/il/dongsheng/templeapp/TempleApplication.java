@@ -2,6 +2,8 @@ package tw.org.il.dongsheng.templeapp;
 
 import javafx.application.Application;
 import javafx.animation.PauseTransition;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -35,6 +37,7 @@ public class TempleApplication extends Application {
     private boolean loginRecordFinished = false;
     private final AtomicBoolean syncing = new AtomicBoolean(false);
     private final AtomicReference<Stage> syncProgressStageRef = new AtomicReference<>();
+    private final AtomicReference<Timeline> syncElapsedTimelineRef = new AtomicReference<>();
     private SyncService syncService;
 
     @Override
@@ -217,16 +220,31 @@ public class TempleApplication extends Application {
         Label title = new Label(closing ? "關閉前同步資料中..." : "登入後同步資料中...");
         title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
         Label message = new Label("請稍候，資料正在與雲端同步。");
+        Label elapsed = new Label("已執行 0 秒");
+        elapsed.setStyle("-fx-text-fill: #666666;");
 
-        VBox box = new VBox(10, title, message);
+        long startMillis = System.currentTimeMillis();
+        Timeline timeline = new Timeline(new KeyFrame(javafx.util.Duration.seconds(1), event -> {
+            long seconds = Math.max(0, (System.currentTimeMillis() - startMillis) / 1000);
+            elapsed.setText("已執行 " + seconds + " 秒");
+        }));
+        timeline.setCycleCount(Timeline.INDEFINITE);
+        timeline.play();
+        syncElapsedTimelineRef.set(timeline);
+
+        VBox box = new VBox(10, title, message, elapsed);
         box.setStyle("-fx-padding: 20; -fx-alignment: center; -fx-background-color: white;");
-        Scene scene = new Scene(box, 320, 120);
+        Scene scene = new Scene(box, 320, 140);
         progressStage.setScene(scene);
         syncProgressStageRef.set(progressStage);
         progressStage.show();
     }
 
     private void hideSyncProgress() {
+        Timeline timeline = syncElapsedTimelineRef.getAndSet(null);
+        if (timeline != null) {
+            timeline.stop();
+        }
         Stage progressStage = syncProgressStageRef.getAndSet(null);
         if (progressStage != null) {
             progressStage.close();
