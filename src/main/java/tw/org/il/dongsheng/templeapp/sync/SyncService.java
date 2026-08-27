@@ -1,7 +1,10 @@
 package tw.org.il.dongsheng.templeapp.sync;
 
 import tw.org.il.dongsheng.templeapp.model.Donation;
+import tw.org.il.dongsheng.templeapp.model.AppFunction;
+import tw.org.il.dongsheng.templeapp.model.AppRole;
 import tw.org.il.dongsheng.templeapp.model.LightMember;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteAuthRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteLightMemberRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteSyncStateRepository;
@@ -19,6 +22,7 @@ import java.util.UUID;
 public class SyncService {
     private final SQLiteLightMemberRepository lightMemberRepository;
     private final SQLiteDonationRepository donationRepository;
+    private final SQLiteAuthRepository authRepository;
     private final SQLiteSyncStateRepository syncStateRepository;
     private final RemoteSyncGateway remoteSyncGateway;
     private final SyncState syncState;
@@ -27,21 +31,24 @@ public class SyncService {
     public SyncService(
             SQLiteLightMemberRepository lightMemberRepository,
             SQLiteDonationRepository donationRepository,
+            SQLiteAuthRepository authRepository,
             SQLiteSyncStateRepository syncStateRepository,
             RemoteSyncGateway remoteSyncGateway
     ) throws SQLException {
-        this(lightMemberRepository, donationRepository, syncStateRepository, remoteSyncGateway, SyncConfig.load());
+        this(lightMemberRepository, donationRepository, authRepository, syncStateRepository, remoteSyncGateway, SyncConfig.load());
     }
 
     public SyncService(
             SQLiteLightMemberRepository lightMemberRepository,
             SQLiteDonationRepository donationRepository,
+            SQLiteAuthRepository authRepository,
             SQLiteSyncStateRepository syncStateRepository,
             RemoteSyncGateway remoteSyncGateway,
             Properties syncProperties
     ) throws SQLException {
         this.lightMemberRepository = lightMemberRepository;
         this.donationRepository = donationRepository;
+        this.authRepository = authRepository;
         this.syncStateRepository = syncStateRepository;
         this.syncProperties = syncProperties == null ? new Properties() : syncProperties;
         this.syncState = syncStateRepository.load();
@@ -90,6 +97,7 @@ public class SyncService {
             applyRemoteLightNumbers(snapshot.getLightNumbers());
             applyRemoteHouseholdLightRecords(snapshot.getHouseholdLightRecords());
             applyRemoteDonationSupplements(snapshot.getDonationSupplements());
+            applyRemoteAuthTables();
 
             syncState.setLastPullAt(Util.nowUtc());
             syncState.setLastSyncAt(Util.nowUtc());
@@ -108,6 +116,10 @@ public class SyncService {
             List<LightNumberSyncRow> lightNumbersToPush = loadDirtyLightNumbers();
             List<HouseholdLightSyncRow> householdLightRecordsToPush = loadDirtyHouseholdLightRecords();
             List<DonationSupplementSyncRow> donationSupplementsToPush = loadDirtyDonationSupplements();
+            List<AuthUserSyncRow> authUsersToPush = loadAuthUsers();
+            List<AppRole> authRolesToPush = loadAuthRoles();
+            List<AppFunction> authFunctionsToPush = loadAuthFunctions();
+            List<RoleFunctionSyncRow> authRoleFunctionsToPush = loadRoleFunctions();
 
             if (remoteSyncGateway != null) {
                 if (!membersToPush.isEmpty()) {
@@ -125,6 +137,10 @@ public class SyncService {
                 if (!donationSupplementsToPush.isEmpty()) {
                     remoteSyncGateway.pushDonationSupplements(donationSupplementsToPush);
                 }
+            remoteSyncGateway.replaceAppRoles(authRolesToPush);
+            remoteSyncGateway.replaceAppFunctions(authFunctionsToPush);
+            remoteSyncGateway.replaceRoleFunctions(authRoleFunctionsToPush);
+            remoteSyncGateway.replaceAppUsers(authUsersToPush);
             }
 
             markMembersSynced(membersToPush);
@@ -419,6 +435,241 @@ public class SyncService {
             }
         }
         return rows;
+    }
+
+    private List<AuthUserSyncRow> loadAuthUsers() throws SQLException {
+        List<AuthUserSyncRow> users = new ArrayList<>();
+        String sql = """
+                SELECT id, username, display_name, password_hash, role_code, enabled,
+                       created_by, created_at, updated_by, updated_at
+                FROM app_users
+                ORDER BY id
+                """;
+        try (Connection connection = authRepository.getDatabaseManager().getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                users.add(new AuthUserSyncRow(
+                        resultSet.getInt("id"),
+                        resultSet.getString("username"),
+                        resultSet.getString("display_name"),
+                        resultSet.getString("password_hash"),
+                        resultSet.getString("role_code"),
+                        resultSet.getInt("enabled") == 1,
+                        resultSet.getString("created_by"),
+                        resultSet.getString("created_at"),
+                        resultSet.getString("updated_by"),
+                        resultSet.getString("updated_at")
+                ));
+            }
+        }
+        return users;
+    }
+
+    private List<AppRole> loadAuthRoles() throws SQLException {
+        List<AppRole> roles = new ArrayList<>();
+        String sql = "SELECT role_code, role_name FROM app_roles ORDER BY role_code";
+        try (Connection connection = authRepository.getDatabaseManager().getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                roles.add(new AppRole(resultSet.getString("role_code"), resultSet.getString("role_name")));
+            }
+        }
+        return roles;
+    }
+
+    private List<AppFunction> loadAuthFunctions() throws SQLException {
+        List<AppFunction> functions = new ArrayList<>();
+        String sql = "SELECT function_code, function_name, enabled FROM app_functions ORDER BY function_code";
+        try (Connection connection = authRepository.getDatabaseManager().getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                functions.add(new AppFunction(
+                        resultSet.getString("function_code"),
+                        resultSet.getString("function_name"),
+                        resultSet.getInt("enabled") == 1
+                ));
+            }
+        }
+        return functions;
+    }
+
+    private List<RoleFunctionSyncRow> loadRoleFunctions() throws SQLException {
+        List<RoleFunctionSyncRow> rows = new ArrayList<>();
+        String sql = "SELECT role_code, function_code FROM role_functions ORDER BY role_code, function_code";
+        try (Connection connection = authRepository.getDatabaseManager().getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                rows.add(new RoleFunctionSyncRow(
+                        resultSet.getString("role_code"),
+                        resultSet.getString("function_code")
+                ));
+            }
+        }
+        return rows;
+    }
+
+    private void applyRemoteAuthTables() throws SQLException {
+        if (remoteSyncGateway == null) {
+            return;
+        }
+        try {
+            applyRemoteAuthRoles(remoteSyncGateway.fetchAppRoles());
+        } catch (SQLException ex) {
+            throw new SQLException("Pull failed at table app_roles: " + ex.getMessage(), ex);
+        }
+        try {
+            applyRemoteAuthFunctions(remoteSyncGateway.fetchAppFunctions());
+        } catch (SQLException ex) {
+            throw new SQLException("Pull failed at table app_functions: " + ex.getMessage(), ex);
+        }
+        try {
+            applyRemoteRoleFunctions(remoteSyncGateway.fetchRoleFunctions());
+        } catch (SQLException ex) {
+            throw new SQLException("Pull failed at table role_functions: " + ex.getMessage(), ex);
+        }
+        try {
+            applyRemoteAuthUsers(remoteSyncGateway.fetchAppUsers());
+        } catch (SQLException ex) {
+            throw new SQLException("Pull failed at table app_users: " + ex.getMessage(), ex);
+        }
+    }
+
+    private void applyRemoteAuthRoles(List<AppRole> roles) throws SQLException {
+        try (Connection connection = authRepository.getDatabaseManager().getConnection();
+             PreparedStatement insert = connection.prepareStatement(
+                     """
+                     INSERT INTO app_roles (role_code, role_name)
+                     VALUES (?, ?)
+                     ON CONFLICT(role_code) DO UPDATE SET
+                         role_name = excluded.role_name
+                     """)) {
+            connection.setAutoCommit(false);
+            try {
+                if (roles != null) {
+                    for (AppRole role : roles) {
+                        insert.setString(1, role.getRoleCode());
+                        insert.setString(2, role.getRoleName());
+                        insert.addBatch();
+                    }
+                    insert.executeBatch();
+                }
+                connection.commit();
+            } catch (SQLException ex) {
+                connection.rollback();
+                throw ex;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        }
+    }
+
+    private void applyRemoteAuthFunctions(List<AppFunction> functions) throws SQLException {
+        try (Connection connection = authRepository.getDatabaseManager().getConnection();
+             PreparedStatement insert = connection.prepareStatement(
+                     """
+                     INSERT INTO app_functions (function_code, function_name, enabled)
+                     VALUES (?, ?, ?)
+                     ON CONFLICT(function_code) DO UPDATE SET
+                         function_name = excluded.function_name,
+                         enabled = excluded.enabled
+                     """)) {
+            connection.setAutoCommit(false);
+            try {
+                if (functions != null) {
+                    for (AppFunction function : functions) {
+                        insert.setString(1, function.getFunctionCode());
+                        insert.setString(2, function.getFunctionName());
+                        insert.setInt(3, function.isEnabled() ? 1 : 0);
+                        insert.addBatch();
+                    }
+                    insert.executeBatch();
+                }
+                connection.commit();
+            } catch (SQLException ex) {
+                connection.rollback();
+                throw ex;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        }
+    }
+
+    private void applyRemoteRoleFunctions(List<RoleFunctionSyncRow> roleFunctions) throws SQLException {
+        try (Connection connection = authRepository.getDatabaseManager().getConnection();
+             PreparedStatement delete = connection.prepareStatement("DELETE FROM role_functions");
+             PreparedStatement insert = connection.prepareStatement(
+                     "INSERT INTO role_functions (role_code, function_code) VALUES (?, ?)")) {
+            connection.setAutoCommit(false);
+            try {
+                connection.createStatement().execute("PRAGMA foreign_keys = OFF");
+                delete.executeUpdate();
+                if (roleFunctions != null) {
+                    for (RoleFunctionSyncRow row : roleFunctions) {
+                        insert.setString(1, row.getRoleCode());
+                        insert.setString(2, row.getFunctionCode());
+                        insert.addBatch();
+                    }
+                    insert.executeBatch();
+                }
+                connection.commit();
+            } catch (SQLException ex) {
+                connection.rollback();
+                throw ex;
+            } finally {
+                connection.createStatement().execute("PRAGMA foreign_keys = ON");
+                connection.setAutoCommit(true);
+            }
+        }
+    }
+
+    private void applyRemoteAuthUsers(List<AuthUserSyncRow> users) throws SQLException {
+        try (Connection connection = authRepository.getDatabaseManager().getConnection();
+             PreparedStatement insert = connection.prepareStatement(
+                     """
+                     INSERT INTO app_users (
+                         id, username, display_name, password_hash, role_code, enabled,
+                         created_by, created_at, updated_by, updated_at
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     ON CONFLICT(username) DO UPDATE SET
+                         display_name = excluded.display_name,
+                         password_hash = excluded.password_hash,
+                         role_code = excluded.role_code,
+                         enabled = excluded.enabled,
+                         created_by = excluded.created_by,
+                         created_at = excluded.created_at,
+                         updated_by = excluded.updated_by,
+                         updated_at = excluded.updated_at
+                     """)) {
+            connection.setAutoCommit(false);
+            try {
+                if (users != null) {
+                    for (AuthUserSyncRow user : users) {
+                        insert.setObject(1, user.getId());
+                        insert.setString(2, user.getUsername());
+                        insert.setString(3, user.getDisplayName());
+                        insert.setString(4, user.getPasswordHash());
+                        insert.setString(5, user.getRoleCode());
+                        insert.setInt(6, user.isEnabled() ? 1 : 0);
+                        insert.setString(7, user.getCreatedBy());
+                        insert.setString(8, user.getCreatedAt());
+                        insert.setString(9, user.getUpdatedBy());
+                        insert.setString(10, user.getUpdatedAt());
+                        insert.addBatch();
+                    }
+                    insert.executeBatch();
+                }
+                connection.commit();
+            } catch (SQLException ex) {
+                connection.rollback();
+                throw ex;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        }
     }
 
     private void markMembersSynced(List<LightMember> members) throws SQLException {

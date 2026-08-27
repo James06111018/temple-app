@@ -254,6 +254,10 @@ public class SQLiteAuthRepository {
         }
     }
 
+    public SQLiteDatabaseManager getDatabaseManager() {
+        return databaseManager;
+    }
+
     public List<AppUser> findAllUsers() throws SQLException {
         String sql = "SELECT id, username, display_name, role_code, enabled FROM app_users ORDER BY id";
         List<AppUser> users = new ArrayList<>();

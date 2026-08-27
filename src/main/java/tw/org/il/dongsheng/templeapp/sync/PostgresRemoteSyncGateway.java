@@ -1,6 +1,8 @@
 package tw.org.il.dongsheng.templeapp.sync;
 
 import tw.org.il.dongsheng.templeapp.model.Donation;
+import tw.org.il.dongsheng.templeapp.model.AppFunction;
+import tw.org.il.dongsheng.templeapp.model.AppRole;
 import tw.org.il.dongsheng.templeapp.model.LightMember;
 
 import java.sql.Connection;
@@ -270,6 +272,205 @@ public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
         }
     }
 
+    @Override
+    public void replaceAppUsers(List<AuthUserSyncRow> users) {
+        try (Connection connection = openConnection()) {
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate("DELETE FROM app_users");
+            }
+            if (users == null || users.isEmpty()) {
+                return;
+            }
+            String sql = """
+                    INSERT INTO app_users (
+                        id, username, display_name, password_hash, role_code, enabled,
+                        created_by, created_at, updated_by, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (username) DO UPDATE SET
+                        display_name = EXCLUDED.display_name,
+                        password_hash = EXCLUDED.password_hash,
+                        role_code = EXCLUDED.role_code,
+                        enabled = EXCLUDED.enabled,
+                        created_by = EXCLUDED.created_by,
+                        created_at = EXCLUDED.created_at,
+                        updated_by = EXCLUDED.updated_by,
+                        updated_at = EXCLUDED.updated_at
+                    """;
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                for (AuthUserSyncRow row : users) {
+                    bindAuthUser(statement, row);
+                    statement.executeUpdate();
+                }
+            }
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to replace app users.", ex);
+        }
+    }
+
+    @Override
+    public void replaceAppRoles(List<AppRole> roles) {
+        try (Connection connection = openConnection()) {
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate("DELETE FROM app_users");
+                statement.executeUpdate("DELETE FROM role_functions");
+                statement.executeUpdate("DELETE FROM app_roles");
+            }
+            if (roles == null || roles.isEmpty()) {
+                return;
+            }
+            String sql = """
+                    INSERT INTO app_roles (role_code, role_name)
+                    VALUES (?, ?)
+                    ON CONFLICT (role_code) DO UPDATE SET
+                        role_name = EXCLUDED.role_name
+                    """;
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                for (AppRole role : roles) {
+                    statement.setString(1, role.getRoleCode());
+                    statement.setString(2, role.getRoleName());
+                    statement.executeUpdate();
+                }
+            }
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to replace app roles.", ex);
+        }
+    }
+
+    @Override
+    public void replaceAppFunctions(List<AppFunction> functions) {
+        try (Connection connection = openConnection()) {
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate("DELETE FROM app_functions");
+            }
+            if (functions == null || functions.isEmpty()) {
+                return;
+            }
+            String sql = """
+                    INSERT INTO app_functions (function_code, function_name, enabled)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT (function_code) DO UPDATE SET
+                        function_name = EXCLUDED.function_name,
+                        enabled = EXCLUDED.enabled
+                    """;
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                for (AppFunction function : functions) {
+                    statement.setString(1, function.getFunctionCode());
+                    statement.setString(2, function.getFunctionName());
+                    statement.setInt(3, function.isEnabled() ? 1 : 0);
+                    statement.executeUpdate();
+                }
+            }
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to replace app functions.", ex);
+        }
+    }
+
+    @Override
+    public void replaceRoleFunctions(List<RoleFunctionSyncRow> roleFunctions) {
+        try (Connection connection = openConnection()) {
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate("DELETE FROM role_functions");
+            }
+            if (roleFunctions == null || roleFunctions.isEmpty()) {
+                return;
+            }
+            String sql = """
+                    INSERT INTO role_functions (role_code, function_code)
+                    VALUES (?, ?)
+                    ON CONFLICT (role_code, function_code) DO NOTHING
+                    """;
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                for (RoleFunctionSyncRow row : roleFunctions) {
+                    statement.setString(1, row.getRoleCode());
+                    statement.setString(2, row.getFunctionCode());
+                    statement.executeUpdate();
+                }
+            }
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to replace role functions.", ex);
+        }
+    }
+
+    @Override
+    public List<AuthUserSyncRow> fetchAppUsers() {
+        try (Connection connection = openConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("""
+                     SELECT id, username, display_name, password_hash, role_code, enabled,
+                            created_by, created_at, updated_by, updated_at
+                     FROM app_users
+                     ORDER BY id
+                     """)) {
+            List<AuthUserSyncRow> rows = new ArrayList<>();
+            while (resultSet.next()) {
+                rows.add(new AuthUserSyncRow(
+                        resultSet.getInt("id"),
+                        resultSet.getString("username"),
+                        resultSet.getString("display_name"),
+                        resultSet.getString("password_hash"),
+                        resultSet.getString("role_code"),
+                        resultSet.getInt("enabled") == 1,
+                        resultSet.getString("created_by"),
+                        timestampToString(resultSet.getTimestamp("created_at")),
+                        resultSet.getString("updated_by"),
+                        timestampToString(resultSet.getTimestamp("updated_at"))
+                ));
+            }
+            return rows;
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to fetch app users.", ex);
+        }
+    }
+
+    @Override
+    public List<AppRole> fetchAppRoles() {
+        try (Connection connection = openConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT role_code, role_name FROM app_roles ORDER BY role_code")) {
+            List<AppRole> roles = new ArrayList<>();
+            while (resultSet.next()) {
+                roles.add(new AppRole(resultSet.getString("role_code"), resultSet.getString("role_name")));
+            }
+            return roles;
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to fetch app roles.", ex);
+        }
+    }
+
+    @Override
+    public List<AppFunction> fetchAppFunctions() {
+        try (Connection connection = openConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT function_code, function_name, enabled FROM app_functions ORDER BY function_code")) {
+            List<AppFunction> functions = new ArrayList<>();
+            while (resultSet.next()) {
+                functions.add(new AppFunction(
+                        resultSet.getString("function_code"),
+                        resultSet.getString("function_name"),
+                        resultSet.getInt("enabled") == 1
+                ));
+            }
+            return functions;
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to fetch app functions.", ex);
+        }
+    }
+
+    @Override
+    public List<RoleFunctionSyncRow> fetchRoleFunctions() {
+        try (Connection connection = openConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT role_code, function_code FROM role_functions ORDER BY role_code, function_code")) {
+            List<RoleFunctionSyncRow> rows = new ArrayList<>();
+            while (resultSet.next()) {
+                rows.add(new RoleFunctionSyncRow(resultSet.getString("role_code"), resultSet.getString("function_code")));
+            }
+            return rows;
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to fetch role functions.", ex);
+        }
+    }
+
     private Connection openConnection() throws SQLException {
         try {
             Class.forName("org.postgresql.Driver");
@@ -518,11 +719,31 @@ public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
         statement.setObject(10, row.getDeleted() == null ? 0 : row.getDeleted());
     }
 
+    private void bindAuthUser(PreparedStatement statement, AuthUserSyncRow row) throws SQLException {
+        statement.setObject(1, row.getId());
+        statement.setString(2, row.getUsername());
+        statement.setString(3, row.getDisplayName());
+        statement.setString(4, row.getPasswordHash());
+        statement.setString(5, row.getRoleCode());
+        statement.setInt(6, row.isEnabled() ? 1 : 0);
+        statement.setString(7, row.getCreatedBy());
+        statement.setTimestamp(8, toTimestamp(row.getCreatedAt()));
+        statement.setString(9, row.getUpdatedBy());
+        statement.setTimestamp(10, toTimestamp(row.getUpdatedAt()));
+    }
+
     private Timestamp toTimestamp(String value) {
         if (value == null || value.isBlank()) {
             return null;
         }
         return Timestamp.valueOf(LocalDateTime.parse(value, LOCAL_TIMESTAMP_FORMATTER));
+    }
+
+    private String timestampToString(Timestamp timestamp) {
+        if (timestamp == null) {
+            return null;
+        }
+        return timestamp.toLocalDateTime().format(LOCAL_TIMESTAMP_FORMATTER);
     }
 
     private LightMember mapMember(ResultSet resultSet) throws SQLException {

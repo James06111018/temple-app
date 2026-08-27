@@ -39,6 +39,9 @@ public class SQLiteHouseholdLightRepository {
                         FOREIGN KEY(member_id) REFERENCES light_members(id) ON DELETE CASCADE
                     )
                     """);
+            addColumnIfMissing(connection, "is_deleted", "INTEGER NOT NULL DEFAULT 0");
+            addColumnIfMissing(connection, "deleted_by", "TEXT");
+            addColumnIfMissing(connection, "deleted_at", "TEXT");
             statement.execute("""
                     CREATE TABLE IF NOT EXISTS household_light_audits (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,6 +56,17 @@ public class SQLiteHouseholdLightRepository {
             statement.execute("CREATE INDEX IF NOT EXISTS idx_household_light_records_year ON household_light_records(roc_year)");
             statement.execute("CREATE INDEX IF NOT EXISTS idx_household_light_records_member ON household_light_records(member_id)");
             statement.execute("CREATE INDEX IF NOT EXISTS idx_household_light_records_deleted ON household_light_records(is_deleted)");
+        }
+    }
+
+    private void addColumnIfMissing(Connection connection, String columnName, String definition) throws SQLException {
+        try (ResultSet resultSet = connection.getMetaData().getColumns(null, null, "household_light_records", columnName)) {
+            if (resultSet.next()) {
+                return;
+            }
+        }
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE household_light_records ADD COLUMN " + columnName + " " + definition);
         }
     }
 

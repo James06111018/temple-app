@@ -236,6 +236,7 @@ public class TempleApplication extends Application {
     private SyncService createSyncService() {
         try {
             SQLiteDatabaseManager databaseManager = SQLiteDatabaseManager.getInstance();
+            SQLiteAuthRepository authRepository = new SQLiteAuthRepository(databaseManager);
             SQLiteLightMemberRepository lightMemberRepository = new SQLiteLightMemberRepository(databaseManager);
             SQLiteDonationRepository donationRepository = new SQLiteDonationRepository(databaseManager);
             SQLiteSyncStateRepository syncStateRepository = new SQLiteSyncStateRepository(databaseManager);
@@ -245,6 +246,7 @@ public class TempleApplication extends Application {
             return new SyncService(
                     lightMemberRepository,
                     donationRepository,
+                    authRepository,
                     syncStateRepository,
                     null
             );
