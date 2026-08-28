@@ -58,6 +58,52 @@ public class SQLiteMeritCategoryRepository {
         changeDeletedState(id, false, "RESTORE", changedBy);
     }
 
+    public void replaceAll(List<MeritCategory> categories) throws SQLException {
+        initializeSchema();
+        try (Connection connection = databaseManager.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement deleteAudit = connection.prepareStatement("DELETE FROM merit_category_audits");
+                 PreparedStatement delete = connection.prepareStatement("DELETE FROM merit_categories");
+                 PreparedStatement insert = connection.prepareStatement(
+                         """
+                         INSERT INTO merit_categories (id, code, name, is_delete, created_by, created_at, updated_by, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                         ON CONFLICT(code) DO UPDATE SET
+                             name = excluded.name,
+                             is_delete = excluded.is_delete,
+                             created_by = excluded.created_by,
+                             created_at = excluded.created_at,
+                             updated_by = excluded.updated_by,
+                             updated_at = excluded.updated_at
+                         """)) {
+                connection.createStatement().execute("PRAGMA foreign_keys = OFF");
+                deleteAudit.executeUpdate();
+                delete.executeUpdate();
+                if (categories != null) {
+                    for (MeritCategory category : categories) {
+                        insert.setObject(1, category.getId());
+                        insert.setString(2, category.getCode());
+                        insert.setString(3, category.getName());
+                        insert.setInt(4, category.isDeleted() ? 1 : 0);
+                        insert.setString(5, "SYNC");
+                        insert.setString(6, java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                        insert.setString(7, null);
+                        insert.setString(8, null);
+                        insert.addBatch();
+                    }
+                    insert.executeBatch();
+                }
+                connection.commit();
+            } catch (SQLException ex) {
+                connection.rollback();
+                throw ex;
+            } finally {
+                connection.createStatement().execute("PRAGMA foreign_keys = ON");
+                connection.setAutoCommit(true);
+            }
+        }
+    }
+
     private void initializeSchema() {
         try (Connection connection = databaseManager.getConnection();
              Statement statement = connection.createStatement()) {

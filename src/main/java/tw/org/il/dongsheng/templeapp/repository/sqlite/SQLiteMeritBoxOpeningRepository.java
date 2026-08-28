@@ -101,6 +101,46 @@ public class SQLiteMeritBoxOpeningRepository {
         }
     }
 
+    public void replaceAll(List<MeritBoxOpening> openings) throws SQLException {
+        initializeSchema();
+        try (Connection connection = databaseManager.getConnection()) {
+            connection.setAutoCommit(false);
+            try (Statement delete = connection.createStatement();
+                 PreparedStatement insert = connection.prepareStatement("""
+                         INSERT INTO merit_box_openings (
+                             id, opening_date, serial_no, amount, opener, note,
+                             category_code, category_name, created_by, created_at
+                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         """)) {
+                connection.createStatement().execute("PRAGMA foreign_keys = OFF");
+                delete.executeUpdate("DELETE FROM merit_box_openings");
+                if (openings != null) {
+                    for (MeritBoxOpening opening : openings) {
+                        insert.setObject(1, opening.id());
+                        insert.setString(2, opening.openingDate() == null ? null : opening.openingDate().toString());
+                        insert.setString(3, opening.serialNo());
+                        insert.setLong(4, opening.amount());
+                        insert.setString(5, opening.opener());
+                        insert.setString(6, opening.note());
+                        insert.setString(7, opening.categoryCode());
+                        insert.setString(8, opening.categoryName());
+                        insert.setString(9, opening.createdBy());
+                        insert.setString(10, opening.createdAt() == null ? null : opening.createdAt().format(DATE_TIME_FORMATTER));
+                        insert.addBatch();
+                    }
+                    insert.executeBatch();
+                }
+                connection.commit();
+            } catch (SQLException ex) {
+                connection.rollback();
+                throw ex;
+            } finally {
+                connection.createStatement().execute("PRAGMA foreign_keys = ON");
+                connection.setAutoCommit(true);
+            }
+        }
+    }
+
     private MeritBoxOpening map(ResultSet resultSet) throws SQLException {
         String createdAt = resultSet.getString("created_at");
         return new MeritBoxOpening(

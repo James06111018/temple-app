@@ -18,6 +18,8 @@ import tw.org.il.dongsheng.templeapp.model.AppUser;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteAuthRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteMeritBoxOpeningRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteMeritCategoryRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteLightMemberRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteSyncStateRepository;
 import tw.org.il.dongsheng.templeapp.sync.SyncResult;
@@ -257,6 +259,8 @@ public class TempleApplication extends Application {
             SQLiteAuthRepository authRepository = new SQLiteAuthRepository(databaseManager);
             SQLiteLightMemberRepository lightMemberRepository = new SQLiteLightMemberRepository(databaseManager);
             SQLiteDonationRepository donationRepository = new SQLiteDonationRepository(databaseManager);
+            SQLiteMeritCategoryRepository meritCategoryRepository = new SQLiteMeritCategoryRepository(databaseManager);
+            SQLiteMeritBoxOpeningRepository meritBoxOpeningRepository = new SQLiteMeritBoxOpeningRepository(databaseManager);
             SQLiteSyncStateRepository syncStateRepository = new SQLiteSyncStateRepository(databaseManager);
             lightMemberRepository.createTable();
             donationRepository.createTable();
@@ -265,6 +269,8 @@ public class TempleApplication extends Application {
                     lightMemberRepository,
                     donationRepository,
                     authRepository,
+                    meritCategoryRepository,
+                    meritBoxOpeningRepository,
                     syncStateRepository,
                     null
             );

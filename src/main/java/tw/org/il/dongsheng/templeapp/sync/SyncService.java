@@ -4,25 +4,36 @@ import tw.org.il.dongsheng.templeapp.model.Donation;
 import tw.org.il.dongsheng.templeapp.model.AppFunction;
 import tw.org.il.dongsheng.templeapp.model.AppRole;
 import tw.org.il.dongsheng.templeapp.model.LightMember;
+import tw.org.il.dongsheng.templeapp.model.MeritBoxOpening;
+import tw.org.il.dongsheng.templeapp.model.MeritCategory;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteAuthRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteMeritBoxOpeningRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteMeritCategoryRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteLightMemberRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteSyncStateRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
 import tw.org.il.dongsheng.templeapp.util.Util;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
 
 public class SyncService {
+    private static final DateTimeFormatter LOCAL_TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final SQLiteLightMemberRepository lightMemberRepository;
     private final SQLiteDonationRepository donationRepository;
     private final SQLiteAuthRepository authRepository;
+    private final SQLiteMeritCategoryRepository meritCategoryRepository;
+    private final SQLiteMeritBoxOpeningRepository meritBoxOpeningRepository;
     private final SQLiteSyncStateRepository syncStateRepository;
     private final RemoteSyncGateway remoteSyncGateway;
     private final SyncState syncState;
@@ -32,16 +43,20 @@ public class SyncService {
             SQLiteLightMemberRepository lightMemberRepository,
             SQLiteDonationRepository donationRepository,
             SQLiteAuthRepository authRepository,
+            SQLiteMeritCategoryRepository meritCategoryRepository,
+            SQLiteMeritBoxOpeningRepository meritBoxOpeningRepository,
             SQLiteSyncStateRepository syncStateRepository,
             RemoteSyncGateway remoteSyncGateway
     ) throws SQLException {
-        this(lightMemberRepository, donationRepository, authRepository, syncStateRepository, remoteSyncGateway, SyncConfig.load());
+        this(lightMemberRepository, donationRepository, authRepository, meritCategoryRepository, meritBoxOpeningRepository, syncStateRepository, remoteSyncGateway, SyncConfig.load());
     }
 
     public SyncService(
             SQLiteLightMemberRepository lightMemberRepository,
             SQLiteDonationRepository donationRepository,
             SQLiteAuthRepository authRepository,
+            SQLiteMeritCategoryRepository meritCategoryRepository,
+            SQLiteMeritBoxOpeningRepository meritBoxOpeningRepository,
             SQLiteSyncStateRepository syncStateRepository,
             RemoteSyncGateway remoteSyncGateway,
             Properties syncProperties
@@ -49,6 +64,8 @@ public class SyncService {
         this.lightMemberRepository = lightMemberRepository;
         this.donationRepository = donationRepository;
         this.authRepository = authRepository;
+        this.meritCategoryRepository = meritCategoryRepository;
+        this.meritBoxOpeningRepository = meritBoxOpeningRepository;
         this.syncStateRepository = syncStateRepository;
         this.syncProperties = syncProperties == null ? new Properties() : syncProperties;
         this.syncState = syncStateRepository.load();
@@ -98,6 +115,7 @@ public class SyncService {
             applyRemoteHouseholdLightRecords(snapshot.getHouseholdLightRecords());
             applyRemoteDonationSupplements(snapshot.getDonationSupplements());
             applyRemoteAuthTables();
+            applyRemoteMeritTables();
 
             syncState.setLastPullAt(Util.nowUtc());
             syncState.setLastSyncAt(Util.nowUtc());
@@ -120,6 +138,8 @@ public class SyncService {
             List<AppRole> authRolesToPush = loadAuthRoles();
             List<AppFunction> authFunctionsToPush = loadAuthFunctions();
             List<RoleFunctionSyncRow> authRoleFunctionsToPush = loadRoleFunctions();
+            List<MeritCategory> meritCategoriesToPush = loadMeritCategories();
+            List<MeritBoxOpening> meritBoxOpeningsToPush = loadMeritBoxOpenings();
 
             if (remoteSyncGateway != null) {
                 if (!membersToPush.isEmpty()) {
@@ -137,10 +157,12 @@ public class SyncService {
                 if (!donationSupplementsToPush.isEmpty()) {
                     remoteSyncGateway.pushDonationSupplements(donationSupplementsToPush);
                 }
-            remoteSyncGateway.replaceAppRoles(authRolesToPush);
-            remoteSyncGateway.replaceAppFunctions(authFunctionsToPush);
-            remoteSyncGateway.replaceRoleFunctions(authRoleFunctionsToPush);
-            remoteSyncGateway.replaceAppUsers(authUsersToPush);
+                remoteSyncGateway.replaceAppRoles(authRolesToPush);
+                remoteSyncGateway.replaceAppFunctions(authFunctionsToPush);
+                remoteSyncGateway.replaceRoleFunctions(authRoleFunctionsToPush);
+                remoteSyncGateway.replaceAppUsers(authUsersToPush);
+                remoteSyncGateway.replaceMeritCategories(meritCategoriesToPush);
+                remoteSyncGateway.replaceMeritBoxOpenings(meritBoxOpeningsToPush);
             }
 
             markMembersSynced(membersToPush);
@@ -311,6 +333,54 @@ public class SyncService {
                 connection.setAutoCommit(true);
             }
         }
+    }
+
+    private List<MeritCategory> loadMeritCategories() throws SQLException {
+        List<MeritCategory> categories = new ArrayList<>();
+        String sql = "SELECT id, code, name, is_delete FROM merit_categories ORDER BY id";
+        try (Connection connection = SQLiteDatabaseManager.getInstance().getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                categories.add(new MeritCategory(
+                        resultSet.getLong("id"),
+                        resultSet.getString("code"),
+                        resultSet.getString("name"),
+                        resultSet.getInt("is_delete") == 1
+                ));
+            }
+        }
+        return categories;
+    }
+
+    private List<MeritBoxOpening> loadMeritBoxOpenings() throws SQLException {
+        List<MeritBoxOpening> openings = new ArrayList<>();
+        String sql = """
+                SELECT id, opening_date, serial_no, amount, opener, note, category_code,
+                       category_name, created_by, created_at
+                FROM merit_box_openings
+                ORDER BY opening_date, id
+                """;
+        try (Connection connection = SQLiteDatabaseManager.getInstance().getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                String createdAt = resultSet.getString("created_at");
+                openings.add(new MeritBoxOpening(
+                        resultSet.getLong("id"),
+                        LocalDate.parse(resultSet.getString("opening_date")),
+                        resultSet.getString("serial_no"),
+                        resultSet.getLong("amount"),
+                        resultSet.getString("opener"),
+                        resultSet.getString("note"),
+                        resultSet.getString("category_code"),
+                        resultSet.getString("category_name"),
+                        resultSet.getString("created_by"),
+                        createdAt == null || createdAt.isBlank() ? null : LocalDateTime.parse(createdAt, LOCAL_TIMESTAMP_FORMATTER)
+                ));
+            }
+        }
+        return openings;
     }
 
     private void mergeMember(Connection connection, LightMember remote) throws SQLException {
@@ -669,6 +739,24 @@ public class SyncService {
             } finally {
                 connection.setAutoCommit(true);
             }
+        }
+    }
+
+    private void applyRemoteMeritTables() throws SQLException {
+        if (remoteSyncGateway == null) {
+            return;
+        }
+        try {
+            List<MeritCategory> categories = remoteSyncGateway.fetchMeritCategories();
+            meritCategoryRepository.replaceAll(categories);
+        } catch (Exception ex) {
+            throw new SQLException("Pull failed at table merit_categories (local replace): " + ex.getMessage(), ex);
+        }
+        try {
+            List<MeritBoxOpening> openings = remoteSyncGateway.fetchMeritBoxOpenings();
+            meritBoxOpeningRepository.replaceAll(openings);
+        } catch (Exception ex) {
+            throw new SQLException("Pull failed at table merit_box_openings (local replace): " + ex.getMessage(), ex);
         }
     }
 

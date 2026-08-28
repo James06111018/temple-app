@@ -4,6 +4,8 @@ import tw.org.il.dongsheng.templeapp.model.Donation;
 import tw.org.il.dongsheng.templeapp.model.AppFunction;
 import tw.org.il.dongsheng.templeapp.model.AppRole;
 import tw.org.il.dongsheng.templeapp.model.LightMember;
+import tw.org.il.dongsheng.templeapp.model.MeritBoxOpening;
+import tw.org.il.dongsheng.templeapp.model.MeritCategory;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -12,8 +14,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Statement;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -471,6 +476,128 @@ public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
         }
     }
 
+    @Override
+    public List<MeritCategory> fetchMeritCategories() {
+        try (Connection connection = openConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT id, code, name, is_delete FROM merit_categories ORDER BY id")) {
+            List<MeritCategory> categories = new ArrayList<>();
+            while (resultSet.next()) {
+                categories.add(new MeritCategory(
+                        resultSet.getLong("id"),
+                        resultSet.getString("code"),
+                        resultSet.getString("name"),
+                        resultSet.getInt("is_delete") == 1
+                ));
+            }
+            return categories;
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to fetch merit categories.", ex);
+        }
+    }
+
+    @Override
+    public List<MeritBoxOpening> fetchMeritBoxOpenings() {
+        try (Connection connection = openConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("""
+                     SELECT id, opening_date, serial_no, amount, opener, note, category_code,
+                            category_name, created_by, created_at
+                     FROM merit_box_openings
+                     ORDER BY opening_date, id
+                     """)) {
+            List<MeritBoxOpening> openings = new ArrayList<>();
+            while (resultSet.next()) {
+                openings.add(new MeritBoxOpening(
+                        resultSet.getLong("id"),
+                        LocalDate.parse(resultSet.getString("opening_date")),
+                        resultSet.getString("serial_no"),
+                        resultSet.getLong("amount"),
+                        resultSet.getString("opener"),
+                        resultSet.getString("note"),
+                        resultSet.getString("category_code"),
+                        resultSet.getString("category_name"),
+                        resultSet.getString("created_by"),
+                        parseLocalDateTime(resultSet.getString("created_at"))
+                ));
+            }
+            return openings;
+        } catch (SQLException ex) {
+            throw new IllegalStateException("Failed to fetch merit box openings.", ex);
+        }
+    }
+
+    @Override
+    public void replaceMeritCategories(List<MeritCategory> categories) {
+        try (Connection connection = openConnection();
+             PreparedStatement insert = connection.prepareStatement("""
+                     INSERT INTO merit_categories (
+                         id, code, name, is_delete, created_by, created_at, updated_by, updated_at
+                     )
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                     ON CONFLICT (code) DO UPDATE SET
+                         name = excluded.name,
+                         is_delete = excluded.is_delete,
+                         created_by = excluded.created_by,
+                         created_at = excluded.created_at,
+                         updated_by = excluded.updated_by,
+                         updated_at = excluded.updated_at
+                     """)) {
+            if (categories == null) {
+                return;
+            }
+            for (MeritCategory category : categories) {
+                insert.setObject(1, category.getId());
+                insert.setString(2, category.getCode());
+                insert.setString(3, category.getName());
+                insert.setInt(4, category.isDeleted() ? 1 : 0);
+                insert.setString(5, "SYNC");
+                insert.setTimestamp(6, Timestamp.valueOf(LocalDateTime.now()));
+                insert.setString(7, null);
+                insert.setTimestamp(8, null);
+                insert.addBatch();
+            }
+            insert.executeBatch();
+        } catch (SQLException ex) {
+            System.out.println(">>"+ex);
+            throw new IllegalStateException("Failed to replace merit categories.", ex);
+        }
+    }
+
+    @Override
+    public void replaceMeritBoxOpenings(List<MeritBoxOpening> openings) {
+        try (Connection connection = openConnection();
+             Statement delete = connection.createStatement();
+             PreparedStatement insert = connection.prepareStatement("""
+                     INSERT INTO merit_box_openings (
+                         id, opening_date, serial_no, amount, opener, note,
+                         category_code, category_name, created_by, created_at
+                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     """)) {
+            if (openings == null) {
+                return;
+            }
+            delete.executeUpdate("DELETE FROM merit_box_openings");
+            for (MeritBoxOpening opening : openings) {
+                insert.setObject(1, opening.id());
+                insert.setString(2, opening.openingDate() == null ? null : opening.openingDate().toString());
+                insert.setString(3, opening.serialNo());
+                insert.setLong(4, opening.amount());
+                insert.setString(5, opening.opener());
+                insert.setString(6, opening.note());
+                insert.setString(7, opening.categoryCode());
+                insert.setString(8, opening.categoryName());
+                insert.setString(9, opening.createdBy());
+                insert.setTimestamp(10, opening.createdAt() == null ? null : Timestamp.valueOf(opening.createdAt()));
+                insert.addBatch();
+            }
+            insert.executeBatch();
+        } catch (SQLException ex) {
+            System.out.println(">>>"+ex);
+            throw new IllegalStateException("Failed to replace merit box openings.", ex);
+        }
+    }
+
     private Connection openConnection() throws SQLException {
         try {
             Class.forName("org.postgresql.Driver");
@@ -737,6 +864,22 @@ public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
             return null;
         }
         return Timestamp.valueOf(LocalDateTime.parse(value, LOCAL_TIMESTAMP_FORMATTER));
+    }
+
+    private LocalDateTime parseLocalDateTime(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(value, LOCAL_TIMESTAMP_FORMATTER);
+        } catch (DateTimeParseException ignored) {
+            String normalized = value.replace(" ", "T");
+            try {
+                return OffsetDateTime.parse(normalized).toLocalDateTime();
+            } catch (DateTimeParseException ignoredAgain) {
+                return OffsetDateTime.parse(normalized, DateTimeFormatter.ISO_OFFSET_DATE_TIME).toLocalDateTime();
+            }
+        }
     }
 
     private String timestampToString(Timestamp timestamp) {

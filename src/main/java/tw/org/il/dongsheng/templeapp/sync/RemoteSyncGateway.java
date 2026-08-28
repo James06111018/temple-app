@@ -4,6 +4,8 @@ import tw.org.il.dongsheng.templeapp.model.Donation;
 import tw.org.il.dongsheng.templeapp.model.LightMember;
 import tw.org.il.dongsheng.templeapp.model.AppFunction;
 import tw.org.il.dongsheng.templeapp.model.AppRole;
+import tw.org.il.dongsheng.templeapp.model.MeritBoxOpening;
+import tw.org.il.dongsheng.templeapp.model.MeritCategory;
 
 import java.util.List;
 
@@ -35,4 +37,12 @@ public interface RemoteSyncGateway {
     List<AppFunction> fetchAppFunctions();
 
     List<RoleFunctionSyncRow> fetchRoleFunctions();
+
+    List<MeritCategory> fetchMeritCategories();
+
+    List<MeritBoxOpening> fetchMeritBoxOpenings();
+
+    void replaceMeritCategories(List<MeritCategory> categories);
+
+    void replaceMeritBoxOpenings(List<MeritBoxOpening> openings);
 }
