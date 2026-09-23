@@ -6,14 +6,19 @@ import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class SQLiteDatabaseManager {
 
     private static SQLiteDatabaseManager instance;
+    private static final DateTimeFormatter BACKUP_TIMESTAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS");
     private final String url;
+    private final Path databasePath;
 
     private SQLiteDatabaseManager(String databaseFilePath) {
-        this.url = "jdbc:sqlite:" + databaseFilePath;
+        this.databasePath = Paths.get(databaseFilePath).toAbsolutePath();
+        this.url = "jdbc:sqlite:" + this.databasePath;
     }
 
     public static SQLiteDatabaseManager getInstance() {
@@ -37,6 +42,25 @@ public class SQLiteDatabaseManager {
             statement.execute("PRAGMA busy_timeout = 5000");
         }
         return connection;
+    }
+
+    public Path createBackup() throws SQLException {
+        try {
+            Path backupDir = databasePath.getParent().resolve("backups");
+            Files.createDirectories(backupDir);
+            Path backupPath = backupDir.resolve(
+                    "temple-before-cloud-download-" + LocalDateTime.now().format(BACKUP_TIMESTAMP) + ".db"
+            );
+            String escapedPath = backupPath.toString().replace("'", "''");
+            try (Connection connection = getConnection();
+                 var statement = connection.createStatement()) {
+                statement.execute("PRAGMA wal_checkpoint(FULL)");
+                statement.execute("VACUUM INTO '" + escapedPath + "'");
+            }
+            return backupPath;
+        } catch (java.io.IOException ex) {
+            throw new SQLException("建立本機資料庫備份失敗", ex);
+        }
     }
 
     private static Path getDatabasePath() {

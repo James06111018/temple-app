@@ -20,15 +20,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
 public class SyncService {
-    private static final DateTimeFormatter LOCAL_TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final SQLiteLightMemberRepository lightMemberRepository;
     private final SQLiteDonationRepository donationRepository;
     private final SQLiteAuthRepository authRepository;
@@ -38,6 +37,8 @@ public class SyncService {
     private final RemoteSyncGateway remoteSyncGateway;
     private final SyncState syncState;
     private final Properties syncProperties;
+    private Consumer<String> progressListener = message -> { };
+    private BooleanSupplier cancellationRequested = () -> false;
 
     public SyncService(
             SQLiteLightMemberRepository lightMemberRepository,
@@ -92,7 +93,36 @@ public class SyncService {
         return pull();
     }
 
+    /** Downloads a complete cloud snapshot without uploading the local snapshot. */
+    public SyncResult downloadAllFromCloud() {
+        return downloadAllFromCloud(null, null);
+    }
+
+    public SyncResult downloadAllFromCloud(Consumer<String> progressListener, BooleanSupplier cancellationRequested) {
+        this.progressListener = progressListener == null ? message -> { } : progressListener;
+        this.cancellationRequested = cancellationRequested == null ? () -> false : cancellationRequested;
+        try {
+            report("開始從雲端下載完整資料");
+            SyncResult pullResult = pull(true);
+            if (!pullResult.isSuccess()) {
+                return pullResult;
+            }
+            report("雲端資料下載完成（未上傳任何本機資料）");
+            return new SyncResult(true, "雲端資料下載完成，未上傳任何本機資料。");
+        } catch (SyncCancelledException ignored) {
+            report("同步已取消");
+            return new SyncResult(false, "同步已取消。");
+        } finally {
+            this.progressListener = message -> { };
+            this.cancellationRequested = () -> false;
+        }
+    }
+
     public SyncResult pull() {
+        return pull(false);
+    }
+
+    private SyncResult pull(boolean fullSync) {
         try {
             if (remoteSyncGateway == null) {
                 syncState.setLastPullAt(Util.nowUtc());
@@ -101,7 +131,9 @@ public class SyncService {
                 return new SyncResult(true, "No remote gateway configured; local sync state updated.");
             }
 
-            RemoteSnapshot snapshot = remoteSyncGateway.fetchChanges(syncState.getLastSyncToken());
+            checkpoint();
+            report("拉取雲端主要資料表...");
+            RemoteSnapshot snapshot = remoteSyncGateway.fetchChanges(fullSync ? null : syncState.getLastSyncToken());
             if (snapshot == null) {
                 syncState.setLastPullAt(Util.nowUtc());
                 syncState.setLastSyncAt(Util.nowUtc());
@@ -109,12 +141,26 @@ public class SyncService {
                 return new SyncResult(true, "Remote snapshot is empty.");
             }
 
+            checkpoint();
+            reportTable("合併", "light_members", snapshot.getMembers());
             applyRemoteMembers(snapshot.getMembers());
+            checkpoint();
+            reportTable("合併", "donations", snapshot.getDonations());
             applyRemoteDonations(snapshot.getDonations());
+            checkpoint();
+            reportTable("合併", "light_numbers", snapshot.getLightNumbers());
             applyRemoteLightNumbers(snapshot.getLightNumbers());
+            checkpoint();
+            reportTable("合併", "household_light_records", snapshot.getHouseholdLightRecords());
             applyRemoteHouseholdLightRecords(snapshot.getHouseholdLightRecords());
+            checkpoint();
+            reportTable("合併", "donation_supplements", snapshot.getDonationSupplements());
             applyRemoteDonationSupplements(snapshot.getDonationSupplements());
+            checkpoint();
+            report("合併權限資料表（app_roles、app_functions、role_functions、app_users）...");
             applyRemoteAuthTables();
+            checkpoint();
+            report("合併功德箱資料表（merit_categories、merit_box_openings）...");
             applyRemoteMeritTables();
 
             syncState.setLastPullAt(Util.nowUtc());
@@ -131,38 +177,35 @@ public class SyncService {
         try {
             List<LightMember> membersToPush = loadDirtyMembers();
             List<Donation> donationsToPush = loadDirtyDonations();
-            List<LightNumberSyncRow> lightNumbersToPush = loadDirtyLightNumbers();
-            List<HouseholdLightSyncRow> householdLightRecordsToPush = loadDirtyHouseholdLightRecords();
-            List<DonationSupplementSyncRow> donationSupplementsToPush = loadDirtyDonationSupplements();
-            List<AuthUserSyncRow> authUsersToPush = loadAuthUsers();
-            List<AppRole> authRolesToPush = loadAuthRoles();
-            List<AppFunction> authFunctionsToPush = loadAuthFunctions();
-            List<RoleFunctionSyncRow> authRoleFunctionsToPush = loadRoleFunctions();
-            List<MeritCategory> meritCategoriesToPush = loadMeritCategories();
-            List<MeritBoxOpening> meritBoxOpeningsToPush = loadMeritBoxOpenings();
-
+            List<LightNumberSyncRow> lightNumbersToPush = loadChangedLightNumbers();
+            List<HouseholdLightSyncRow> householdLightRecordsToPush = loadChangedHouseholdLightRecords();
+            List<DonationSupplementSyncRow> donationSupplementsToPush = loadChangedDonationSupplements();
             if (remoteSyncGateway != null) {
+                checkpoint();
+                reportTable("上傳", "light_members", membersToPush);
                 if (!membersToPush.isEmpty()) {
                     remoteSyncGateway.pushMembers(membersToPush);
                 }
+                checkpoint();
+                reportTable("上傳", "donations", donationsToPush);
                 if (!donationsToPush.isEmpty()) {
                     remoteSyncGateway.pushDonations(donationsToPush);
                 }
+                checkpoint();
+                reportTable("上傳", "light_numbers", lightNumbersToPush);
                 if (!lightNumbersToPush.isEmpty()) {
                     remoteSyncGateway.pushLightNumbers(lightNumbersToPush);
                 }
+                checkpoint();
+                reportTable("上傳", "household_light_records", householdLightRecordsToPush);
                 if (!householdLightRecordsToPush.isEmpty()) {
                     remoteSyncGateway.pushHouseholdLightRecords(householdLightRecordsToPush);
                 }
+                checkpoint();
+                reportTable("上傳", "donation_supplements", donationSupplementsToPush);
                 if (!donationSupplementsToPush.isEmpty()) {
                     remoteSyncGateway.pushDonationSupplements(donationSupplementsToPush);
                 }
-                remoteSyncGateway.replaceAppRoles(authRolesToPush);
-                remoteSyncGateway.replaceAppFunctions(authFunctionsToPush);
-                remoteSyncGateway.replaceRoleFunctions(authRoleFunctionsToPush);
-                remoteSyncGateway.replaceAppUsers(authUsersToPush);
-                remoteSyncGateway.replaceMeritCategories(meritCategoriesToPush);
-                remoteSyncGateway.replaceMeritBoxOpenings(meritBoxOpeningsToPush);
             }
 
             markMembersSynced(membersToPush);
@@ -182,6 +225,23 @@ public class SyncService {
 
     public SyncState getSyncState() {
         return syncState;
+    }
+
+    private void report(String message) {
+        progressListener.accept(message);
+    }
+
+    private void reportTable(String action, String table, List<?> rows) {
+        report(action + " " + table + "（" + (rows == null ? 0 : rows.size()) + " 筆）...");
+    }
+
+    private void checkpoint() {
+        if (cancellationRequested.getAsBoolean()) {
+            throw new SyncCancelledException();
+        }
+    }
+
+    private static final class SyncCancelledException extends RuntimeException {
     }
 
     private void applyRemoteMembers(List<LightMember> remoteMembers) throws SQLException {
@@ -376,7 +436,7 @@ public class SyncService {
                         resultSet.getString("category_code"),
                         resultSet.getString("category_name"),
                         resultSet.getString("created_by"),
-                        createdAt == null || createdAt.isBlank() ? null : LocalDateTime.parse(createdAt, LOCAL_TIMESTAMP_FORMATTER)
+                        SyncTimestamp.parse(createdAt)
                 ));
             }
         }
@@ -450,7 +510,7 @@ public class SyncService {
         return donations;
     }
 
-    private List<LightNumberSyncRow> loadDirtyLightNumbers() throws SQLException {
+    private List<LightNumberSyncRow> loadChangedLightNumbers() throws SQLException {
         List<LightNumberSyncRow> rows = new ArrayList<>();
         String lastPushAt = syncState.getLastPushAt();
         if (lastPushAt == null || lastPushAt.isBlank()) {
@@ -469,7 +529,7 @@ public class SyncService {
         return rows;
     }
 
-    private List<HouseholdLightSyncRow> loadDirtyHouseholdLightRecords() throws SQLException {
+    private List<HouseholdLightSyncRow> loadChangedHouseholdLightRecords() throws SQLException {
         List<HouseholdLightSyncRow> rows = new ArrayList<>();
         String lastPushAt = syncState.getLastPushAt();
         if (lastPushAt == null || lastPushAt.isBlank()) {
@@ -488,7 +548,7 @@ public class SyncService {
         return rows;
     }
 
-    private List<DonationSupplementSyncRow> loadDirtyDonationSupplements() throws SQLException {
+    private List<DonationSupplementSyncRow> loadChangedDonationSupplements() throws SQLException {
         List<DonationSupplementSyncRow> rows = new ArrayList<>();
         String lastPushAt = syncState.getLastPushAt();
         if (lastPushAt == null || lastPushAt.isBlank()) {

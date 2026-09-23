@@ -17,13 +17,9 @@ import javafx.util.Duration;
 import tw.org.il.dongsheng.templeapp.model.AppUser;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteAuthRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
-import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationRepository;
-import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteMeritBoxOpeningRepository;
-import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteMeritCategoryRepository;
-import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteLightMemberRepository;
-import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteSyncStateRepository;
 import tw.org.il.dongsheng.templeapp.sync.SyncResult;
 import tw.org.il.dongsheng.templeapp.sync.SyncService;
+import tw.org.il.dongsheng.templeapp.sync.SyncServiceFactory;
 import tw.org.il.dongsheng.templeapp.sync.SyncConfig;
 import tw.org.il.dongsheng.templeapp.util.AlertDialog;
 
@@ -255,25 +251,7 @@ public class TempleApplication extends Application {
 
     private SyncService createSyncService() {
         try {
-            SQLiteDatabaseManager databaseManager = SQLiteDatabaseManager.getInstance();
-            SQLiteAuthRepository authRepository = new SQLiteAuthRepository(databaseManager);
-            SQLiteLightMemberRepository lightMemberRepository = new SQLiteLightMemberRepository(databaseManager);
-            SQLiteDonationRepository donationRepository = new SQLiteDonationRepository(databaseManager);
-            SQLiteMeritCategoryRepository meritCategoryRepository = new SQLiteMeritCategoryRepository(databaseManager);
-            SQLiteMeritBoxOpeningRepository meritBoxOpeningRepository = new SQLiteMeritBoxOpeningRepository(databaseManager);
-            SQLiteSyncStateRepository syncStateRepository = new SQLiteSyncStateRepository(databaseManager);
-            lightMemberRepository.createTable();
-            donationRepository.createTable();
-            syncStateRepository.createTable();
-            return new SyncService(
-                    lightMemberRepository,
-                    donationRepository,
-                    authRepository,
-                    meritCategoryRepository,
-                    meritBoxOpeningRepository,
-                    syncStateRepository,
-                    null
-            );
+            return SyncServiceFactory.create(SyncConfig.load());
         } catch (Exception e) {
             AlertDialog.showWarning("同步", "建立同步服務失敗：" + e.getMessage());
             return null;

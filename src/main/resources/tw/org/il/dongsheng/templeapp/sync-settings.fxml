@@ -2,10 +2,10 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane xmlns="http://javafx.com/javafx"
+<BorderPane fx:id="rootPane" xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tw.org.il.dongsheng.templeapp.SyncSettingsController"
-            prefWidth="700" prefHeight="360"
+            prefWidth="700" prefHeight="560"
             stylesheets="@style.css"
             style="-fx-background-color: #f5f0e8;">
     <center>
@@ -31,10 +31,22 @@
                    style="-fx-text-fill: #b00020; -fx-font-size: 14px; -fx-font-weight: bold;"
                    GridPane.rowIndex="4" GridPane.columnIndex="1"/>
 
-            <HBox spacing="12" alignment="CENTER_RIGHT" GridPane.rowIndex="5" GridPane.columnIndex="1">
-                <Button text="測試連線" styleClass="btn-blue" onAction="#onTestConnection"/>
-                <Button text="儲存" styleClass="btn-purple" onAction="#onSave"/>
-                <Button text="取消" styleClass="btn-orange" onAction="#onCancel"/>
+            <Separator GridPane.rowIndex="5" GridPane.columnIndex="0" GridPane.columnSpan="2" />
+
+            <VBox spacing="8" GridPane.rowIndex="6" GridPane.columnIndex="1">
+                <Button fx:id="downloadAllButton" text="從雲端更新全部可同步資料" styleClass="btn-blue" onAction="#onDownloadAll" />
+                <Label fx:id="syncStatusLabel"
+                       text="只下載雲端資料，不會上傳本機資料。字典、地址、系統設定與 audit 表目前尚未支援。"
+                       wrapText="true"
+                       style="-fx-text-fill: #555555;" />
+                <TextArea fx:id="syncProgressArea" editable="false" wrapText="true"
+                          prefRowCount="7" promptText="同步進度會顯示在這裡" />
+            </VBox>
+
+            <HBox spacing="12" alignment="CENTER_RIGHT" GridPane.rowIndex="7" GridPane.columnIndex="1">
+                <Button fx:id="testConnectionButton" text="測試連線" styleClass="btn-blue" onAction="#onTestConnection"/>
+                <Button fx:id="saveButton" text="儲存" styleClass="btn-purple" onAction="#onSave"/>
+                <Button fx:id="cancelButton" text="取消" styleClass="btn-orange" onAction="#onCancel"/>
             </HBox>
         </GridPane>
     </center>

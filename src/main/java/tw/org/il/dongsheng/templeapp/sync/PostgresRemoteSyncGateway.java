@@ -16,13 +16,12 @@ import java.sql.Timestamp;
 import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
+    private static final int BATCH_SIZE = 500;
     private static final DateTimeFormatter LOCAL_TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final String jdbcUrl;
     private final String username;
@@ -88,25 +87,7 @@ public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
                     device_id = EXCLUDED.device_id,
                     sync_status = EXCLUDED.sync_status
                 """;
-        try (Connection connection = openConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            for (LightMember member : members) {
-                try {
-                    bindMember(statement, member);
-                    statement.executeUpdate();
-                } catch (SQLException ex) {
-                    throw new IllegalStateException(
-                            "Failed to push member id=" + member.getId()
-                                    + ", uuid=" + member.getUuid()
-                                    + ", name=" + member.getName()
-                                    + ": " + ex.getMessage(),
-                            ex
-                    );
-                }
-            }
-        } catch (SQLException ex) {
-            throw new IllegalStateException("Failed to push members.", ex);
-        }
+        executeBatch(sql, members, this::bindMember, "Failed to push members.");
     }
 
     @Override
@@ -141,25 +122,7 @@ public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
                     device_id = EXCLUDED.device_id,
                     sync_status = EXCLUDED.sync_status
                 """;
-        try (Connection connection = openConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            for (Donation donation : donations) {
-                try {
-                    bindDonation(statement, donation);
-                    statement.executeUpdate();
-                } catch (SQLException ex) {
-                    throw new IllegalStateException(
-                            "Failed to push donation id=" + donation.getId()
-                                    + ", uuid=" + donation.getUuid()
-                                    + ", memberId=" + donation.getMemberId()
-                                    + ": " + ex.getMessage(),
-                            ex
-                    );
-                }
-            }
-        } catch (SQLException ex) {
-            throw new IllegalStateException("Failed to push donations.", ex);
-        }
+        executeBatch(sql, donations, this::bindDonation, "Failed to push donations.");
     }
 
     @Override
@@ -184,23 +147,7 @@ public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
                     deleted_by = EXCLUDED.deleted_by,
                     deleted_at = EXCLUDED.deleted_at
                 """;
-        try (Connection connection = openConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            for (LightNumberSyncRow row : lightNumbers) {
-                try {
-                    bindLightNumber(statement, row);
-                    statement.executeUpdate();
-                } catch (SQLException ex) {
-                    throw new IllegalStateException("Failed to push light number id=" + row.getId()
-                            + ", managementType=" + row.getManagementType()
-                            + ", lightType=" + row.getLightType()
-                            + ", serialNumber=" + row.getSerialNumber()
-                            + ": " + ex.getMessage(), ex);
-                }
-            }
-        } catch (SQLException ex) {
-            throw new IllegalStateException("Failed to push light numbers.", ex);
-        }
+        executeBatch(sql, lightNumbers, this::bindLightNumber, "Failed to push light numbers.");
     }
 
     @Override
@@ -221,23 +168,7 @@ public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
                     updated_by = EXCLUDED.updated_by,
                     updated_at = EXCLUDED.updated_at
                 """;
-        try (Connection connection = openConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            for (HouseholdLightSyncRow row : records) {
-                try {
-                    bindHouseholdLight(statement, row);
-                    statement.executeUpdate();
-                } catch (SQLException ex) {
-                    throw new IllegalStateException("Failed to push household light record id=" + row.getId()
-                            + ", memberId=" + row.getMemberId()
-                            + ", lightTypeId=" + row.getLightTypeId()
-                            + ", rocYear=" + row.getRocYear()
-                            + ": " + ex.getMessage(), ex);
-                }
-            }
-        } catch (SQLException ex) {
-            throw new IllegalStateException("Failed to push household light records.", ex);
-        }
+        executeBatch(sql, records, this::bindHouseholdLight, "Failed to push household light records.");
     }
 
     @Override
@@ -260,21 +191,41 @@ public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
                     updated_at = EXCLUDED.updated_at,
                     is_deleted = EXCLUDED.is_deleted
                 """;
+        executeBatch(sql, supplements, this::bindDonationSupplement, "Failed to push donation supplements.");
+    }
+
+    private <T> void executeBatch(String sql, List<T> rows, StatementBinder<T> binder, String errorMessage) {
         try (Connection connection = openConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
-            for (DonationSupplementSyncRow row : supplements) {
-                try {
-                    bindDonationSupplement(statement, row);
-                    statement.executeUpdate();
-                } catch (SQLException ex) {
-                    throw new IllegalStateException("Failed to push donation supplement id=" + row.getId()
-                            + ", donationId=" + row.getDonationId()
-                            + ": " + ex.getMessage(), ex);
+            connection.setAutoCommit(false);
+            try {
+                int pending = 0;
+                for (T row : rows) {
+                    binder.bind(statement, row);
+                    statement.addBatch();
+                    pending++;
+                    if (pending == BATCH_SIZE) {
+                        statement.executeBatch();
+                        statement.clearBatch();
+                        pending = 0;
+                    }
                 }
+                if (pending > 0) {
+                    statement.executeBatch();
+                }
+                connection.commit();
+            } catch (SQLException ex) {
+                connection.rollback();
+                throw ex;
             }
         } catch (SQLException ex) {
-            throw new IllegalStateException("Failed to push donation supplements.", ex);
+            throw new IllegalStateException(errorMessage, ex);
         }
+    }
+
+    @FunctionalInterface
+    private interface StatementBinder<T> {
+        void bind(PreparedStatement statement, T row) throws SQLException;
     }
 
     @Override
@@ -860,26 +811,12 @@ public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
     }
 
     private Timestamp toTimestamp(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        return Timestamp.valueOf(LocalDateTime.parse(value, LOCAL_TIMESTAMP_FORMATTER));
+        LocalDateTime parsed = SyncTimestamp.parse(value);
+        return parsed == null ? null : Timestamp.valueOf(parsed);
     }
 
     private LocalDateTime parseLocalDateTime(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        try {
-            return LocalDateTime.parse(value, LOCAL_TIMESTAMP_FORMATTER);
-        } catch (DateTimeParseException ignored) {
-            String normalized = value.replace(" ", "T");
-            try {
-                return OffsetDateTime.parse(normalized).toLocalDateTime();
-            } catch (DateTimeParseException ignoredAgain) {
-                return OffsetDateTime.parse(normalized, DateTimeFormatter.ISO_OFFSET_DATE_TIME).toLocalDateTime();
-            }
-        }
+        return SyncTimestamp.parse(value);
     }
 
     private String timestampToString(Timestamp timestamp) {
