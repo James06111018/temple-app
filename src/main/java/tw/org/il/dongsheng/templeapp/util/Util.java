@@ -14,7 +14,6 @@ import java.util.Optional;
 
 public final class Util {
 
-    private static final DateTimeFormatter DB_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd");
     private static final DateTimeFormatter UTC_TIMESTAMP_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -94,7 +93,7 @@ public final class Util {
         if (date == null) {
             return null;
         }
-        return date.format(DB_DATE_FORMATTER);
+        return String.format("%03d.%02d.%02d", date.getYear() - 1911, date.getMonthValue(), date.getDayOfMonth());
     }
 
     public static String nowUtc() {

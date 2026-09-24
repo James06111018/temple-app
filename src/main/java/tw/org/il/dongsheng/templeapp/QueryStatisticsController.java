@@ -499,7 +499,7 @@ public class QueryStatisticsController {
     }
 
     private long amountOf(Donation donation) {
-        return donation.getShouldPay() == null ? 0L : donation.getShouldPay().longValue();
+        return tw.org.il.dongsheng.templeapp.util.DonationAmounts.actual(donation);
     }
 
     private List<DictionaryItem> categoriesForSelectedDataType() {

@@ -8,6 +8,7 @@ import tw.org.il.dongsheng.templeapp.util.AlertDialog;
 import tw.org.il.dongsheng.templeapp.util.LightReportBuilder;
 import tw.org.il.dongsheng.templeapp.util.PrintPreview;
 import tw.org.il.dongsheng.templeapp.util.Util;
+import tw.org.il.dongsheng.templeapp.util.DonationAmounts;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,7 +38,7 @@ public class TotalAmountController {
         int expenseAmount = 0;
 
         for (Donation donation : this.donations) {
-            int shouldPay = donation.getShouldPay() == null ? 0 : donation.getShouldPay();
+            int shouldPay = DonationAmounts.actual(donation);
             if (isExpense(donation, categoryMap)) {
                 expenseCount++;
                 expenseAmount += Math.abs(shouldPay);
@@ -56,8 +57,8 @@ public class TotalAmountController {
     }
 
     private boolean isExpense(Donation donation, Map<String, String> categoryMap) {
-        Integer shouldPay = donation.getShouldPay();
-        if (shouldPay != null && shouldPay < 0) {
+        int shouldPay = DonationAmounts.actual(donation);
+        if (shouldPay < 0) {
             return true;
         }
 

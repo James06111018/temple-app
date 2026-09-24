@@ -1358,7 +1358,7 @@ public final class LightReportBuilder {
     }
 
     private static int reportAmount(Donation donation) {
-        return donation == null ? 0 : valueOrZero(donation.getShouldPay());
+        return DonationAmounts.actual(donation);
     }
 
     private static int incomeAmount(Donation donation) {

@@ -410,7 +410,7 @@ public class SQLiteDonationRepository implements DonationRepository {
         String sql = """
                 SELECT m.id AS member_id,
                        m.name AS member_name,
-                       SUM(COALESCE(d.should_pay, 0)) AS total_amount,
+                       SUM(COALESCE(d.amount, d.should_pay, 0)) AS total_amount,
                        COUNT(d.id) AS total_count
                 FROM donations d
                 JOIN light_members m ON m.id = d.member_id

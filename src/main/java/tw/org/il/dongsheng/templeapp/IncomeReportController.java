@@ -174,13 +174,12 @@ public class IncomeReportController {
                 SQLiteDictionaryRepository.TYPE_DONATION_GHOST
         ));
 
-        Set<String> incomeCategoryIds = categoryItems.stream()
-                .filter(item -> !"-".equals(item.getDirection()))
+        Set<String> expenseCategoryIds = categoryItems.stream()
+                .filter(item -> "-".equals(item.getDirection()))
                 .map(DictionaryItem::getId)
                 .map(String::valueOf)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         Map<String, String> categoryNames = categoryItems.stream()
-                .filter(item -> incomeCategoryIds.contains(String.valueOf(item.getId())))
                 .collect(Collectors.toMap(
                         item -> String.valueOf(item.getId()),
                         DictionaryItem::getName,
@@ -189,7 +188,7 @@ public class IncomeReportController {
                 ));
 
         List<Donation> donations = donationRepository.findAll(startDate, endDate, null, null).stream()
-                .filter(donation -> incomeCategoryIds.contains(donation.getDonateType()))
+                .filter(donation -> !expenseCategoryIds.contains(donation.getDonateType()))
 //                .filter(donation -> isWithinRange(donation, startDate, endDate))
                 .sorted(Comparator
                         .comparing(
