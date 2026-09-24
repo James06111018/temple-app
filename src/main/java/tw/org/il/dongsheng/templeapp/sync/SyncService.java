@@ -11,6 +11,7 @@ import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteMeritBoxOpeningRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteMeritCategoryRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteLightMemberRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteLightNumberRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteSyncStateRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
 import tw.org.il.dongsheng.templeapp.util.Util;
@@ -1090,7 +1091,9 @@ public class SyncService {
     private LightNumberSyncRow mapLightNumber(ResultSet resultSet) throws SQLException {
         LightNumberSyncRow row = new LightNumberSyncRow();
         row.setId(resultSet.getInt("id"));
-        row.setManagementType(resultSet.getString("management_type"));
+        row.setManagementType(SQLiteLightNumberRepository.normalizeManagementType(
+                resultSet.getString("management_type")
+        ));
         row.setLightType(resultSet.getString("light_type"));
         row.setSerialNumber(resultSet.getInt("serial_number"));
         int memberId = resultSet.getInt("member_id");
@@ -1139,7 +1142,7 @@ public class SyncService {
 
     private void bindLightNumber(PreparedStatement statement, LightNumberSyncRow row) throws SQLException {
         statement.setObject(1, row.getId());
-        statement.setString(2, row.getManagementType());
+        statement.setString(2, SQLiteLightNumberRepository.normalizeManagementType(row.getManagementType()));
         statement.setString(3, row.getLightType());
         statement.setObject(4, row.getSerialNumber());
         statement.setObject(5, row.getMemberId());

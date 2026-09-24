@@ -370,6 +370,9 @@ public class LightDataManagementController {
         startNumberField.clear();
         endNumberField.clear();
         statusBox.getSelectionModel().clearSelection();
+        if (!types.isEmpty()) {
+            onSearch();
+        }
     }
 
     private void updateSelectedStatuses(List<Integer> ids, boolean restore) {

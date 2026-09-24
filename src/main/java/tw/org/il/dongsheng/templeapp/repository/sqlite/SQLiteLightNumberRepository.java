@@ -74,6 +74,69 @@ public class SQLiteLightNumberRepository {
                     ON light_number_audits(light_number_id, changed_at)
                     """);
             addColumnIfMissing(connection, "registered_at", "TEXT");
+            migrateLegacyManagementTypes(connection);
+        }
+    }
+
+    public static String normalizeManagementType(String value) {
+        if (value == null) {
+            return null;
+        }
+        return switch (value.trim()) {
+            case "安太歲" -> "TAI_SUI";
+            case "點燈" -> "LIGHT";
+            case "普渡編號" -> "NUMBER";
+            default -> value.trim();
+        };
+    }
+
+    private void migrateLegacyManagementTypes(Connection connection) throws SQLException {
+        boolean originalAutoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try {
+            migrateLegacyManagementType(connection, "安太歲", "TAI_SUI");
+            migrateLegacyManagementType(connection, "點燈", "LIGHT");
+            migrateLegacyManagementType(connection, "普渡編號", "NUMBER");
+            connection.commit();
+        } catch (SQLException ex) {
+            connection.rollback();
+            throw ex;
+        } finally {
+            connection.setAutoCommit(originalAutoCommit);
+        }
+    }
+
+    private void migrateLegacyManagementType(Connection connection, String legacyType, String canonicalType)
+            throws SQLException {
+        String mergeSql = """
+                INSERT INTO light_numbers (
+                    management_type, light_type, serial_number, member_id, principal_name, status,
+                    created_by, created_at, updated_by, updated_at, registered_at, deleted_by, deleted_at
+                )
+                SELECT ?, light_type, serial_number, member_id, principal_name, status,
+                       created_by, created_at, updated_by, updated_at, registered_at, deleted_by, deleted_at
+                FROM light_numbers
+                WHERE management_type = ?
+                ON CONFLICT(management_type, light_type, serial_number) DO UPDATE SET
+                    member_id = excluded.member_id,
+                    principal_name = excluded.principal_name,
+                    status = excluded.status,
+                    created_by = excluded.created_by,
+                    created_at = excluded.created_at,
+                    updated_by = excluded.updated_by,
+                    updated_at = excluded.updated_at,
+                    registered_at = excluded.registered_at,
+                    deleted_by = excluded.deleted_by,
+                    deleted_at = excluded.deleted_at
+                """;
+        try (PreparedStatement merge = connection.prepareStatement(mergeSql);
+             PreparedStatement delete = connection.prepareStatement(
+                     "DELETE FROM light_numbers WHERE management_type = ?")) {
+            merge.setString(1, canonicalType);
+            merge.setString(2, legacyType);
+            merge.executeUpdate();
+            delete.setString(1, legacyType);
+            delete.executeUpdate();
         }
     }
 
