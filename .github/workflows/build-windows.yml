@@ -41,7 +41,7 @@ jobs:
         run: |
           jlink ^
             --module-path "%JAVA_HOME%\jmods;javafx-jmods" ^
-            --add-modules java.base,java.desktop,java.sql,java.naming,javafx.controls,javafx.fxml,javafx.graphics ^
+            --add-modules java.base,java.desktop,java.sql,java.naming,java.net.http,javafx.controls,javafx.fxml,javafx.graphics ^
             --output runtime ^
             --strip-debug ^
             --no-header-files ^
@@ -83,6 +83,7 @@ jobs:
             --java-options "-Dfile.encoding=UTF-8" ^
             --icon packaging\icon.ico ^
             --dest dist ^
+            --win-upgrade-uuid "6f1459ec-5d5b-4a33-9cc8-cfdc0860f257" ^
             --win-menu ^
             --win-shortcut
 
