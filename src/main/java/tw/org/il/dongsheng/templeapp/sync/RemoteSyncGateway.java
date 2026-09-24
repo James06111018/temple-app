@@ -24,6 +24,8 @@ public interface RemoteSyncGateway {
 
     void replaceAppUsers(List<AuthUserSyncRow> users);
 
+    void updateUserPassword(String username, String passwordHash, String changedBy);
+
     void replaceAppRoles(List<AppRole> roles);
 
     void replaceAppFunctions(List<AppFunction> functions);

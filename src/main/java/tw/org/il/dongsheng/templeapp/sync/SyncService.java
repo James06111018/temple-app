@@ -135,6 +135,24 @@ public class SyncService {
         }
     }
 
+    public SyncResult changePassword(String username, String oldPassword, String newPassword) {
+        try {
+            if (authRepository.authenticate(username, oldPassword).isEmpty()) {
+                return new SyncResult(false, "原密碼不正確。");
+            }
+            if (remoteSyncGateway == null) {
+                return new SyncResult(false, "尚未設定 Neon 連線，密碼未變更。");
+            }
+
+            String passwordHash = SQLiteAuthRepository.hashPassword(newPassword);
+            remoteSyncGateway.updateUserPassword(username, passwordHash, username);
+            authRepository.updatePassword(username, newPassword, username);
+            return new SyncResult(true, "密碼已更新並同步至 Neon。");
+        } catch (Exception ex) {
+            return new SyncResult(false, "密碼變更失敗：" + ex.getMessage());
+        }
+    }
+
     private SyncResult pull(boolean fullSync) {
         try {
             if (remoteSyncGateway == null) {

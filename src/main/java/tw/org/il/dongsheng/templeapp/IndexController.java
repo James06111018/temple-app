@@ -32,6 +32,7 @@ public class IndexController {
     @FXML private Menu menuSystemAdmin;
     @FXML private Menu menuAbout;
     @FXML private MenuItem menuItemExit;
+    @FXML private MenuItem menuItemPasswordSettings;
     @FXML private MenuItem menuItemSyncSettings;
     @FXML private CheckMenuItem menuItemParameterSettings, menuItemQueryStatistics, menuItemEmptyNumberQuery, menuItemDictionary,
             menuItemCheckoutReport, menuItemDataMerge, menuItemMergeRecord, menuItemCreateRecord,
@@ -325,6 +326,11 @@ public class IndexController {
     @FXML
     public void handleParameterSettings() throws IOException {
         showCheckedModal(menuItemParameterSettings, "參數設定", "parameter-settings.fxml");
+    }
+
+    @FXML
+    public void handlePasswordSettings() throws IOException {
+        showModal("密碼設定", "password-settings.fxml");
     }
 
     @FXML

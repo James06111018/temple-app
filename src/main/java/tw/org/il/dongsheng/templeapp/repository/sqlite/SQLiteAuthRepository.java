@@ -167,6 +167,33 @@ public class SQLiteAuthRepository {
         return Optional.empty();
     }
 
+    public void updatePassword(String username, String newPassword, String changedBy) throws SQLException {
+        String sql = """
+                UPDATE app_users
+                SET password_hash = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE username = ? AND enabled = 1
+                """;
+        Integer userId;
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, hashPassword(newPassword));
+            statement.setString(2, changedBy);
+            statement.setString(3, username);
+            if (statement.executeUpdate() != 1) {
+                throw new SQLException("找不到啟用中的本機使用者：" + username);
+            }
+        }
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT id FROM app_users WHERE username = ?")) {
+            statement.setString(1, username);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                userId = resultSet.next() ? resultSet.getInt("id") : null;
+            }
+        }
+        saveUserAudit(userId, "PASSWORD_CHANGE", changedBy, "使用者變更自己的密碼");
+    }
+
     public Set<String> findFunctionCodesByRole(String roleCode) throws SQLException {
         String sql = """
                 SELECT f.function_code

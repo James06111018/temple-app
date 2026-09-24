@@ -15,6 +15,7 @@ public final class SyncServiceFactory {
     }
 
     public static SyncService create(Properties properties) throws Exception {
+        Properties resolvedProperties = properties == null ? SyncConfig.load() : properties;
         SQLiteDatabaseManager databaseManager = SQLiteDatabaseManager.getInstance();
         SQLiteAuthRepository authRepository = new SQLiteAuthRepository(databaseManager);
         SQLiteLightMemberRepository lightMemberRepository = new SQLiteLightMemberRepository(databaseManager);
@@ -36,7 +37,7 @@ public final class SyncServiceFactory {
                 meritBoxOpeningRepository,
                 syncStateRepository,
                 null,
-                properties
+                resolvedProperties
         );
     }
 }

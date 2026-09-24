@@ -264,6 +264,26 @@ public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
     }
 
     @Override
+    public void updateUserPassword(String username, String passwordHash, String changedBy) {
+        String sql = """
+                UPDATE app_users
+                SET password_hash = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE username = ? AND enabled = 1
+                """;
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, passwordHash);
+            statement.setString(2, changedBy);
+            statement.setString(3, username);
+            if (statement.executeUpdate() != 1) {
+                throw new IllegalStateException("Neon 找不到啟用中的使用者：" + username);
+            }
+        } catch (SQLException ex) {
+            throw new IllegalStateException("更新 Neon 密碼失敗。", ex);
+        }
+    }
+
+    @Override
     public void replaceAppRoles(List<AppRole> roles) {
         try (Connection connection = openConnection()) {
             try (Statement statement = connection.createStatement()) {

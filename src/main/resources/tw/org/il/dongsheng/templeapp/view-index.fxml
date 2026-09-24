@@ -20,6 +20,7 @@
 <!--                <SeparatorMenuItem />-->
 <!--                <MenuItem text="印表機設定(_P)" mnemonicParsing="true"/>-->
 <!--                <SeparatorMenuItem />-->
+                <MenuItem fx:id="menuItemPasswordSettings" text="密碼設定(_T)" mnemonicParsing="true" onAction="#handlePasswordSettings"/>
                 <SeparatorMenuItem />
                 <CheckMenuItem fx:id="menuItemParameterSettings" text="參數設定(_C)" mnemonicParsing="true" onAction="#handleParameterSettings"/>
             </Menu>
