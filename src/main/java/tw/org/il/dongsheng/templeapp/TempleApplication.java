@@ -8,6 +8,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Modality;
@@ -22,6 +23,8 @@ import tw.org.il.dongsheng.templeapp.sync.SyncService;
 import tw.org.il.dongsheng.templeapp.sync.SyncServiceFactory;
 import tw.org.il.dongsheng.templeapp.sync.SyncConfig;
 import tw.org.il.dongsheng.templeapp.util.AlertDialog;
+import tw.org.il.dongsheng.templeapp.update.AppUpdate;
+import tw.org.il.dongsheng.templeapp.update.AppUpdateService;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -30,10 +33,12 @@ import java.util.HashSet;
 import java.util.ResourceBundle;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.nio.file.Path;
 
 public class TempleApplication extends Application {
     private boolean loginRecordFinished = false;
     private final AtomicBoolean syncing = new AtomicBoolean(false);
+    private final AtomicBoolean updateCheckStarted = new AtomicBoolean(false);
     private final AtomicReference<Stage> syncProgressStageRef = new AtomicReference<>();
     private final AtomicReference<Timeline> syncElapsedTimelineRef = new AtomicReference<>();
     private SyncService syncService;
@@ -207,6 +212,8 @@ public class TempleApplication extends Application {
         if (syncService == null || !syncing.compareAndSet(false, true)) {
             if (closeAfter && stage != null) {
                 Platform.runLater(stage::close);
+            } else if (!closeAfter) {
+                runUpdateCheck(stage);
             }
             return;
         }
@@ -229,6 +236,8 @@ public class TempleApplication extends Application {
                         stage.setOnCloseRequest(null);
                         stage.close();
                     });
+                } else if (!closeAfter) {
+                    runUpdateCheck(stage);
                 }
             }
         }, closeAfter ? "sync-shutdown" : "sync-startup");
@@ -290,6 +299,95 @@ public class TempleApplication extends Application {
             AlertDialog.showWarning("同步", "建立同步服務失敗：" + e.getMessage());
             return null;
         }
+    }
+
+    private void runUpdateCheck(Stage owner) {
+        if (!updateCheckStarted.compareAndSet(false, true)) {
+            return;
+        }
+        Thread thread = new Thread(() -> {
+            try {
+                AppUpdateService updateService = new AppUpdateService();
+                updateService.findAvailableUpdate(AppConfig.getVersion())
+                        .ifPresent(update -> Platform.runLater(() -> askToInstallUpdate(owner, updateService, update)));
+            } catch (Exception ignored) {
+                // 更新檢查失敗不應妨礙離線或日常使用。
+            }
+        }, "app-update-check");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void askToInstallUpdate(Stage owner, AppUpdateService updateService, AppUpdate update) {
+        boolean accepted = AlertDialog.showConfirm(
+                "發現新版",
+                "目前版本：" + AppConfig.getVersion() + System.lineSeparator()
+                        + "最新版本：" + update.version() + System.lineSeparator() + System.lineSeparator()
+                        + "是否立即下載並安裝？安裝前程式會自動關閉。"
+        );
+        if (!accepted) {
+            return;
+        }
+
+        Stage downloadStage = createUpdateDownloadStage(owner, update.version());
+        ProgressBar progressBar = (ProgressBar) downloadStage.getScene().lookup("#updateProgress");
+        Label progressLabel = (Label) downloadStage.getScene().lookup("#updateProgressLabel");
+        downloadStage.show();
+
+        Thread downloadThread = new Thread(() -> {
+            try {
+                Path installer = updateService.download(update, (downloaded, total) -> Platform.runLater(() -> {
+                    if (total > 0) {
+                        progressBar.setProgress((double) downloaded / total);
+                        progressLabel.setText(String.format("已下載 %.1f / %.1f MB",
+                                downloaded / 1024.0 / 1024.0, total / 1024.0 / 1024.0));
+                    } else {
+                        progressBar.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
+                        progressLabel.setText(String.format("已下載 %.1f MB", downloaded / 1024.0 / 1024.0));
+                    }
+                }));
+                updateService.launchInstaller(installer);
+                Platform.runLater(() -> {
+                    downloadStage.close();
+                    finishLoginRecord();
+                    if (owner != null) {
+                        owner.setOnCloseRequest(null);
+                    }
+                    Platform.exit();
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    downloadStage.close();
+                    AlertDialog.showError("更新失敗", "無法下載或啟動新版安裝程式：" + e.getMessage());
+                });
+            }
+        }, "app-update-download");
+        downloadThread.setDaemon(true);
+        downloadThread.start();
+    }
+
+    private Stage createUpdateDownloadStage(Stage owner, String version) {
+        Stage stage = new Stage();
+        stage.initModality(Modality.APPLICATION_MODAL);
+        if (owner != null) {
+            stage.initOwner(owner);
+        }
+        stage.setTitle("下載更新");
+        stage.setResizable(false);
+        stage.setOnCloseRequest(event -> event.consume());
+
+        Label title = new Label("正在下載 TempleApp " + version);
+        title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+        ProgressBar progressBar = new ProgressBar(ProgressBar.INDETERMINATE_PROGRESS);
+        progressBar.setId("updateProgress");
+        progressBar.setPrefWidth(360);
+        Label progressLabel = new Label("正在連線至 GitHub...");
+        progressLabel.setId("updateProgressLabel");
+
+        VBox box = new VBox(12, title, progressBar, progressLabel);
+        box.setStyle("-fx-padding: 22; -fx-alignment: center; -fx-background-color: white;");
+        stage.setScene(new Scene(box, 420, 150));
+        return stage;
     }
 
     private record LoginResult(AppUser user, Integer loginRecordId) {

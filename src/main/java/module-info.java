@@ -3,6 +3,7 @@ module tw.org.il.dongsheng.templeapp {
     requires javafx.fxml;
     requires java.sql;
     requires java.xml;
+    requires java.net.http;
     requires javafx.swing;
     requires java.base;
     requires org.apache.poi.poi;
