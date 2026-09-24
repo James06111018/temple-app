@@ -113,12 +113,6 @@ public class SQLiteAuthRepository {
         grantRoleFunctions(ROLE_ADMIN, findAllFunctionCodes());
         grantRoleFunctions(ROLE_MANAGER, Set.of("SYSTEM_ADMIN", "USER_MANAGEMENT", "USER_AUDIT_QUERY"));
 
-        if (findAllUsers().isEmpty()) {
-            saveUser(new AppUser(null, "admin", "admin", ROLE_ADMIN, true), "admin", "SYSTEM");
-            saveUser(new AppUser(null, "manager", "管理者", ROLE_MANAGER, true), "manager", "SYSTEM");
-            saveUser(new AppUser(null, "user", "使用者", ROLE_USER, true), "user", "SYSTEM");
-            saveUser(new AppUser(null, "viewer", "檢視者", ROLE_VIEWER, true), "viewer", "SYSTEM");
-        }
     }
 
     private void upsertRole(String code, String name) throws SQLException {
@@ -266,6 +260,26 @@ public class SQLiteAuthRepository {
              ResultSet resultSet = statement.executeQuery()) {
             while (resultSet.next()) {
                 users.add(mapUser(resultSet));
+            }
+        }
+        return users;
+    }
+
+    public List<AppUser> findEnabledUsersByRole(String roleCode) throws SQLException {
+        String sql = """
+                SELECT id, username, display_name, role_code, enabled
+                FROM app_users
+                WHERE role_code = ? AND enabled = 1
+                ORDER BY id
+                """;
+        List<AppUser> users = new ArrayList<>();
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, roleCode);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    users.add(mapUser(resultSet));
+                }
             }
         }
         return users;

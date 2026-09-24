@@ -66,7 +66,9 @@ public class LoginController {
     @FXML
     private void onChooseUser() {
         try {
-            ListView<AppUser> listView = new ListView<>(FXCollections.observableArrayList(repository.findAllUsers()));
+            ListView<AppUser> listView = new ListView<>(FXCollections.observableArrayList(
+                    repository.findEnabledUsersByRole(SQLiteAuthRepository.ROLE_USER)
+            ));
             listView.setPrefSize(180, 260);
             javafx.scene.Scene scene = new javafx.scene.Scene(listView);
             Stage stage = new Stage();

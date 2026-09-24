@@ -43,6 +43,12 @@ public class TempleApplication extends Application {
         ResourceBundle bundle = ResourceBundle.getBundle("tw.org.il.dongsheng.templeapp.strings");
         initializeAuthTables();
         ensureSyncSettings(stage);
+        syncService = createSyncService();
+
+        if (!refreshAuthenticationBeforeLogin()) {
+            Platform.exit();
+            return;
+        }
 
         if (!shouldSkipLogin()) {
             LoginResult loginResult = showLogin(stage);
@@ -59,8 +65,6 @@ public class TempleApplication extends Application {
             AuthSession.setFunctionCodes(new HashSet<>(new SQLiteAuthRepository(SQLiteDatabaseManager.getInstance())
                     .findFunctionCodesByRole(SQLiteAuthRepository.ROLE_ADMIN)));
         }
-
-        syncService = createSyncService();
 
         FXMLLoader fxmlLoader = new FXMLLoader(TempleApplication.class.getResource("view-index.fxml"), bundle);
         Parent root = fxmlLoader.load();
@@ -95,6 +99,36 @@ public class TempleApplication extends Application {
         } catch (SQLException e) {
             throw new RuntimeException("初始化登入資料表失敗", e);
         }
+    }
+
+    private boolean refreshAuthenticationBeforeLogin() {
+        SQLiteAuthRepository authRepository = new SQLiteAuthRepository(SQLiteDatabaseManager.getInstance());
+        SyncResult result = syncService == null
+                ? new SyncResult(false, "同步服務建立失敗。")
+                : syncService.refreshAuthenticationFromCloud();
+        if (result.isSuccess()) {
+            return true;
+        }
+
+        try {
+            if (!authRepository.findAllUsers().isEmpty()) {
+                AlertDialog.showWarning(
+                        "登入資料",
+                        result.getMessage() + System.lineSeparator() + "將使用本機已快取的登入帳號。"
+                );
+                return true;
+            }
+        } catch (SQLException ex) {
+            AlertDialog.showError("登入資料", "檢查本機登入資料失敗：" + ex.getMessage());
+            return false;
+        }
+
+        AlertDialog.showError(
+                "登入資料",
+                result.getMessage() + System.lineSeparator()
+                        + "此電腦尚無可用的本機帳號，請檢查同步設定與網路連線後重新啟動。"
+        );
+        return false;
     }
 
     private boolean shouldSkipLogin() {

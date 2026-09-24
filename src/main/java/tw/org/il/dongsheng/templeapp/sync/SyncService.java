@@ -123,6 +123,18 @@ public class SyncService {
         return pull(false);
     }
 
+    public SyncResult refreshAuthenticationFromCloud() {
+        if (remoteSyncGateway == null) {
+            return new SyncResult(false, "尚未設定雲端同步連線。");
+        }
+        try {
+            applyRemoteAuthTables();
+            return new SyncResult(true, "登入帳號與權限已從雲端更新。");
+        } catch (Exception ex) {
+            return new SyncResult(false, "無法從雲端更新登入資料：" + ex.getMessage());
+        }
+    }
+
     private SyncResult pull(boolean fullSync) {
         try {
             if (remoteSyncGateway == null) {
@@ -758,7 +770,11 @@ public class SyncService {
     }
 
     private void applyRemoteAuthUsers(List<AuthUserSyncRow> users) throws SQLException {
+        if (users == null || users.isEmpty()) {
+            throw new SQLException("Neon app_users is empty; refused to clear local login accounts.");
+        }
         try (Connection connection = authRepository.getDatabaseManager().getConnection();
+             PreparedStatement delete = connection.prepareStatement("DELETE FROM app_users");
              PreparedStatement insert = connection.prepareStatement(
                      """
                      INSERT INTO app_users (
@@ -777,22 +793,21 @@ public class SyncService {
                      """)) {
             connection.setAutoCommit(false);
             try {
-                if (users != null) {
-                    for (AuthUserSyncRow user : users) {
-                        insert.setObject(1, user.getId());
-                        insert.setString(2, user.getUsername());
-                        insert.setString(3, user.getDisplayName());
-                        insert.setString(4, user.getPasswordHash());
-                        insert.setString(5, user.getRoleCode());
-                        insert.setInt(6, user.isEnabled() ? 1 : 0);
-                        insert.setString(7, user.getCreatedBy());
-                        insert.setString(8, user.getCreatedAt());
-                        insert.setString(9, user.getUpdatedBy());
-                        insert.setString(10, user.getUpdatedAt());
-                        insert.addBatch();
-                    }
-                    insert.executeBatch();
+                delete.executeUpdate();
+                for (AuthUserSyncRow user : users) {
+                    insert.setObject(1, user.getId());
+                    insert.setString(2, user.getUsername());
+                    insert.setString(3, user.getDisplayName());
+                    insert.setString(4, user.getPasswordHash());
+                    insert.setString(5, user.getRoleCode());
+                    insert.setInt(6, user.isEnabled() ? 1 : 0);
+                    insert.setString(7, user.getCreatedBy());
+                    insert.setString(8, user.getCreatedAt());
+                    insert.setString(9, user.getUpdatedBy());
+                    insert.setString(10, user.getUpdatedAt());
+                    insert.addBatch();
                 }
+                insert.executeBatch();
                 connection.commit();
             } catch (SQLException ex) {
                 connection.rollback();
