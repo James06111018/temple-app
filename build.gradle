@@ -64,6 +64,8 @@ dependencies {
     implementation 'org.xerial:sqlite-jdbc:3.45.1.0'
     implementation 'org.postgresql:postgresql:42.7.4'
     implementation 'org.apache.poi:poi-ooxml:5.3.0'
+    // 農曆、生肖與干支換算；用於信眾生日的衍生欄位。
+    implementation 'cn.6tail:lunar:1.7.7'
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")

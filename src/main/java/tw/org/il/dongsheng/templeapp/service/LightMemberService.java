@@ -3,6 +3,7 @@ package tw.org.il.dongsheng.templeapp.service;
 import tw.org.il.dongsheng.templeapp.model.LightMember;
 import tw.org.il.dongsheng.templeapp.model.MemberBatchUpdateRequest;
 import tw.org.il.dongsheng.templeapp.repository.LightMemberRepository;
+import tw.org.il.dongsheng.templeapp.util.MemberCalendar;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -29,11 +30,11 @@ public class LightMemberService {
     }
 
     public List<LightMember> search(String id, String name, String phone) throws SQLException {
-        return repo.search(id, name, phone);
+        return withDerivedBirthData(repo.search(id, name, phone));
     }
 
     public List<LightMember> findAllHouse(String keyword, int limit, int offset) throws SQLException {
-        return repo.findByAddress(keyword, limit, offset);
+        return withDerivedBirthData(repo.findByAddress(keyword, limit, offset));
     }
 
     public int getMemberCount(String keyword) throws SQLException {
@@ -54,6 +55,28 @@ public class LightMemberService {
         repo.update(member);
     }
 
+    /** 同地址者視為同一戶，丁口由當日年齡即時計算，不回寫資料庫。 */
+    public HouseholdCount calculateHouseholdCount(String address) throws SQLException {
+        if (address == null || address.isBlank()) {
+            return HouseholdCount.EMPTY;
+        }
+        List<LightMember> members = withDerivedBirthData(repo.findByAddress(address, Integer.MAX_VALUE, 0));
+        int ding = 0;
+        int kou = 0;
+        for (LightMember member : members) {
+            Integer age = member.getAge();
+            if (age == null) {
+                continue;
+            }
+            if ("男".equals(member.getGender()) && age >= 16 && age <= 60) {
+                ding++;
+            } else {
+                kou++;
+            }
+        }
+        return new HouseholdCount(ding, kou);
+    }
+
     public boolean deleteById(int id) throws SQLException {
         return repo.deleteById(id);
     }
@@ -68,5 +91,17 @@ public class LightMemberService {
 
     public List<Integer> findBlankNameIds() throws SQLException {
         return repo.findBlankNameIds();
+    }
+
+    private List<LightMember> withDerivedBirthData(List<LightMember> members) {
+        for (LightMember member : members) {
+            MemberCalendar.populateMissingLunarBirthDate(member);
+            MemberCalendar.populateDerivedFields(member);
+        }
+        return members;
+    }
+
+    public record HouseholdCount(int ding, int kou) {
+        public static final HouseholdCount EMPTY = new HouseholdCount(0, 0);
     }
 }

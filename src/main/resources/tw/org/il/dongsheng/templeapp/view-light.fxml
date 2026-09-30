@@ -132,11 +132,10 @@
                             <Button text="…" style="-fx-font-size: 10;" styleClass="btn-green" />
                         </HBox>
                         <Label text="排序" /> <TextField fx:id="sortField" prefWidth="60" />
-                        <Label text="電腦資料" />
-                        <TextField fx:id="aField" prefWidth="40" />
                         <Label text="丁" />
-                        <TextField fx:id="bField" prefWidth="40" />
+                        <TextField fx:id="aField" editable="false" prefWidth="40" />
                         <Label text="口" />
+                        <TextField fx:id="bField" editable="false" prefWidth="40" />
                         <Button fx:id="btnToggle" text="←" style="-fx-font-size: 10;" styleClass="btn-pink" onAction="#onSplitChange" />
                     </HBox>
                 </GridPane>

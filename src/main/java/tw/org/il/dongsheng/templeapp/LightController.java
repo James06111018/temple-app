@@ -38,6 +38,7 @@ import tw.org.il.dongsheng.templeapp.service.LightMemberService;
 import tw.org.il.dongsheng.templeapp.util.AlertDialog;
 import tw.org.il.dongsheng.templeapp.util.AreaUtil;
 import tw.org.il.dongsheng.templeapp.util.LightReportBuilder;
+import tw.org.il.dongsheng.templeapp.util.MemberCalendar;
 import tw.org.il.dongsheng.templeapp.util.PaginationBar;
 import tw.org.il.dongsheng.templeapp.util.PrintPreview;
 import tw.org.il.dongsheng.templeapp.util.Util;
@@ -134,31 +135,20 @@ public class LightController {
         birthSunField.focusedProperty().addListener((obs, oldVal, focused) -> {
             if (!focused) {
                 birthSunField.setText(normalizeRocDate(birthSunField.getText()));
+                refreshBirthDerivedFields(true);
             }
         });
         birthMoonField.focusedProperty().addListener((obs, oldVal, focused) -> {
             if (!focused) {
                 birthMoonField.setText(normalizeRocDate(birthMoonField.getText()));
+                refreshBirthDerivedFields(false);
             }
         });
         birthMoonField.textProperty().addListener((obs, oldVal, newVal) -> {
             if (!isValidRocDateFormat(newVal)) {
                 return;
             }
-            LocalDate date = parseRocDate(newVal);
-            if (date != null) {
-                // 年齡
-                Integer age = calculateTraditionAge(date.getYear());
-                ageField.setText(age != null ? String.valueOf(age) : "");
-                // 生肖
-                zodiacField.setText(getZodiac(date.getYear()));
-                // 歲次
-                yearCycleField.setText(getYearCycle(date.getYear()));
-            } else {
-                ageField.clear();
-                zodiacField.clear();
-                yearCycleField.clear();
-            }
+            refreshBirthDerivedFields(false);
         });
 
         Map<String, List<String>> areaMap = AreaUtil.getAllTaiwanAreas();
@@ -513,8 +503,8 @@ public class LightController {
                 contactField.getText(),
                 idNumberField.getText(),
                 Util.parseInteger(sortField.getText()),
-                Util.parseInteger(aField.getText()),
-                Util.parseInteger(bField.getText()),
+                null,
+                null,
                 mailBox.getValue(),
                 genderBox.getValue(),
                 null,
@@ -622,6 +612,11 @@ public class LightController {
 
         controller.setOnSelected(item -> {
             hourField.setText(item.getName());
+            // 使用者重新指定時辰時，依早子／晚子規則重新換算農曆生日。
+            if (!Util.isBlank(birthSunField.getText())) {
+                birthMoonField.clear();
+            }
+            refreshBirthDerivedFields(true);
         });
 
         Stage stage = new Stage();
@@ -1246,10 +1241,18 @@ public class LightController {
             nameField.setText(member.getName());
             genderBox.setValue(member.getGender());
             phoneField.setText(member.getPhone());
-            cityBox.setValue(member.getCity());
-            if (member.getCity() != null) {
-                String areaText = AreaUtil.findAreaText(member.getCity(), member.getDist());
-                distBox.setValue(areaText != null ? areaText : member.getDist());
+            String city = AreaUtil.resolveCityName(member.getCity());
+            if (city.isBlank()) {
+                city = AreaUtil.findCityFromAddress(member.getAddress());
+            }
+            String district = member.getDist();
+            if (district == null || district.isBlank()) {
+                district = AreaUtil.findDistrictFromAddress(city, member.getAddress());
+            }
+            cityBox.setValue(city);
+            if (!city.isBlank()) {
+                String areaText = AreaUtil.findAreaText(city, district);
+                distBox.setValue(areaText != null ? areaText : district);
             }
             zipCodeField.setText(member.getZipCode());
             addressField.setText(member.getAddress());
@@ -1257,9 +1260,45 @@ public class LightController {
             birthSunField.setText(member.getBirthDate());
             birthMoonField.setText(member.getLunarBirthDate());
             hourField.setText(member.getBirthTime());
+            ageField.setText(member.getAge() == null ? "" : String.valueOf(member.getAge()));
+            zodiacField.setText(member.getZodiac());
+            yearCycleField.setText(member.getZodiacYear());
             memberNoteField.setText(member.getNote());
+            contactField.setText(member.getContactPerson());
+            idNumberField.setText(member.getIdNumber());
+            sortField.setText(member.getSortOrder() == null ? "" : String.valueOf(member.getSortOrder()));
         } finally {
             loadingMemberData = false;
+        }
+        refreshBirthDerivedFields(true);
+        refreshHouseholdCounts(member.getAddress());
+    }
+
+    private void refreshBirthDerivedFields(boolean populateMissingLunarDate) {
+        LightMember member = new LightMember();
+        member.setBirthDate(birthSunField.getText());
+        member.setLunarBirthDate(birthMoonField.getText());
+        member.setBirthTime(hourField.getText());
+        if (populateMissingLunarDate) {
+            MemberCalendar.populateMissingLunarBirthDate(member);
+            if (!Util.isBlank(member.getLunarBirthDate())) {
+                birthMoonField.setText(member.getLunarBirthDate());
+            }
+        }
+        MemberCalendar.populateDerivedFields(member);
+        ageField.setText(member.getAge() == null ? "" : String.valueOf(member.getAge()));
+        zodiacField.setText(member.getZodiac() == null ? "" : member.getZodiac());
+        yearCycleField.setText(member.getZodiacYear() == null ? "" : member.getZodiacYear());
+    }
+
+    private void refreshHouseholdCounts(String address) {
+        try {
+            LightMemberService.HouseholdCount count = lightService.calculateHouseholdCount(address);
+            aField.setText(String.valueOf(count.ding()));
+            bField.setText(String.valueOf(count.kou()));
+        } catch (SQLException e) {
+            aField.clear();
+            bField.clear();
         }
     }
 

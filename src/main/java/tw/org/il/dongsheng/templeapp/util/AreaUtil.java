@@ -58,6 +58,54 @@ public class AreaUtil {
         return city == null ? "" : city.replace("臺", "台");
     }
 
+    /** 將舊資料常見的「台／臺」差異轉成下拉選單實際使用的縣市名稱。 */
+    public static String resolveCityName(String city) {
+        if (city == null || city.isBlank()) {
+            return "";
+        }
+        String normalized = normalizeCityName(city).replace("　", "").replace(" ", "");
+        return getAllTaiwanAreas().keySet().stream()
+                .filter(candidate -> normalizeCityName(candidate).equals(normalized))
+                .findFirst()
+                .orElse(city.trim());
+    }
+
+    /** 從已包含完整行政區的舊地址找出縣市，供 city 空白的信眾補顯示與下次儲存。 */
+    public static String findCityFromAddress(String address) {
+        if (address == null || address.isBlank()) {
+            return "";
+        }
+        String normalizedAddress = normalizeAddress(address);
+        return getAllTaiwanAreas().keySet().stream()
+                .sorted((left, right) -> Integer.compare(right.length(), left.length()))
+                .filter(city -> normalizedAddress.startsWith(normalizeAddress(city)))
+                .findFirst()
+                .orElse("");
+    }
+
+    public static String findDistrictFromAddress(String city, String address) {
+        String resolvedCity = resolveCityName(city);
+        if (resolvedCity.isBlank() || address == null || address.isBlank()) {
+            return "";
+        }
+        String remainder = normalizeAddress(address);
+        String normalizedCity = normalizeAddress(resolvedCity);
+        if (remainder.startsWith(normalizedCity)) {
+            remainder = remainder.substring(normalizedCity.length());
+        }
+        final String remainingAddress = remainder;
+        return getAllTaiwanAreas().getOrDefault(resolvedCity, List.of()).stream()
+                .map(AreaUtil::getDistrictName)
+                .sorted((left, right) -> Integer.compare(right.length(), left.length()))
+                .filter(district -> remainingAddress.startsWith(normalizeAddress(district)))
+                .findFirst()
+                .orElse("");
+    }
+
+    private static String normalizeAddress(String value) {
+        return normalizeCityName(value).replace("　", "").replace(" ", "");
+    }
+
     private static void initArea() {
         areaMap.put("臺北市", Arrays.asList("100 - 中正區", "103 - 大同區", "104 - 中山區", "108 - 萬華區", "110 - 信義區", "105 - 松山區", "106 - 大安區", "115 - 南港區", "112 - 北投區", "114 - 內湖區", "111 - 士林區", "116 - 文山區"));
         areaMap.put("新北市", Arrays.asList("220 - 板橋區", "241 - 三重區", "235 - 中和區", "234 - 永和區", "242 - 新莊區", "231 - 新店區", "236 - 土城區", "247 - 蘆洲區", "221 - 汐止區", "238 - 樹林區", "251 - 淡水區", "239 - 鶯歌區", "237 - 三峽區", "224 - 瑞芳區", "248 - 五股區", "243 - 泰山區", "244 - 林口區", "222 - 深坑區", "223 - 石碇區", "232 - 坪林區", "252 - 三芝區", "253 - 石門區", "249 - 八里區", "226 - 平溪區", "227 - 雙溪區", "228 - 貢寮區", "208 - 金山區", "207 - 萬里區", "233 - 烏來區"));

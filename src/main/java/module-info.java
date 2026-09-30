@@ -8,6 +8,7 @@ module tw.org.il.dongsheng.templeapp {
     requires java.base;
     requires org.apache.poi.poi;
     requires org.apache.poi.ooxml;
+    requires lunar;
 
     requires org.controlsfx.controls;
     requires com.dlsc.formsfx;
