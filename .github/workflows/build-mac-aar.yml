@@ -61,7 +61,7 @@ jobs:
         run: |
           jlink \
             --module-path "$JAVA_HOME/jmods:javafx-jmods/javafx-jmods-21.0.2" \
-            --add-modules java.base,java.desktop,java.sql,java.naming,javafx.controls,javafx.fxml,javafx.graphics \
+            --add-modules java.base,java.desktop,java.sql,java.naming,java.net.http,java.management,java.logging,javafx.controls,javafx.fxml,javafx.graphics \
             --output runtime \
             --strip-debug \
             --no-header-files \
