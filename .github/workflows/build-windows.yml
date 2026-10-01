@@ -28,13 +28,17 @@ jobs:
         run: |
           $url = "https://download2.gluonhq.com/openjfx/21.0.2/openjfx-21.0.2_windows-x64_bin-jmods.zip"
           Invoke-WebRequest -Uri $url -OutFile "openjfx-jmods.zip"
-          Expand-Archive -Path "openjfx-jmods.zip" -DestinationPath "."
-
+          Expand-Archive -Path "openjfx-jmods.zip" -DestinationPath "javafx-jmods-temp"
+          
+          # 自動尋找包含 .jmod 的實際資料夾並移至 javafx-jmods
+          $jmodDir = (Get-ChildItem -Path "javafx-jmods-temp" -Recurse -Filter "*.jmod" | Select-Object -First 1).Directory.FullName
+          Move-Item -Path "$jmodDir" -Destination "javafx-jmods"
+          
       - name: Create runtime image
         shell: cmd
         run: |
           jlink ^
-            --module-path "%JAVA_HOME%\jmods;openjfx-21.0.2_windows-x64_bin-jmods\javafx-jmods-21.0.2" ^
+            --module-path "%JAVA_HOME%\jmods;javafx-jmods" ^
             --add-modules java.base,java.desktop,java.sql,java.naming,java.net.http,java.management,java.logging,jdk.crypto.ec,java.security.jgss,javafx.controls,javafx.fxml,javafx.graphics ^
             --output runtime ^
             --strip-debug ^
