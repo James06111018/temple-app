@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
 
 public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
     private static final int BATCH_SIZE = 500;
@@ -31,6 +32,36 @@ public class PostgresRemoteSyncGateway implements RemoteSyncGateway {
         this.jdbcUrl = jdbcUrl;
         this.username = username;
         this.password = password;
+    }
+
+    /** Downloads shared reference data from Neon into the local SQLite cache. */
+    public void pullReferenceData(SQLiteDatabaseManager databaseManager) throws SQLException {
+        try (Connection remote = openConnection(); Connection local = databaseManager.getConnection()) {
+            local.setAutoCommit(false);
+            try {
+                copyTable(remote, local, "dictionary_categories", "id, code, name, type, enabled, sort_order, created_by, created_at, updated_by, updated_at");
+                copyTable(remote, local, "dictionary_items", "id, category_id, parent_item_id, code, name, description, amount, direction, default_amount, enabled, sort_order, source_table, source_id, created_by, created_at, updated_by, updated_at");
+                copyTable(remote, local, "system_settings", "id, setting_group, setting_key, setting_value, updated_by, updated_at");
+                local.commit();
+            } catch (SQLException ex) {
+                local.rollback();
+                throw ex;
+            }
+        }
+    }
+
+    private void copyTable(Connection remote, Connection local, String table, String columns) throws SQLException {
+        String[] names = columns.split(", ");
+        String placeholders = String.join(", ", java.util.Collections.nCopies(names.length, "?"));
+        try (PreparedStatement select = remote.prepareStatement("SELECT " + columns + " FROM " + table);
+             ResultSet rows = select.executeQuery();
+             PreparedStatement insert = local.prepareStatement("INSERT OR REPLACE INTO " + table + " (" + columns + ") VALUES (" + placeholders + ")")) {
+            while (rows.next()) {
+                for (int i = 0; i < names.length; i++) insert.setObject(i + 1, rows.getObject(i + 1));
+                insert.addBatch();
+            }
+            insert.executeBatch();
+        }
     }
 
     @Override

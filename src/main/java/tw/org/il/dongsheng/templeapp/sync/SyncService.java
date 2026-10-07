@@ -193,6 +193,10 @@ public class SyncService {
             checkpoint();
             report("合併功德箱資料表（merit_categories、merit_box_openings）...");
             applyRemoteMeritTables();
+            if (remoteSyncGateway instanceof PostgresRemoteSyncGateway postgresGateway) {
+                report("合併詞彙與參數設定...");
+                postgresGateway.pullReferenceData(SQLiteDatabaseManager.getInstance());
+            }
 
             syncState.setLastPullAt(Util.nowUtc());
             syncState.setLastSyncAt(Util.nowUtc());

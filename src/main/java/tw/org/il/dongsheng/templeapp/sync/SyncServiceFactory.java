@@ -3,6 +3,7 @@ package tw.org.il.dongsheng.templeapp.sync;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteAuthRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDatabaseManager;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDictionaryRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteDonationSupplementRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteHouseholdLightRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteLightMemberRepository;
@@ -10,6 +11,7 @@ import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteLightNumberReposito
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteMeritBoxOpeningRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteMeritCategoryRepository;
 import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteSyncStateRepository;
+import tw.org.il.dongsheng.templeapp.repository.sqlite.SQLiteSystemSettingsRepository;
 
 import java.util.Properties;
 
@@ -25,6 +27,8 @@ public final class SyncServiceFactory {
         SQLiteLightNumberRepository lightNumberRepository = new SQLiteLightNumberRepository(databaseManager);
         SQLiteHouseholdLightRepository householdLightRepository = new SQLiteHouseholdLightRepository(databaseManager);
         SQLiteDonationRepository donationRepository = new SQLiteDonationRepository(databaseManager);
+        SQLiteDictionaryRepository dictionaryRepository = new SQLiteDictionaryRepository(databaseManager);
+        SQLiteSystemSettingsRepository systemSettingsRepository = new SQLiteSystemSettingsRepository(databaseManager);
         SQLiteDonationSupplementRepository donationSupplementRepository = new SQLiteDonationSupplementRepository(databaseManager);
         SQLiteMeritCategoryRepository meritCategoryRepository = new SQLiteMeritCategoryRepository(databaseManager);
         SQLiteMeritBoxOpeningRepository meritBoxOpeningRepository = new SQLiteMeritBoxOpeningRepository(databaseManager);
@@ -35,6 +39,8 @@ public final class SyncServiceFactory {
         lightNumberRepository.createTable();
         householdLightRepository.createTable();
         donationRepository.createTable();
+        dictionaryRepository.createTable();
+        systemSettingsRepository.createTable();
         donationSupplementRepository.createTable();
         syncStateRepository.createTable();
 
